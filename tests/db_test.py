@@ -77,17 +77,19 @@ class TestSQLDB(unittest.TestCase):
         with self.sql_db as db_conn:
             db_conn: db.SQLDatabase
             db_conn.connection.execute("INSERT INTO manufacturers_reports (manufacturer_id, report_name, yearly_frequency, POS_report) \
-                    VALUES (%s,%s,%s,%s);", (69, "your_mom", 4, True))
+                    VALUES (%s,%s,%s,%s);", (70, "Baker POS Report", 4, True))
+
             result = db_conn.select_records(table="manufacturers_reports", 
                         columns=["report_name", "POS_report", "manufacturer_id", "yearly_frequency"],
-                        constraints={"report_name": "your_mom"})
+                        constraints={"report_name": "Baker POS Report"})
 
             db_conn.connection.execute("INSERT INTO manufacturers_reports (manufacturer_id, report_name, yearly_frequency, POS_report) \
-                    VALUES (%s,%s,%s,%s);", (420, "light_up", 69, False))
+                    VALUES (%s,%s,%s,%s);", (4, "ADP Commissions", 12, False))
+
             result_2 = db_conn.select_records(table="manufacturers_reports")
 
-        self.assertEqual(result, [("your_mom", True, 69, 4)])
-        self.assertEqual(result_2,[(1, 69, "your_mom", 4, True),(2, 420, "light_up", 69, False)])
+        self.assertEqual(result, [("Baker POS Report", True, 70, 4)])
+        self.assertEqual(result_2,[(1, 70, "Baker POS Report", 4, True),(2, 4, "ADP Commissions", 12, False)])
 
 
     def tearDown(self):

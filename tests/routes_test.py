@@ -2,9 +2,9 @@ import unittest
 import dotenv
 import os
 
-from app.routes import fast_api_routes
+from app.routes import api_services
 
 dotenv.load_dotenv()
 
-class TestAPIRoutes(unittest.TestCase):
+class TestAPIServices(unittest.TestCase):
     ...

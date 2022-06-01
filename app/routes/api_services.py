@@ -1,0 +1,1 @@
+"""Collection of functions to be used by web workers to process API calls"""

@@ -49,3 +49,19 @@ def record_processing_steps(db: db.Database, submission_id: int, data: pd.DataFr
 
 def del_processing_steps(db: db.Database, submission_id: int) -> bool:
     ...
+
+# errors
+def get_errors(db: db.Database, submission_id: int) -> pd.DataFrame:
+    ...
+
+def record_errors(db: db.Database, submission_id: int, data: pd.DataFrame) -> bool:
+    ...
+
+def correct_error(db: db.Database, error_id: int, data: pd.DataFrame) -> bool:
+    ...
+
+def del_error(db: db.Database, error_id: int) -> bool:
+    ...
+
+
+### admin functions will be developed below here, but they are not needed for MVP ###

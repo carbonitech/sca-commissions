@@ -4,8 +4,13 @@ from app.db import db
 from typing import Dict
 
 # mappings
-def get_mapping_tables(db: db.Database) -> Dict[int,str]:
-    ...
+def get_mapping_tables(db: db.Database) -> set:
+
+    with db as db_conn:
+        all_tables = db_conn.get_tables()
+
+    mapping_tables = {record[0] for record in all_tables if record[0].split("_")[0] == "map"}
+    return mapping_tables
 
 def get_mapping(db: db.Database, table: int) -> pd.DataFrame:
     ...

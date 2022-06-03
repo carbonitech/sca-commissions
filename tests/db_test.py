@@ -2,34 +2,23 @@ import unittest
 import dotenv
 import os
 
-from app.db import db
+from app.db import db, tables
 
 dotenv.load_dotenv()
+
+TABLES = tables.TABLES
 
 class TestSQLDB(unittest.TestCase):
 
     def setUp(self):
         db_url = os.getenv("TESTING_DATABASE_URL")
-        self.tables = {
-            "customers": ("id SERIAL PRIMARY KEY", "name TEXT"),
-            "customer_branches": ("id SERIAL PRIMARY KEY", "customer_id INTEGER NOT NULL", "city TEXT", "state TEXT", "zip INTEGER"),
-            "map_customer_name": ("id SERIAL PRIMARY KEY", "recorded_name TEXT", "standard_name TEXT"),
-            "map_rep": ("id SERIAL PRIMARY KEY", "rep_id INTEGER NOT NULL", "customer_branch_id INTEGER NOT NULL"),
-            "map_city_names": ("id SERIAL PRIMARY KEY", "recorded_name TEXT", "standard_name TEXT"),
-            "manufacturers": ("id SERIAL PRIMARY KEY", "name TEXT"),
-            "manufacturers_reports": ("id SERIAL PRIMARY KEY", "manufacturer_id INTEGER NOT NULL", "report_name TEXT", \
-                                        "yearly_frequency INTEGER", "POS_report BOOLEAN"),
-            "report_submissions_log": ("id SERIAL PRIMARY KEY", "submission_date TIMESTAMP", "reporting_month INTEGER", \
-                                        "reporting_year INTEGER", "manufacturer_id INTEGER", "report_id INTEGER")
-        }
+        self.tables = TABLES
 
         self.sql_db = db.SQLDatabase(db_url)
         with self.sql_db as db_conn:
             db_conn: db.SQLDatabase
             for name, schema in self.tables.items():
                 db_conn.create_table(table_name=name, columns=schema)
-
-        return
 
 
     def test_creating_data(self):

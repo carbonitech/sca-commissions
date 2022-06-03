@@ -64,6 +64,15 @@ class SQLDatabase(Database):
         self.connection.execute(sql)
 
 
+    def get_tables(self):
+
+        sql = "SELECT table_name \
+            FROM information_schema.tables \
+            WHERE table_schema = 'public';"
+        
+        return self.connection.execute(sql).fetchall()
+
+
     def remove_table(self, table_name: str):
         sql = f"DROP TABLE IF EXISTS {table_name};"
         self.connection.execute(sql)

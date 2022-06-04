@@ -14,7 +14,7 @@ def get_mapping_tables(database: db.Database) -> set:
     return mapping_tables
 
 
-def get_mapping(database: db.Database, table: str) -> pd.DataFrame:
+def get_mappings(database: db.Database, table: str) -> pd.DataFrame:
     
     with database as db_conn:
         db_conn: db.Database
@@ -24,11 +24,23 @@ def get_mapping(database: db.Database, table: str) -> pd.DataFrame:
     return pd.DataFrame.from_records(mapping_data, columns=[col[0] for col in mapping_data_columns])
 
 
-def set_mapping(database: db.Database, table: int, data: pd.DataFrame) -> bool:
-    ...
+def set_mapping(database: db.Database, table: str, data: pd.DataFrame) -> bool:
 
-def del_mapping(database: db.Database, table: int, id: int) -> bool:
-    ...
+    try:    
+        entries = data.to_dict(orient="records")
+
+        with database as db_conn:
+            db_conn: db.Database
+            for entry in entries:
+                db_conn.create_record(table=table, data=entry)
+    except:            ## <-- TODO: expand to handle errors unqiuely instead of simply returning False
+        return False
+    else:
+        return True
+
+
+def del_mapping(database: db.Database, table: str, id: int) -> bool:
+    return False
 
 # final commission data
 def get_final_data(database: db.Database) -> pd.DataFrame:

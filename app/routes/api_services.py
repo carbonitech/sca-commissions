@@ -18,7 +18,11 @@ def get_mappings(database: db.Database, table: str) -> pd.DataFrame:
     
     with database as db_conn:
         db_conn: db.Database
-        mapping_data_columns = db_conn.select_records(table="INFORMATION_SCHEMA.COLUMNS", columns=["column_name"], constraints={"TABLE_NAME": table})
+        mapping_data_columns = db_conn.select_records(
+                table="INFORMATION_SCHEMA.COLUMNS",
+                columns=["column_name"],
+                constraints={"TABLE_NAME": table}
+            )
         mapping_data = db_conn.select_records(table=table)
 
     return pd.DataFrame.from_records(mapping_data, columns=[col[0] for col in mapping_data_columns])

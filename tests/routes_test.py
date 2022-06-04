@@ -27,10 +27,8 @@ class TestApiServiceFunctions(unittest.TestCase):
 
 
     def test_get_mapping_tables(self):
-
         mapping_tables: set = api_services.get_mapping_tables(database=self.sql_db)
         expected_tables: set = {table for table in TABLES if table.split("_")[0] == "map"}
-
         self.assertEqual(mapping_tables, expected_tables)
 
 
@@ -60,7 +58,6 @@ class TestApiServiceFunctions(unittest.TestCase):
 
         # test that dataframes are equal
         for tbl, entry in mapping_table_entries.items():
-
             result = api_services.get_mappings(database=self.sql_db, table=tbl)
             expected = pd.DataFrame({**{"id":[1]},**{k:[v] for k,v in entry.items()}}) # upgrading to python 3.10 could replace unpacking ** with a pipe | operator
             assert_frame_equal(result,expected)
@@ -69,11 +66,12 @@ class TestApiServiceFunctions(unittest.TestCase):
             expected_data_list = [1]+[val for val in entry.values()]
             self.assertEqual(result_data_list, expected_data_list)
     
-    
-    def test_set_mapping(self):
 
-        # test data to insert by table
-        mapping_table_entries: Dict[str,dict] = {
+    def test_set_mapping(self):
+        ## test insertion and extraction on each table with single record
+
+        # test data to insert by table - first row
+        mapping_table_entries_single: Dict[str,dict] = {
             "map_customer_name": {
                 "recorded_name": "WICHITTEN SUPPLY",
                 "standard_name": "WITTICHEN SUPPLY"
@@ -88,18 +86,53 @@ class TestApiServiceFunctions(unittest.TestCase):
             }
         }
 
-        for tbl, entry in mapping_table_entries.items():
 
+        for tbl, entry in mapping_table_entries_single.items():
+            # set data and confirm set_mapping returns true
             entry_df = pd.DataFrame({k:[v] for k,v in entry.items()})
             setting_return = api_services.set_mapping(database=self.sql_db, table=tbl, data=entry_df)
             self.assertTrue(setting_return)
 
+            # confirm the data is what we expect coming from get_mappings
             result_data = api_services.get_mappings(database=self.sql_db, table=tbl)
-            entry_df.insert(0,"id",[1])
-            expected = entry_df
+            expected = entry_df.copy()
+            expected.insert(0,"id",[1])
             assert_frame_equal(result_data, expected)
 
-        
+
+        ## test insertion and extraction on each table with multiple records
+        mapping_table_entries_multi: Dict[str,dict] = {
+            "map_customer_name": {
+                "recorded_name": ["MINGLEDROFFS", "EDSSUPPLYCO", "DSC"],
+                "standard_name": ["MINGLEDORFFS", "EDS SUPPLY COMPANY","DEALERS SUPPLY COMPANY"]
+            },
+            "map_rep": {
+                "rep_id": [6,6,2],
+                "customer_branch_id": [350,19,31],
+            },
+            "map_city_names": {
+                "recorded_name": ["CHATNOGA", "PT_ST_LUCIE", "BLUERIDGE"],
+                "standard_name": ["CHATTANOOGA", "PORT SAINT LUCIE", "BLUE RIDGE"]
+            }
+        }
+
+        for tbl, entry in mapping_table_entries_multi.items():
+            # set data and confirm set_mapping returns true
+            entry_df = pd.DataFrame(entry)
+            setting_return = api_services.set_mapping(database=self.sql_db, table=tbl, data=entry_df)
+            self.assertTrue(setting_return)
+            
+            # confirm the data is what we expect coming from get_mappings
+            result_data = api_services.get_mappings(database=self.sql_db, table=tbl)
+            expected = entry_df.copy()
+            expected.insert(0,"id",[2,3,4])
+            first_row_vals = [1] + [val for val in mapping_table_entries_single[tbl].values()]
+            first_row_cols = ["id"] + [col for col in mapping_table_entries_single[tbl].keys()]
+            first_row_df = pd.DataFrame(columns=first_row_cols, data=[first_row_vals])
+            expected = pd.concat([first_row_df, expected])
+            expected.reset_index(drop=True, inplace=True)
+            assert_frame_equal(result_data,expected)
+
 
     def test_del_mapping(self):
         ...

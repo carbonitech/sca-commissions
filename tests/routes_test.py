@@ -5,6 +5,7 @@ from typing import Dict
 
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
+from random import randint
 
 from app.db import db, tables
 from app.routes import api_services
@@ -135,7 +136,40 @@ class TestApiServiceFunctions(unittest.TestCase):
 
 
     def test_del_mapping(self):
-        ...
+
+        mapping_table_entries: Dict[str,dict] = {
+            "map_customer_name": {
+                "recorded_name": ["MINGLEDROFFS", "EDSSUPPLYCO", "DSC"],
+                "standard_name": ["MINGLEDORFFS", "EDS SUPPLY COMPANY","DEALERS SUPPLY COMPANY"]
+            },
+            "map_rep": {
+                "rep_id": [6,6,2],
+                "customer_branch_id": [350,19,31],
+            },
+            "map_city_names": {
+                "recorded_name": ["CHATNOGA", "PT_ST_LUCIE", "BLUERIDGE"],
+                "standard_name": ["CHATTANOOGA", "PORT SAINT LUCIE", "BLUE RIDGE"]
+            }
+        }
+
+        for tbl, entry in mapping_table_entries.items():
+            # set data
+            entry_df = pd.DataFrame(entry)
+            api_services.set_mapping(database=self.sql_db, table=tbl, data=entry_df)
+            # get a random record_id and delete it
+            rec_id = randint(1,3)
+            del_result = api_services.del_mapping(database=self.sql_db, table=tbl, id=rec_id)
+            # generate expected data
+            expected = entry_df.copy()
+            expected.insert(0,"id",[1,2,3])
+            expected.drop([rec_id-1], inplace=True)
+            expected.reset_index(drop=True, inplace=True)
+            # get table from db
+            result_data = api_services.get_mappings(database=self.sql_db, table=tbl)
+            # tests
+            self.assertTrue(del_result)
+            assert_frame_equal(result_data,expected)
+
 
     def tearDown(self):
         with self.sql_db as db_conn:

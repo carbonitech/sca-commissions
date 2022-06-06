@@ -44,7 +44,12 @@ def set_mapping(database: db.Database, table: str, data: pd.DataFrame) -> bool:
 
 
 def del_mapping(database: db.Database, table: str, id: int) -> bool:
-    return False
+    
+    with database as db_conn:
+        db_conn: db.Database
+        db_conn.delete_record(table=table,id=id)
+
+    return True
 
 # final commission data
 def get_final_data(database: db.Database) -> pd.DataFrame:

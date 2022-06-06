@@ -25,12 +25,14 @@ class TestApiServiceFunctions(unittest.TestCase):
             db_conn: db.SQLDatabase
             for name, schema in self.tables.items():
                 db_conn.create_table(table_name=name, columns=schema)
+        return
 
 
     def test_get_mapping_tables(self):
         mapping_tables: set = api_services.get_mapping_tables(database=self.sql_db)
         expected_tables: set = {table for table in TABLES if table.split("_")[0] == "map"}
         self.assertEqual(mapping_tables, expected_tables)
+        return
 
 
     def test_get_mappings(self):
@@ -66,6 +68,7 @@ class TestApiServiceFunctions(unittest.TestCase):
             result_data_list = result.iloc[0].tolist()
             expected_data_list = [1]+[val for val in entry.values()]
             self.assertEqual(result_data_list, expected_data_list)
+            return
     
 
     def test_set_mapping(self):
@@ -133,7 +136,7 @@ class TestApiServiceFunctions(unittest.TestCase):
             expected = pd.concat([first_row_df, expected])
             expected.reset_index(drop=True, inplace=True)
             assert_frame_equal(result_data,expected)
-
+            return
 
     def test_del_mapping(self):
 
@@ -169,6 +172,22 @@ class TestApiServiceFunctions(unittest.TestCase):
             # tests
             self.assertTrue(del_result)
             assert_frame_equal(result_data,expected)
+            return
+
+    def test_get_final_data(self): ...
+    def test_record_final_data(self): ...
+    def test_get_submissions_metadata(self): ...
+    def test_del_submission(self): ...
+    def test_get_submission_files(self): ...
+    def test_record_submission_file(self): ...
+    def test_del_submission_file(self): ...
+    def test_get_processing_steps(self): ...
+    def test_record_processing_steps(self): ...
+    def test_del_processing_steps(self): ...
+    def test_get_errors(self): ...
+    def test_record_errors(self): ...
+    def test_correct_error(self): ...
+    def test_del_error(self): ...
 
 
     def tearDown(self):
@@ -176,3 +195,4 @@ class TestApiServiceFunctions(unittest.TestCase):
             db_conn: db.SQLDatabase
             for table in self.tables:
                 db_conn.remove_table(table)
+        return

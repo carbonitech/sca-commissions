@@ -174,8 +174,39 @@ class TestApiServiceFunctions(unittest.TestCase):
             assert_frame_equal(result_data,expected)
             return
 
+
+    def test_record_final_data(self):
+        entry_dict = {
+            "Year": [2019,2020,2021,2022],
+            "Month": ["January", "November", "April", "July"],
+            "Manufacturer": ["ADP", "Berry", "Allied", "Atco"],
+            "Salesman": ["mwr","sca", "jdc", "red"],
+            "Customer_Name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
+            "City": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
+            "State": ["TN","FL","GA","AL"],
+            "Inv_Amt": [randint(100,50000000)/100 for _ in range(0,4)],
+        }
+        entry_dict["Comm_Amt"] = [round(num*3/100, 2) for num in entry_dict["Inv_Amt"]]
+
+        entry = pd.DataFrame(entry_dict)
+        success = api_services.record_final_data(database=self.sql_db, data=entry)
+        self.assertTrue(success)
+
+        expected = entry.copy()
+        expected.insert(0,"id",list(range(1,5)))
+
+        with self.sql_db as db_conn:
+            db_conn: db.SQLDatabase
+            records = db_conn.select_records(table="final_commission_data")
+
+        result = pd.DataFrame.from_records(records, columns=["id"]+list(entry_dict.keys()))
+        result["Inv_Amt"] = pd.to_numeric(result["Inv_Amt"])
+        result["Comm_Amt"] = pd.to_numeric(result["Comm_Amt"])
+        assert_frame_equal(result, expected)
+        return
+
+
     def test_get_final_data(self): ...
-    def test_record_final_data(self): ...
     def test_get_submissions_metadata(self): ...
     def test_del_submission(self): ...
     def test_get_submission_files(self): ...

@@ -3,33 +3,23 @@ import pandas as pd
 from app.db import db
 from typing import Dict
 
-# mappings
-def get_mapping_tables(database: db.SQLDatabase) -> set:
+
+def get_data(database: db.SQLDatabase, table: str) -> pd.DataFrame:
+    """taking a SQL database and extracting all records. returns a pandas dataframe"""
 
     with database as db_conn:
         db_conn: db.SQLDatabase
-        all_tables = db_conn.get_tables()
-
-    mapping_tables = {record[0] for record in all_tables if record[0].split("_")[0] == "map"}
-    return mapping_tables
-
-
-def get_mappings(database: db.SQLDatabase, table: str) -> pd.DataFrame:
-    
-    with database as db_conn:
-        db_conn: db.SQLDatabase
-        mapping_data_columns = db_conn.select_records(
+        data_columns = db_conn.select_records(
                 table="INFORMATION_SCHEMA.COLUMNS",
                 columns=["column_name"],
                 constraints={"TABLE_NAME": table}
             )
-        mapping_data = db_conn.select_records(table=table)
+        data = db_conn.select_records(table=table)
 
-    return pd.DataFrame.from_records(mapping_data, columns=[col[0] for col in mapping_data_columns])
+    return pd.DataFrame.from_records(data, columns=[col[0] for col in data_columns])
 
 
-def set_mapping(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> bool:
-
+def set_data(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> bool:
     try:    
         entries = data.to_dict(orient="records")
 
@@ -43,6 +33,24 @@ def set_mapping(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> boo
         return True
 
 
+# mappings
+def get_mapping_tables(database: db.SQLDatabase) -> set:
+
+    with database as db_conn:
+        db_conn: db.SQLDatabase
+        all_tables = db_conn.get_tables()
+
+    mapping_tables = {record[0] for record in all_tables if record[0].split("_")[0] == "map"}
+    return mapping_tables
+
+
+def get_mappings(database: db.SQLDatabase, table: str) -> pd.DataFrame:
+    return get_data(database=database, table=table)
+
+
+def set_mapping(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> bool:
+    return set_data(database=database, table=table, data=data)
+
 def del_mapping(database: db.SQLDatabase, table: str, id: int) -> bool:
     
     with database as db_conn:
@@ -54,20 +62,15 @@ def del_mapping(database: db.SQLDatabase, table: str, id: int) -> bool:
 
 # final commission data
 def record_final_data(database: db.SQLDatabase, data: pd.DataFrame) -> bool:
-    try:    
-        entries = data.to_dict(orient="records")
-
-        with database as db_conn:
-            db_conn: db.SQLDatabase
-            for entry in entries:
-                db_conn.create_record(table="final_commission_data", data=entry)
-    except:            ## <-- TODO: expand to handle errors unqiuely instead of simply returning False
-        return False
-    else:
-        return True
+    table = "final_commission_data"
+    return set_data(database=database, table=table, data=data)
 
 
-def get_final_data(database: db.SQLDatabase) -> pd.DataFrame: ...
+def get_final_data(database: db.SQLDatabase) -> pd.DataFrame:
+    table = "final_commission_data"
+    return get_data(database=database, table=table)
+        
+
 # submission metadata
 def get_submissions_metadata(database: db.SQLDatabase, manufacturer_id: int) -> pd.DataFrame: ...
 def del_submission(database: db.SQLDatabase, submission_id: int) -> bool: ...

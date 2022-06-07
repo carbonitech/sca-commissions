@@ -3,45 +3,20 @@ from __future__ import annotations
 import redis
 import sqlalchemy
 from typing import Union, List
-from abc import ABC, abstractmethod
 
-class Database(ABC):
-    
+
+class SQLDatabase:
+
+
     def __init__(self, url: str) -> None:
         self.url = url
+
 
     def has_conn(self):
         return hasattr(self,"connection")
 
-    @abstractmethod
-    def establish_connection(self):
-        ...
 
-    @abstractmethod
-    def close_connection(self):
-        ...
-
-    @abstractmethod
-    def create_record(self):
-        ...
-
-    @abstractmethod
-    def update_record(self):
-        ...
-
-    @abstractmethod
-    def delete_record(self):
-        ...
-
-    @abstractmethod
-    def select_records(self):
-        ...
-
-
-class SQLDatabase(Database):
-
-
-    def __enter__(self) -> Database:
+    def __enter__(self) -> SQLDatabase:
         self.establish_connection()
         return self
 

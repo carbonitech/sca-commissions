@@ -138,6 +138,7 @@ class TestApiServiceFunctions(unittest.TestCase):
             assert_frame_equal(result_data,expected)
             return
 
+
     def test_del_mapping(self):
 
         mapping_table_entries: Dict[str,dict] = {
@@ -177,16 +178,16 @@ class TestApiServiceFunctions(unittest.TestCase):
 
     def test_record_final_data(self):
         entry_dict = {
-            "Year": [2019,2020,2021,2022],
-            "Month": ["January", "November", "April", "July"],
-            "Manufacturer": ["ADP", "Berry", "Allied", "Atco"],
-            "Salesman": ["mwr","sca", "jdc", "red"],
-            "Customer_Name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
-            "City": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
-            "State": ["TN","FL","GA","AL"],
-            "Inv_Amt": [randint(100,50000000)/100 for _ in range(0,4)],
+            "year": [2019,2020,2021,2022],
+            "month": ["January", "November", "April", "July"],
+            "manufacturer": ["ADP", "Berry", "Allied", "Atco"],
+            "salesman": ["mwr","sca", "jdc", "red"],
+            "customer_name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
+            "city": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
+            "state": ["TN","FL","GA","AL"],
+            "inv_amt": [randint(100,50000000)/100 for _ in range(0,4)],
         }
-        entry_dict["Comm_Amt"] = [round(num*3/100, 2) for num in entry_dict["Inv_Amt"]]
+        entry_dict["comm_amt"] = [round(num*3/100, 2) for num in entry_dict["inv_amt"]]
 
         entry = pd.DataFrame(entry_dict)
         success = api_services.record_final_data(database=self.sql_db, data=entry)
@@ -199,24 +200,47 @@ class TestApiServiceFunctions(unittest.TestCase):
             db_conn: db.SQLDatabase
             records = db_conn.select_records(table="final_commission_data")
 
-        result = pd.DataFrame.from_records(records, columns=["id"]+list(entry_dict.keys()))
+        result = pd.DataFrame.from_records(records["records"], columns=records["columns"])
         assert_frame_equal(result, expected)
         return
 
 
-    def test_get_final_data(self): ...
-    def test_get_submissions_metadata(self): ...
-    def test_del_submission(self): ...
-    def test_get_submission_files(self): ...
-    def test_record_submission_file(self): ...
-    def test_del_submission_file(self): ...
-    def test_get_processing_steps(self): ...
-    def test_record_processing_steps(self): ...
-    def test_del_processing_steps(self): ...
-    def test_get_errors(self): ...
-    def test_record_errors(self): ...
-    def test_correct_error(self): ...
-    def test_del_error(self): ...
+    def test_get_final_data(self):
+        entry_dict = {
+            "year": [2019,2020,2021,2022],
+            "month": ["January", "November", "April", "July"],
+            "manufacturer": ["ADP", "Berry", "Allied", "Atco"],
+            "salesman": ["mwr","sca", "jdc", "red"],
+            "customer_name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
+            "city": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
+            "state": ["TN","FL","GA","AL"],
+            "inv_amt": [randint(100,50000000)/100 for _ in range(0,4)],
+        }
+        entry_dict["comm_amt"] = [round(num*3/100, 2) for num in entry_dict["inv_amt"]]
+
+        entry = pd.DataFrame(entry_dict)
+        api_services.record_final_data(database=self.sql_db, data=entry)
+
+        expected = entry.copy()
+        expected.insert(0,"id",list(range(1,5)))
+
+        result = api_services.get_final_data(database=self.sql_db)
+        assert_frame_equal(result, expected)
+        return
+
+
+    def test_get_submissions_metadata(self): self.assertTrue(False)
+    def test_del_submission(self): self.assertTrue(False)
+    def test_get_submission_files(self): self.assertTrue(False)
+    def test_record_submission_file(self): self.assertTrue(False)
+    def test_del_submission_file(self): self.assertTrue(False)
+    def test_get_processing_steps(self): self.assertTrue(False)
+    def test_record_processing_steps(self): self.assertTrue(False)
+    def test_del_processing_steps(self): self.assertTrue(False)
+    def test_get_errors(self): self.assertTrue(False)
+    def test_record_errors(self): self.assertTrue(False)
+    def test_correct_error(self): self.assertTrue(False)
+    def test_del_error(self): self.assertTrue(False)
 
 
     def tearDown(self):

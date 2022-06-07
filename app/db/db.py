@@ -2,7 +2,7 @@
 from __future__ import annotations
 import redis
 import sqlalchemy
-from typing import Union, List
+from typing import Union, List, Dict
 
 
 class SQLDatabase:
@@ -73,7 +73,7 @@ class SQLDatabase:
         self.connection.execute(sql, id)
 
 
-    def select_records(self, table: str, columns: list = ['*'], constraints: Union[dict,None] = None) -> List[tuple]:
+    def select_records(self, table: str, columns: list = ['*'], constraints: Union[dict,None] = None) -> Dict[str,List[tuple]]:
         """select all or subset of records in a table"""
 
         sql = f"SELECT {','.join(columns)} FROM {table};"
@@ -84,8 +84,11 @@ class SQLDatabase:
             sql_addition = sql_addition[:-5]+";"
 
             sql = sql.replace(";",sql_addition)
-            return self.connection.execute(sql, tuple(constraints.values())).fetchall()
+            result = self.connection.execute(sql, tuple(constraints.values()))
         else:
-            return self.connection.execute(sql).fetchall()
+            result = self.connection.execute(sql)
+
+        return {"columns": result.keys(), "records": result.fetchall()}
+
 
 

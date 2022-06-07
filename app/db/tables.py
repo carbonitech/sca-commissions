@@ -45,8 +45,8 @@ TABLES = {
         "Customer_Name TEXT",
         "City TEXT",
         "State TEXT",
-        "Inv_Amt DECIMAL",
-        "Comm_Amt DECIMAL"),
+        "Inv_Amt REAL",
+        "Comm_Amt REAL"),
     "report_processing_steps_log":
         ("id SERIAL PRIMARY KEY",
         "submission_id INTEGER",

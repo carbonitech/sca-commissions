@@ -200,8 +200,6 @@ class TestApiServiceFunctions(unittest.TestCase):
             records = db_conn.select_records(table="final_commission_data")
 
         result = pd.DataFrame.from_records(records, columns=["id"]+list(entry_dict.keys()))
-        result["Inv_Amt"] = pd.to_numeric(result["Inv_Amt"])
-        result["Comm_Amt"] = pd.to_numeric(result["Comm_Amt"])
         assert_frame_equal(result, expected)
         return
 

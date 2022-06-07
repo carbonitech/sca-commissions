@@ -4,19 +4,14 @@ from app.db import db
 from typing import Dict
 
 
-def get_data(database: db.SQLDatabase, table: str) -> pd.DataFrame:
+def get_data(database: db.SQLDatabase, table: str, columns: list = None) -> pd.DataFrame:
     """taking a SQL database and extracting all records. returns a pandas dataframe"""
 
     with database as db_conn:
         db_conn: db.SQLDatabase
-        data_columns = db_conn.select_records(
-                table="INFORMATION_SCHEMA.COLUMNS",
-                columns=["column_name"],
-                constraints={"TABLE_NAME": table}
-            )
-        data = db_conn.select_records(table=table)
+        data = db_conn.select_records(table=table, columns = columns if columns else ['*'])
 
-    return pd.DataFrame.from_records(data, columns=[col[0] for col in data_columns])
+    return pd.DataFrame.from_records(data["records"], columns=data["columns"])
 
 
 def set_data(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> bool:
@@ -50,6 +45,7 @@ def get_mappings(database: db.SQLDatabase, table: str) -> pd.DataFrame:
 
 def set_mapping(database: db.SQLDatabase, table: str, data: pd.DataFrame) -> bool:
     return set_data(database=database, table=table, data=data)
+
 
 def del_mapping(database: db.SQLDatabase, table: str, id: int) -> bool:
     

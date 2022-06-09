@@ -1,6 +1,7 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 import pandas as pd
 import sqlalchemy
+from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
 from app.db import db
 from typing import Dict
@@ -24,7 +25,14 @@ def set_mapping(database: Engine, table: str, data: pd.DataFrame) -> bool:
     else:
         False
 
-def del_mapping(database: Engine, table: str, id: int) -> bool: ...
+def del_mapping(database: Engine, table: str, id: int) -> bool:
+    with Session(database) as session:
+        row = session.query(MAPPING_TABLES[table]).filter_by(id=id).first()
+        session.delete(row)
+        session.commit()
+    return True
+
+
 # final commission data
 def record_final_data(database: Engine, data: pd.DataFrame) -> bool: ...
 def get_final_data(database: Engine) -> pd.DataFrame: ...

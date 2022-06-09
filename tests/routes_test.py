@@ -95,7 +95,6 @@ class TestApiServiceFunctions(unittest.TestCase):
         self.assertEqual(result,expected)
 
     def test_get_mappings(self):
-
         results = {
             "map_customer_name": api_services.get_mappings(
                 conn=self.db,
@@ -120,8 +119,8 @@ class TestApiServiceFunctions(unittest.TestCase):
 
         mapping_tbls = api_services.get_mapping_tables(self.db)
         for tbl in mapping_tbls:
-            result = api_services.set_mapping(self.db, tbl, pd.DataFrame(data_to_add[tbl]))
-            self.assertTrue(result)
+            set_result = api_services.set_mapping(self.db, tbl, pd.DataFrame(data_to_add[tbl]))
+            self.assertTrue(set_result)
 
         for tbl in data_to_add:
             data_to_add[tbl]["id"] = len(self.entries_dfs[tbl])+1
@@ -135,8 +134,20 @@ class TestApiServiceFunctions(unittest.TestCase):
             get_result = api_services.get_mappings(self.db, mapping_tbl)
             assert_frame_equal(get_result, expected)
 
+    def test_del_mapping(self):
+        mapping_tables = api_services.get_mapping_tables(self.db)
+        
+        for tbl, data in self.entries_dfs.items():
+            if tbl not in mapping_tables:
+                continue
+            rec_to_del = randint(1,len(data))
+            del_result = api_services.del_mapping(self.db, table=tbl, id=rec_to_del)
+            self.assertTrue(del_result)
+            expected = data[data["id"] != rec_to_del].reset_index(drop=True)
+            get_result = api_services.get_mappings(self.db, tbl)
+            assert_frame_equal(get_result, expected)
 
-    def test_del_mapping(self): self.assertTrue(False)
+
     def test_record_final_data(self): self.assertTrue(False)
     def test_get_final_data(self): self.assertTrue(False)
     def test_get_submissions_metadata(self): self.assertTrue(False)

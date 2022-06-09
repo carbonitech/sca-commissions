@@ -111,8 +111,31 @@ class TestApiServiceFunctions(unittest.TestCase):
             expected = self.entries_dfs[table]
             assert_frame_equal(result,expected)
 
+    def test_set_mapping(self):
+        data_to_add = {
+            "map_customer_name": {"recorded_name": ["WICHITTEN"], "standard_name": ["WITTICHEN SUPPLY COMPANY"]},
+            "map_city_names": {"recorded_name": ["FORREST PARK"], "standard_name": ["FOREST PARK"]},
+            "map_reps_customers": {"rep_id": [1], "customer_branch_id": [32]}
+        }
 
-    def test_set_mapping(self): self.assertTrue(False)
+        mapping_tbls = api_services.get_mapping_tables(self.db)
+        for tbl in mapping_tbls:
+            result = api_services.set_mapping(self.db, tbl, pd.DataFrame(data_to_add[tbl]))
+            self.assertTrue(result)
+
+        for tbl in data_to_add:
+            data_to_add[tbl]["id"] = len(self.entries_dfs[tbl])+1
+        
+        for mapping_tbl in mapping_tbls:
+            expected = pd.concat([
+                self.entries_dfs[mapping_tbl],
+                pd.DataFrame(data_to_add[mapping_tbl])
+                ], ignore_index=True)
+
+            get_result = api_services.get_mappings(self.db, mapping_tbl)
+            assert_frame_equal(get_result, expected)
+
+
     def test_del_mapping(self): self.assertTrue(False)
     def test_record_final_data(self): self.assertTrue(False)
     def test_get_final_data(self): self.assertTrue(False)

@@ -6,20 +6,24 @@ from app.db import db
 from typing import Dict
 
 # mappings
+MAPPING_TABLES = {
+    "map_customer_name": db.MapCustomerName,
+    "map_city_names": db.MapCityName,
+    "map_reps_customers": db.MapRepsToCustomer
+}
 def get_mapping_tables(conn: Engine) -> set:
     return {table for table in sqlalchemy.inspect(conn).get_table_names() if table.split("_")[0] == "map"}
 
-
 def get_mappings(conn: Engine, table: str) -> pd.DataFrame:    
-    mapping_tables = {
-        "map_customer_name": db.MapCustomerName,
-        "map_city_names": db.MapCityName,
-        "map_reps_customers": db.MapRepsToCustomer
-    }
-    
-    return pd.read_sql(sqlalchemy.select(mapping_tables[table]),conn)
+    return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),conn)
 
-def set_mapping(database: Engine, table: str, data: pd.DataFrame) -> bool: ...
+def set_mapping(database: Engine, table: str, data: pd.DataFrame) -> bool:
+    rows_affected = data.to_sql(table, con=database, if_exists="append", index=False)
+    if rows_affected and rows_affected > 0:
+        return True
+    else:
+        False
+
 def del_mapping(database: Engine, table: str, id: int) -> bool: ...
 # final commission data
 def record_final_data(database: Engine, data: pd.DataFrame) -> bool: ...

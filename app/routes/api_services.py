@@ -1,25 +1,23 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 import pandas as pd
-from sqlalchemy import select
 import sqlalchemy
 from sqlalchemy.engine.base import Engine
 from app.db import db
 from typing import Dict
 
-
-def get_data(conn: Engine, table: db.Base) -> pd.DataFrame:
-    """taking a SQL database and extracting all records. returns a pandas dataframe"""
-    return pd.read_sql(select(table),conn)
-
-
-def set_data(database: Engine, table: str, data: pd.DataFrame) -> bool: ...
-
 # mappings
 def get_mapping_tables(conn: Engine) -> set:
     return {table for table in sqlalchemy.inspect(conn).get_table_names() if table.split("_")[0] == "map"}
+
+
+def get_mappings(conn: Engine, table: str) -> pd.DataFrame:    
+    mapping_tables = {
+        "map_customer_name": db.MapCustomerName,
+        "map_city_names": db.MapCityName,
+        "map_reps_customers": db.MapRepsToCustomer
+    }
     
-def get_mappings(*args, **kwargs) -> pd.DataFrame:
-    return get_data(*args, **kwargs)
+    return pd.read_sql(sqlalchemy.select(mapping_tables[table]),conn)
 
 def set_mapping(database: Engine, table: str, data: pd.DataFrame) -> bool: ...
 def del_mapping(database: Engine, table: str, id: int) -> bool: ...

@@ -1,94 +1,105 @@
-"""Interface for CRUD operations on the database"""
-from __future__ import annotations
-import redis
-import sqlalchemy
-from typing import Union, List, Dict
+"""Database Table Models"""
+
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class Customer(Base):
+    __tablename__ = 'customers'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
 
 
-class SQLDatabase:
+class CustomerBranch(Base):
+    __tablename__ = 'customer_branches'
+    id = Column(Integer,primary_key=True)
+    customer_id = Column(Integer)
+    city = Column(String)
+    state = Column(String)
+    zip = Column(Integer)
 
 
-    def __init__(self, url: str) -> None:
-        self.url = url
+class MapCustomerName(Base):
+    __tablename__ = 'map_customer_name'
+    id = Column(Integer,primary_key=True)
+    recorded_name = Column(String)
+    standard_name = Column(String)
 
 
-    def has_conn(self):
-        return hasattr(self,"connection")
+class MapCityName(Base):
+    __tablename__ = 'map_city_names'
+    id = Column(Integer,primary_key=True)
+    recorded_name = Column(String)
+    standard_name = Column(String)
 
 
-    def __enter__(self) -> SQLDatabase:
-        self.establish_connection()
-        return self
+class MapRepsToCustomer(Base):
+    __tablename__ = 'map_reps_customers'
+    id = Column(Integer,primary_key=True)
+    rep_id = Column(Integer)
+    customer_branch_id = Column(Integer)
 
 
-    def __exit__(self, exc_type, exc_val, tracback):
-        self.close_connection()
+class Manufacturer(Base):
+    __tablename__ = 'manufacturers'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
 
 
-    def establish_connection(self):
-        self.connection = sqlalchemy.create_engine(self.url).connect()
+class ManufacturersReport(Base):
+    __tablename__ = 'manufacturers_reports'
+    id = Column(Integer,primary_key=True)
+    manufacturer_id = Column(Integer)
+    report_name = Column(String)
+    yearly_frequency = Column(Integer)
+    POS_report = Column(Boolean)
 
 
-    def close_connection(self):
-        self.connection.close()
-        del self.connection
+class ReportSubmissionsLog(Base):
+    __tablename__ = 'report_submissions_log'
+    id = Column(Integer,primary_key=True)
+    submission_date = Column(DateTime)
+    reporting_month = Column(Integer)
+    reporting_year = Column(Integer)
+    report_id = Column(Integer)
 
 
-    def create_table(self, table_name: str, columns: list):
-        sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({','.join(columns)});"
-        self.connection.execute(sql)
+class FinalCommissionData(Base):    # TODO: make this table customizable instead of hard-coded
+    __tablename__ = 'final_commission_data'
+    id = Column(Integer,primary_key=True)
+    year = Column(Integer)
+    month = Column(String)
+    manufacturer = Column(String)
+    salesman = Column(String)
+    customer_name = Column(String)
+    city = Column(String)
+    state = Column(String)
+    inv_amt = Column(Float)
+    comm_amt = Column(Float)
 
 
-    def get_tables(self):
-
-        sql = "SELECT table_name \
-            FROM information_schema.tables \
-            WHERE table_schema = 'public';"
-        
-        return self.connection.execute(sql).fetchall()
-
-
-    def remove_table(self, table_name: str):
-        sql = f"DROP TABLE IF EXISTS {table_name};"
-        self.connection.execute(sql)
+class ReportProcessingStepsLog(Base):
+    __tablename__ = 'report_processing_steps_log'
+    id = Column(Integer,primary_key=True)
+    submission_id = Column(Integer)
+    step_num = Column(Integer)
+    description = Column(String)
 
 
-    def create_record(self, table: str, data: dict) -> None:
-        """create a new record in an existing table"""
-        fields = ','.join(list(data.keys()))
-        values = tuple(data.values())
-        sql = f"INSERT INTO {table} ({fields}) VALUES ({('%s,'*len(values))[:-1]});"
-        self.connection.execute(sql,values)
-
-    
-    def update_record(self, table: str, id: int, set_: str, to: str) -> None:
-        """update an existing record in a table using an id"""
-        sql = f"UPDATE {table} SET {set_} = %s WHERE id = %s;"
-        self.connection.execute(sql, (to, id))
+class CurrentError(Base):
+    __tablename__ = 'current_errors'
+    id = Column(Integer,primary_key=True)
+    submission_id = Column(Integer)
+    field = Column(String)
+    value_type = Column(String)
+    value_content = Column(String)
+    reason = Column(String)
 
 
-    def delete_record(self, table: str, id: int) -> None:
-        """delete an existing record in a table using an id"""
-        sql = f"DELETE FROM {table} WHERE id = %s;"
-        self.connection.execute(sql, id)
-
-
-    def select_records(self, table: str, columns: list = ['*'], constraints: Union[dict,None] = None) -> Dict[str,List[tuple]]:
-        """select all or subset of records in a table"""
-
-        sql = f"SELECT {','.join(columns)} FROM {table};"
-        if constraints:
-            sql_addition = " WHERE "
-            for col in constraints:
-                sql_addition += f"{col} = %s AND "
-            sql_addition = sql_addition[:-5]+";"
-
-            sql = sql.replace(";",sql_addition)
-            result = self.connection.execute(sql, tuple(constraints.values()))
-        else:
-            result = self.connection.execute(sql)
-
-        return {"columns": result.keys(), "records": result.fetchall()}
-
-
-
+class Representative(Base):
+    __tablename__ = 'representatives'
+    id = Column(Integer,primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    date_joined = Column(DateTime)

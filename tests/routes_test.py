@@ -67,7 +67,7 @@ class TestApiServiceFunctions(unittest.TestCase):
             session.add(db.MapCityName(recorded_name="BLUERIDGE", standard_name="BLUE RIDGE"))
             session.add(db.FinalCommissionData(
                 year=2019, month="January", manufacturer="ADP", salesman="mwr",
-                customer_name="Coastal Supply", city="Knoville", state = "TN",
+                customer_name="Coastal Supply", city="Knoxville", state = "TN",
                 inv_amt=inv_amts[0], comm_amt=comm_amts[0]
             ))
             session.add(db.FinalCommissionData(
@@ -147,9 +147,35 @@ class TestApiServiceFunctions(unittest.TestCase):
             get_result = api_services.get_mappings(self.db, tbl)
             assert_frame_equal(get_result, expected)
 
+###
+    def test_get_final_data(self):
+        table = "final_commission_data"
+        result = api_services.get_final_data(self.db)
+        expected = self.entries_dfs[table]
+        assert_frame_equal(result, expected)
 
-    def test_record_final_data(self): self.assertTrue(False)
-    def test_get_final_data(self): self.assertTrue(False)
+    def test_record_final_data(self):
+        table = "final_commission_data"
+        data_to_add = {
+            "year": [2022, 2022],
+            "month": ["June","April"],
+            "manufacturer": ["AMBRO CONTROLS","AMBRO CONTROLS"],
+            "salesman": ["jdc","mwr"],
+            "customer_name": ["WINSUPPLY", "EDS SUPPLY COMPANY"],
+            "city": ["Baldwin","Nashville"],
+            "state": ["GA","TN"],
+            "inv_amt": [randint(100,50000000)/100 for _ in range(2)]
+        }
+        data_to_add["comm_amt"] = [round(inv*3/100, 2) for inv in data_to_add["inv_amt"]]
+
+        record_result = api_services.record_final_data(self.db, pd.DataFrame(data_to_add))
+        self.assertTrue(record_result)
+
+        data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,3)]
+        expected = pd.concat([self.entries_dfs[table],pd.DataFrame(data_to_add)], ignore_index=True)
+        get_result = api_services.get_final_data(self.db)
+        assert_frame_equal(get_result, expected)
+###
     def test_get_submissions_metadata(self): self.assertTrue(False)
     def test_del_submission(self): self.assertTrue(False)
     def test_get_submission_files(self): self.assertTrue(False)

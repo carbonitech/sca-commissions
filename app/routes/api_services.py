@@ -4,7 +4,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
 from app.db import db
-from typing import Dict
+from typing import Dict, Union
 
 # mappings
 MAPPING_TABLES = {
@@ -45,8 +45,29 @@ def record_final_data(conn: Engine, data: pd.DataFrame) -> bool:
     else:
         False
 
+# manufactuers tables
+MANUFACTURER_TABLES = {
+    "manufacturers": db.Manufacturer,
+    "manufacturers_reports": db.ManufacturersReport
+}
+def get_manufacturers(conn: Engine, id: Union[int, None]=None): ...
+def get_manufacturers_reports(conn: Engine, manufacturer_id: int) -> pd.DataFrame:
+    table = "manufacturers_reports"
+    table_obj = MANUFACTURER_TABLES[table]
+    result = pd.read_sql(sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id), con=conn)
+    return result
+
 # submission metadata
-def get_submissions_metadata(database: Engine, manufacturer_id: int) -> pd.DataFrame: ...
+SUBMISSIONS_META_TABLE = db.ReportSubmissionsLog
+def get_submissions_metadata(conn: Engine, manufacturer_id: int) -> pd.DataFrame:
+    """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
+    manufacturers_reports = get_manufacturers_reports(conn,manufacturer_id)
+    report_ids = manufacturers_reports.loc[:,"id"].tolist()
+    result = pd.read_sql(
+        sqlalchemy.select(SUBMISSIONS_META_TABLE).where(SUBMISSIONS_META_TABLE.report_id.in_(report_ids)),
+        con=conn)
+    return result
+
 def del_submission(database: Engine, submission_id: int) -> bool: ...
 
 
@@ -67,5 +88,6 @@ def get_errors(database: Engine, submission_id: int) -> pd.DataFrame: ...
 def record_errors(database: Engine, submission_id: int, data: pd.DataFrame) -> bool: ...
 def correct_error(database: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
 def del_error(database: Engine, error_id: int) -> bool: ...
+
 
 ### admin functions will be developed below here, but they are not needed for MVP ###

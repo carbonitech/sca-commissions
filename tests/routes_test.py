@@ -1,11 +1,12 @@
 import unittest
 import dotenv
 import os
+import datetime
 from typing import Dict
 
 import pandas as pd
-from pandas.util.testing import assert_frame_equal
-from random import randint
+from pandas.testing import assert_frame_equal
+from random import randint, choice
 
 from app.db import db
 from app.routes import api_services
@@ -40,17 +41,42 @@ class TestApiServiceFunctions(unittest.TestCase):
                 "customer_name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
                 "city": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
                 "state": ["TN","FL","GA","AL"]
+            },
+            "manufacturers_reports": {
+                "report_name": ["Famco Commission Report", "Baker POS Report", "ADP Salesman Report"],
+                "yearly_frequency": [12,4,12],
+                "POS_report": [False, True, False]
+            },
+            "report_submissions_log": {
+                "submission_date": [datetime.datetime(2022, 1, 31), datetime.datetime(2022,2,15,13),
+                        datetime.datetime(2022,3,3,8,19,49)],
+                "reporting_month": [12,1,2],
+                "reporting_year": [2021,2022,2022]
             }
         }
 
+        ## ADDITIONS TO THE ENTRIES_BY_TABLE DICT
         inv_amts = [randint(100,50000000)/100 for _ in range(0,4)]
         entries_by_table["final_commission_data"]["inv_amt"] = inv_amts
         comm_amts = [round(num*3/100, 2) for num in inv_amts]
         entries_by_table["final_commission_data"]["comm_amt"] = comm_amts
+        # dynamically range by length of an existing 'column'
+        manufacturer_ids = [
+            randint(1,20) for _ in range(
+                    len(entries_by_table["manufacturers_reports"]["report_name"])
+                )
+            ]
+        entries_by_table["manufacturers_reports"]["manufacturer_id"] = manufacturer_ids
+        # make report_ids the same len and number as the id col in "manufacturers_reports"
+        report_ids = [num+1 for num in range(len(manufacturer_ids))]
+        entries_by_table["report_submissions_log"]["report_id"] = report_ids
 
         self.entries_dfs = {tbl_name:pd.DataFrame(data) for tbl_name,data in entries_by_table.items()}
         for tbl,df in self.entries_dfs.items():
              self.entries_dfs[tbl].insert(0,"id",list(range(1,len(df)+1))) 
+
+        # reorder columns where needed
+        self.entries_dfs["manufacturers_reports"].insert(1,"manufacturer_id", self.entries_dfs["manufacturers_reports"].pop("manufacturer_id"))
 
         db_url = os.getenv("TESTING_DATABASE_URL")
         self.db = create_engine(db_url)
@@ -83,8 +109,28 @@ class TestApiServiceFunctions(unittest.TestCase):
             session.add(db.FinalCommissionData(
                 year=2022, month="July", manufacturer="Atco", salesman="red",
                 customer_name="Hinkle Metals", city="Birmingham", state = "AL",
-                inv_amt=inv_amts[3], comm_amt=comm_amts[3]
-            ))
+                inv_amt=inv_amts[3], comm_amt=comm_amts[3]))
+            session.add(db.ManufacturersReport(
+                manufacturer_id=manufacturer_ids[0],
+                report_name="Famco Commission Report", yearly_frequency=12,
+                POS_report=False))
+            session.add(db.ManufacturersReport(
+                manufacturer_id=manufacturer_ids[1],
+                report_name="Baker POS Report", yearly_frequency=4,
+                POS_report=True))
+            session.add(db.ManufacturersReport(
+                manufacturer_id=manufacturer_ids[2],
+                report_name="ADP Salesman Report", yearly_frequency=12,
+                POS_report=False))
+            session.add(db.ReportSubmissionsLog(
+                submission_date=datetime.datetime(2022, 1, 31),
+                reporting_month=12, reporting_year=2021, report_id=report_ids[0]))
+            session.add(db.ReportSubmissionsLog(
+                submission_date=datetime.datetime(2022,2,15,13),
+                reporting_month=1, reporting_year=2022, report_id=report_ids[1]))
+            session.add(db.ReportSubmissionsLog(
+                submission_date=datetime.datetime(2022,3,3,8,19,49),
+                reporting_month=2, reporting_year=2022, report_id=report_ids[2]))
             session.commit()
         return
 
@@ -93,6 +139,7 @@ class TestApiServiceFunctions(unittest.TestCase):
         result = api_services.get_mapping_tables(self.db)
         expected = {"map_customer_name","map_city_names","map_reps_customers"}
         self.assertEqual(result,expected)
+        return
 
     def test_get_mappings(self):
         results = {
@@ -109,6 +156,7 @@ class TestApiServiceFunctions(unittest.TestCase):
         for table,result in results.items():
             expected = self.entries_dfs[table]
             assert_frame_equal(result,expected)
+            return
 
     def test_set_mapping(self):
         data_to_add = {
@@ -133,6 +181,7 @@ class TestApiServiceFunctions(unittest.TestCase):
 
             get_result = api_services.get_mappings(self.db, mapping_tbl)
             assert_frame_equal(get_result, expected)
+        return
 
     def test_del_mapping(self):
         mapping_tables = api_services.get_mapping_tables(self.db)
@@ -146,13 +195,14 @@ class TestApiServiceFunctions(unittest.TestCase):
             expected = data[data["id"] != rec_to_del].reset_index(drop=True)
             get_result = api_services.get_mappings(self.db, tbl)
             assert_frame_equal(get_result, expected)
+        return
 
-###
     def test_get_final_data(self):
         table = "final_commission_data"
         result = api_services.get_final_data(self.db)
         expected = self.entries_dfs[table]
         assert_frame_equal(result, expected)
+        return
 
     def test_record_final_data(self):
         table = "final_commission_data"
@@ -175,11 +225,31 @@ class TestApiServiceFunctions(unittest.TestCase):
         expected = pd.concat([self.entries_dfs[table],pd.DataFrame(data_to_add)], ignore_index=True)
         get_result = api_services.get_final_data(self.db)
         assert_frame_equal(get_result, expected)
+        return
+
+    def test_get_manufacturers_reports(self):
+        table = "manufacturers_reports"
+        rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
+        result = api_services.get_manufacturers_reports(self.db, manufacturer_id=rand_manf_id)
+        expected = self.entries_dfs[table][self.entries_dfs[table].manufacturer_id == rand_manf_id].reset_index(drop=True)
+        assert_frame_equal(result,expected)
+        return
+
+    def test_get_submissions_metadata(self):
+        table = "report_submissions_log"
+        rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
+        result = api_services.get_submissions_metadata(self.db, manufacturer_id=rand_manf_id)
+        report_ids = result.loc[:,"id"].tolist() 
+        expected = self.entries_dfs[table][self.entries_dfs[table].report_id.isin(report_ids)].reset_index(drop=True)
+        assert_frame_equal(result, expected)
+        return
+
 ###
-    def test_get_submissions_metadata(self): self.assertTrue(False)
     def test_del_submission(self): self.assertTrue(False)
     def test_get_submission_files(self): self.assertTrue(False)
     def test_record_submission_file(self): self.assertTrue(False)
+
+###
     def test_del_submission_file(self): self.assertTrue(False)
     def test_get_processing_steps(self): self.assertTrue(False)
     def test_record_processing_steps(self): self.assertTrue(False)

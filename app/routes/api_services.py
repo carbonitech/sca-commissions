@@ -78,10 +78,17 @@ def del_submission_file(database: Engine, id: int) -> bool: ...
 
 
 # processing steps log
-def get_processing_steps(database: Engine, submission_id: int) -> pd.DataFrame: ...
+PROCESS_STEPS_LOG = db.ReportProcessingStepsLog
+def get_processing_steps(conn: Engine, submission_id: int) -> pd.DataFrame:
+    """get all report processing steps for a commission report submission"""
+    result = pd.read_sql(
+        sqlalchemy.select(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id),
+        con=conn
+    )
+    return result
+
 def record_processing_steps(database: Engine, submission_id: int, data: pd.DataFrame) -> bool: ...
 def del_processing_steps(database: Engine, submission_id: int) -> bool: ...
-
 
 # errors
 def get_errors(database: Engine, submission_id: int) -> pd.DataFrame: ...

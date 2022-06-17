@@ -3,23 +3,22 @@ import dotenv
 import os
 import datetime
 from typing import Dict
+from random import randint, choice, sample
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from random import randint, choice
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from app.db import db
 from app.routes import api_services
-
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import Session
 
 dotenv.load_dotenv()
 
 class TestApiServiceFunctions(unittest.TestCase):
 
     def setUp(self):
-
+        make_date = lambda *args: datetime.datetime(*args)
         entries_by_table: Dict[str,dict] = {
             "map_customer_name": {
                 "recorded_name": ["MINGLEDROFFS", "EDSSUPPLYCO", "DSC"],
@@ -48,36 +47,56 @@ class TestApiServiceFunctions(unittest.TestCase):
                 "POS_report": [False, True, False]
             },
             "report_submissions_log": {
-                "submission_date": [datetime.datetime(2022, 1, 31), datetime.datetime(2022,2,15,13),
-                        datetime.datetime(2022,3,3,8,19,49)],
+                "submission_date": [make_date(2022, 1, 31), make_date(2022,2,15,13),
+                        make_date(2022,3,3,8,19,49)],
                 "reporting_month": [12,1,2],
                 "reporting_year": [2021,2022,2022]
+            },
+            "report_processing_steps_log": {
+                "step_num": [1,2,3],
+                "description": ["removed blank rows", "corrected customer names",
+                        "added rep assignments"]
             }
         }
 
         ## ADDITIONS TO THE ENTRIES_BY_TABLE DICT
+        # final commission data
         inv_amts = [randint(100,50000000)/100 for _ in range(0,4)]
         entries_by_table["final_commission_data"]["inv_amt"] = inv_amts
         comm_amts = [round(num*3/100, 2) for num in inv_amts]
         entries_by_table["final_commission_data"]["comm_amt"] = comm_amts
+
+        # manufacturer's reports
         # dynamically range by length of an existing 'column'
         manufacturer_ids = [
             randint(1,20) for _ in range(
                     len(entries_by_table["manufacturers_reports"]["report_name"])
                 )
-            ]
+        ]
         entries_by_table["manufacturers_reports"]["manufacturer_id"] = manufacturer_ids
+
+        # report submissions log
         # make report_ids the same len and number as the id col in "manufacturers_reports"
         report_ids = [num+1 for num in range(len(manufacturer_ids))]
         entries_by_table["report_submissions_log"]["report_id"] = report_ids
 
+        # report processing steps
+        sub_ids = sample(report_ids,k=len(report_ids)) # needs to match id num range of report_submissions_log
+        entries_by_table["report_processing_steps_log"]["submission_id"] = sub_ids
+
+        ## CREATE DATAFRAMES FOR EACH DICT TABLE
         self.entries_dfs = {tbl_name:pd.DataFrame(data) for tbl_name,data in entries_by_table.items()}
+        ## ADD ID COLUMNS BASED ON THE LENGTH OF THE TABLE - PGSQL INDEX STARTS AT 1
         for tbl,df in self.entries_dfs.items():
              self.entries_dfs[tbl].insert(0,"id",list(range(1,len(df)+1))) 
 
         # reorder columns where needed
         self.entries_dfs["manufacturers_reports"].insert(1,"manufacturer_id", self.entries_dfs["manufacturers_reports"].pop("manufacturer_id"))
+        self.entries_dfs["report_processing_steps_log"].insert(
+            1, "submission_id", self.entries_dfs["report_processing_steps_log"].pop("submission_id")
+        )
 
+        ## WRITE DATA TO TESTING DB IN PGSQL
         db_url = os.getenv("TESTING_DATABASE_URL")
         self.db = create_engine(db_url)
         db.Base.metadata.create_all(self.db)
@@ -123,14 +142,20 @@ class TestApiServiceFunctions(unittest.TestCase):
                 report_name="ADP Salesman Report", yearly_frequency=12,
                 POS_report=False))
             session.add(db.ReportSubmissionsLog(
-                submission_date=datetime.datetime(2022, 1, 31),
-                reporting_month=12, reporting_year=2021, report_id=report_ids[0]))
+                submission_date=make_date(2022, 1, 31), reporting_month=12,
+                reporting_year=2021, report_id=report_ids[0]))
             session.add(db.ReportSubmissionsLog(
-                submission_date=datetime.datetime(2022,2,15,13),
-                reporting_month=1, reporting_year=2022, report_id=report_ids[1]))
+                submission_date=make_date(2022,2,15,13), reporting_month=1,
+                reporting_year=2022, report_id=report_ids[1]))
             session.add(db.ReportSubmissionsLog(
-                submission_date=datetime.datetime(2022,3,3,8,19,49),
-                reporting_month=2, reporting_year=2022, report_id=report_ids[2]))
+                submission_date=make_date(2022,3,3,8,19,49), reporting_month=2,
+                reporting_year=2022, report_id=report_ids[2]))
+            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[0], step_num=1,
+                description="removed blank rows"))
+            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[1], step_num=2,
+                description="corrected customer names"))
+            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[2], step_num=3,
+                description="added rep assignments"))
             session.commit()
         return
 
@@ -244,21 +269,30 @@ class TestApiServiceFunctions(unittest.TestCase):
         assert_frame_equal(result, expected)
         return
 
+    def test_get_processing_steps(self):
+        table = 'report_processing_steps_log'
+        rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        result = api_services.get_processing_steps(conn=self.db, submission_id=rand_sub_id)
+        expected = self.entries_dfs[table].loc[
+            self.entries_dfs[table].submission_id == rand_sub_id
+        ]
+        expected.reset_index(drop=True,inplace=True)
+        assert_frame_equal(result,expected)
 ###
-    def test_del_submission(self): self.assertTrue(False)
-    def test_get_submission_files(self): self.assertTrue(False)
-    def test_record_submission_file(self): self.assertTrue(False)
 
-###
-    def test_del_submission_file(self): self.assertTrue(False)
-    def test_get_processing_steps(self): self.assertTrue(False)
+
     def test_record_processing_steps(self): self.assertTrue(False)
     def test_del_processing_steps(self): self.assertTrue(False)
+###
     def test_get_errors(self): self.assertTrue(False)
     def test_record_errors(self): self.assertTrue(False)
     def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
+    def test_del_submission(self): self.assertTrue(False)
+    def test_get_submission_files(self): self.assertTrue(False)
+    def test_record_submission_file(self): self.assertTrue(False)
 
+    def test_del_submission_file(self): self.assertTrue(False)
 
     def tearDown(self):
         db.Base.metadata.drop_all(self.db)

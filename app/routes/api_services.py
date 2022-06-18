@@ -87,7 +87,17 @@ def get_processing_steps(conn: Engine, submission_id: int) -> pd.DataFrame:
     )
     return result
 
-def record_processing_steps(database: Engine, submission_id: int, data: pd.DataFrame) -> bool: ...
+def record_processing_steps(engine: Engine, submission_id: int, data: pd.DataFrame) -> bool:
+    """commit all report processing stesp for a commission report submission"""
+    
+    data["submission_id"] = submission_id
+    records = data.to_dict("records")
+    sql = sqlalchemy.insert(PROCESS_STEPS_LOG)
+    with Session(bind=engine) as session:
+        session.execute(sql,records)
+        session.commit()
+    return True
+
 def del_processing_steps(database: Engine, submission_id: int) -> bool: ...
 
 # errors

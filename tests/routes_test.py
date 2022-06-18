@@ -278,20 +278,38 @@ class TestApiServiceFunctions(unittest.TestCase):
         ]
         expected.reset_index(drop=True,inplace=True)
         assert_frame_equal(result,expected)
+        return
+   
+    def test_record_processing_steps(self):
+        table = "report_processing_steps_log"
+        data_to_add = {
+            "step_num": [randint(1,100) for _ in range(3)],
+            "description": ["removed rows with blank values", "replaced blanks with zeros", "selected columns"]
+        }
+        sub_id = randint(1,1000)
+        record_result = api_services.record_processing_steps(self.db, sub_id, data=pd.DataFrame(data_to_add))
+        self.assertTrue(record_result)
+
+        data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,4)]
+        expected = pd.DataFrame(data_to_add)
+        expected["submission_id"] = sub_id
+        expected.insert(0,"submission_id",expected.pop("submission_id"))
+        expected.insert(0,"id",expected.pop("id"))
+        get_result = api_services.get_processing_steps(self.db, sub_id)
+        assert_frame_equal(get_result, expected)
+        return      
+
 ###
-
-
-    def test_record_processing_steps(self): self.assertTrue(False)
     def test_del_processing_steps(self): self.assertTrue(False)
 ###
     def test_get_errors(self): self.assertTrue(False)
     def test_record_errors(self): self.assertTrue(False)
     def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
+
     def test_del_submission(self): self.assertTrue(False)
     def test_get_submission_files(self): self.assertTrue(False)
     def test_record_submission_file(self): self.assertTrue(False)
-
     def test_del_submission_file(self): self.assertTrue(False)
 
     def tearDown(self):

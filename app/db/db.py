@@ -91,6 +91,7 @@ class CurrentError(Base):
     __tablename__ = 'current_errors'
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer)
+    row_index = Column(Integer)
     field = Column(String)
     value_type = Column(String)
     value_content = Column(String)

@@ -111,63 +111,21 @@ class TestApiServiceFunctions(unittest.TestCase):
         self.db = create_engine(db_url)
         db.Base.metadata.create_all(self.db)
         with Session(self.db) as session:
-            session.add(db.MapCustomerName(recorded_name='MINGLEDROFFS', standard_name='MINGLEDORFFS'))
-            session.add(db.MapCustomerName(recorded_name='EDSSUPPLYCO', standard_name='EDS SUPPLY COMPANY'))
-            session.add(db.MapCustomerName(recorded_name='DSC', standard_name='DEALERS SUPPLY COMPANY'))
-            session.add(db.MapRepsToCustomer(rep_id=6, customer_branch_id=350))
-            session.add(db.MapRepsToCustomer(rep_id=6, customer_branch_id=19))
-            session.add(db.MapRepsToCustomer(rep_id=2, customer_branch_id=31))
-            session.add(db.MapCityName(recorded_name="CHATNOGA", standard_name="CHATTANOOGA"))
-            session.add(db.MapCityName(recorded_name="PT_ST_LUCIE", standard_name="PORT SAINT LUCIE"))
-            session.add(db.MapCityName(recorded_name="BLUERIDGE", standard_name="BLUE RIDGE"))
-            session.add(db.FinalCommissionData(
-                year=2019, month="January", manufacturer="ADP", salesman="mwr",
-                customer_name="Coastal Supply", city="Knoxville", state = "TN",
-                inv_amt=inv_amts[0], comm_amt=comm_amts[0]
-            ))
-            session.add(db.FinalCommissionData(
-                year=2020, month="November", manufacturer="Berry", salesman="sca",
-                customer_name="Baker Distributing", city="Jacksonville", state = "FL",
-                inv_amt=inv_amts[1], comm_amt=comm_amts[1]
-            ))
-            session.add(db.FinalCommissionData(
-                year=2021, month="April", manufacturer="Allied", salesman="jdc",
-                customer_name="Dealers Supply", city="Forest Park", state = "GA",
-                inv_amt=inv_amts[2], comm_amt=comm_amts[2]
-            ))
-            session.add(db.FinalCommissionData(
-                year=2022, month="July", manufacturer="Atco", salesman="red",
-                customer_name="Hinkle Metals", city="Birmingham", state = "AL",
-                inv_amt=inv_amts[3], comm_amt=comm_amts[3]))
-            session.add(db.ManufacturersReport(
-                manufacturer_id=manufacturer_ids[0],
-                report_name="Famco Commission Report", yearly_frequency=12,
-                POS_report=False))
-            session.add(db.ManufacturersReport(
-                manufacturer_id=manufacturer_ids[1],
-                report_name="Baker POS Report", yearly_frequency=4,
-                POS_report=True))
-            session.add(db.ManufacturersReport(
-                manufacturer_id=manufacturer_ids[2],
-                report_name="ADP Salesman Report", yearly_frequency=12,
-                POS_report=False))
-            session.add(db.ReportSubmissionsLog(
-                submission_date=make_date(2022, 1, 31), reporting_month=12,
-                reporting_year=2021, report_id=report_ids[0]))
-            session.add(db.ReportSubmissionsLog(
-                submission_date=make_date(2022,2,15,13), reporting_month=1,
-                reporting_year=2022, report_id=report_ids[1]))
-            session.add(db.ReportSubmissionsLog(
-                submission_date=make_date(2022,3,3,8,19,49), reporting_month=2,
-                reporting_year=2022, report_id=report_ids[2]))
-            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[0], step_num=1,
-                description="removed blank rows"))
-            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[1], step_num=2,
-                description="corrected customer names"))
-            session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[2], step_num=3,
-                description="added rep assignments"))
-            for row in self.entries_dfs["current_errors"].to_dict("records"):
-                session.add(db.CurrentError(**row))
+            for name, table in self.entries_dfs.items():
+                tables = {
+                    'map_customer_name': db.MapCustomerName,
+                    'map_city_names': db.MapCityName,
+                    'map_reps_customers': db.MapRepsToCustomer,
+                    'manufacturers': db.Manufacturer,
+                    'manufacturers_reports': db.ManufacturersReport,
+                    'report_submissions_log': db.ReportSubmissionsLog,
+                    'final_commission_data': db.FinalCommissionData,
+                    'report_processing_steps_log': db.ReportProcessingStepsLog,
+                    'current_errors': db.CurrentError,
+                }
+                table_no_id: pd.DataFrame = table.loc[:,(table.columns != "id")]
+                for row in table_no_id.to_dict("records"):
+                    session.add(tables[name](**row))
             session.commit()
         return
 

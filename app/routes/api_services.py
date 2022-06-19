@@ -98,7 +98,13 @@ def record_processing_steps(engine: Engine, submission_id: int, data: pd.DataFra
         session.commit()
     return True
 
-def del_processing_steps(database: Engine, submission_id: int) -> bool: ...
+def del_processing_steps(engine: Engine, submission_id: int) -> bool:
+    """delete processing steps entires by submission id"""
+    sql = sqlalchemy.delete(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id)
+    with Session(bind=engine) as session:
+        session.execute(sql)
+        session.commit()
+    return True
 
 # errors
 def get_errors(database: Engine, submission_id: int) -> pd.DataFrame: ...

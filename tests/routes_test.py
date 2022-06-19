@@ -300,7 +300,16 @@ class TestApiServiceFunctions(unittest.TestCase):
         return      
 
 ###
-    def test_del_processing_steps(self): self.assertTrue(False)
+    def test_del_processing_steps(self):
+        table = "report_processing_steps_log"
+        rec_to_del = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        del_result = api_services.del_processing_steps(self.db, rec_to_del)
+        self.assertTrue(del_result)
+
+        get_result = api_services.get_processing_steps(self.db,rec_to_del)
+        expected = pd.DataFrame(columns=self.entries_dfs[table].columns)
+        assert_frame_equal(get_result,expected)
+        return
 ###
     def test_get_errors(self): self.assertTrue(False)
     def test_record_errors(self): self.assertTrue(False)

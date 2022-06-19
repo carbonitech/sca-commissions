@@ -262,8 +262,6 @@ class TestApiServiceFunctions(unittest.TestCase):
             expected["reporting_month"] = expected["reporting_month"].astype("int64")
             expected["reporting_year"] = expected["reporting_year"].astype("int64")
             expected["report_id"] = expected["report_id"].astype("int64")
-            print("\n",data_df.dtypes)
-            print("\n",expected.dtypes)
             assert_frame_equal(
                 get_result_filtered.loc[:,~get_result_filtered.columns.isin(["id"])],
                 expected

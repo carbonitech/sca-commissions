@@ -56,6 +56,16 @@ class TestApiServiceFunctions(unittest.TestCase):
                 "step_num": [1,2,3],
                 "description": ["removed blank rows", "corrected customer names",
                         "added rep assignments"]
+            },
+            "current_errors": {
+                "submission_id": [randint(1,1000) for _ in range(5)],
+                "row_index": [randint(1,1000) for _ in range(5)],
+                "field": ["customer_name", "city", "inv_amt", "comm_amt", "customer_name"],
+                "value_type": ["str","str","None","float","str"],
+                "value_content": ["Mingledroff", "forrrest park", "NaN", "-999999", "trane supplies"],
+                "reason": ["customer name not in the mapping table", "city name not in the mapping table",
+                        "expected value to be a number", "value is a high negative number",
+                        "custome name not in the mapping table"]
             }
         }
 
@@ -156,6 +166,8 @@ class TestApiServiceFunctions(unittest.TestCase):
                 description="corrected customer names"))
             session.add(db.ReportProcessingStepsLog(submission_id=sub_ids[2], step_num=3,
                 description="added rep assignments"))
+            for row in self.entries_dfs["current_errors"].to_dict("records"):
+                session.add(db.CurrentError(**row))
             session.commit()
         return
 
@@ -299,7 +311,6 @@ class TestApiServiceFunctions(unittest.TestCase):
         assert_frame_equal(get_result, expected)
         return      
 
-###
     def test_del_processing_steps(self):
         table = "report_processing_steps_log"
         rec_to_del = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
@@ -310,11 +321,23 @@ class TestApiServiceFunctions(unittest.TestCase):
         expected = pd.DataFrame(columns=self.entries_dfs[table].columns)
         assert_frame_equal(get_result,expected)
         return
+     
 ###
-    def test_get_errors(self): self.assertTrue(False)
+    def test_get_errors(self):
+        table = 'current_errors'
+        rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        result = api_services.get_errors(self.db, rand_sub_id)
+        expected = self.entries_dfs[table].loc[
+            self.entries_dfs[table].submission_id == rand_sub_id
+        ]
+        expected.reset_index(drop=True,inplace=True)
+        assert_frame_equal(result,expected)
+        return
+
     def test_record_errors(self): self.assertTrue(False)
     def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
+###
 
     def test_del_submission(self): self.assertTrue(False)
     def test_get_submission_files(self): self.assertTrue(False)

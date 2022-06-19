@@ -107,7 +107,13 @@ def del_processing_steps(engine: Engine, submission_id: int) -> bool:
     return True
 
 # errors
-def get_errors(database: Engine, submission_id: int) -> pd.DataFrame: ...
+ERRORS_TABLE = db.CurrentError
+def get_errors(engine: Engine, submission_id: int) -> pd.DataFrame:
+    """get all report processing errors for a commission report submission"""
+    sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
+    result = pd.read_sql(sql, con=engine)
+    return result
+
 def record_errors(database: Engine, submission_id: int, data: pd.DataFrame) -> bool: ...
 def correct_error(database: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
 def del_error(database: Engine, error_id: int) -> bool: ...

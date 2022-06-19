@@ -99,9 +99,9 @@ def get_processing_steps(conn: Engine, submission_id: int) -> pd.DataFrame:
 
 def record_processing_steps(engine: Engine, submission_id: int, data: pd.DataFrame) -> bool:
     """commit all report processing stesp for a commission report submission"""
-    
-    data["submission_id"] = submission_id
-    records = data.to_dict("records")
+    data_copy = data.copy()
+    data_copy["submission_id"] = submission_id
+    records = data_copy.to_dict("records")
     sql = sqlalchemy.insert(PROCESS_STEPS_LOG)
     with Session(bind=engine) as session:
         session.execute(sql,records)
@@ -124,8 +124,17 @@ def get_errors(engine: Engine, submission_id: int) -> pd.DataFrame:
     result = pd.read_sql(sql, con=engine)
     return result
 
-def record_error(engine: Engine, submission_id: int, data: pd.DataFrame) -> bool:
-    ...
+def record_errors(engine: Engine, submission_id: int, data: pd.DataFrame) -> bool:
+    """record errors into the current_errors table"""
+    data_copy = data.copy()
+    data_copy["submission_id"] = submission_id
+    records = data_copy.to_dict("records")
+    with Session(bind=engine) as session:
+        sql = sqlalchemy.insert(ERRORS_TABLE)
+        session.execute(sql, records)
+        session.commit()
+    return True
+    
 def correct_error(engine: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
 def del_error(engine: Engine, error_id: int) -> bool: ...
 

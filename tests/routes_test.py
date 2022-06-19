@@ -15,7 +15,7 @@ from app.routes import api_services
 
 dotenv.load_dotenv()
 
-class TestApiServiceFunctions(unittest.TestCase):
+class TestApiCRUDFunctions(unittest.TestCase):
 
     def setUp(self):
         make_date = lambda *args: datetime.datetime(*args)
@@ -257,7 +257,8 @@ class TestApiServiceFunctions(unittest.TestCase):
             manf_id = manf_id.item()
             get_result = api_services.get_submissions_metadata(self.db, manf_id)
             get_result_filtered = get_result[get_result.id == record_result].reset_index(drop=True)
-            ### MAJOR ISSUES WITH TYPING AND FRAME STRUCTURE RECREATION - TODO: REWORK HOW THE EXPECTED COND. IS GENERATED
+            ### MAJOR ISSUES WITH TYPING AND FRAME STRUCTURE RECREATION
+            # TODO: REWORK HOW THE EXPECTED COND. IS GENERATED
             expected = pd.concat([data_df.iloc[i],pd.Series({"report_id": rid})]).to_frame().T
             expected["reporting_month"] = expected["reporting_month"].astype("int64")
             expected["reporting_year"] = expected["reporting_year"].astype("int64")
@@ -321,8 +322,32 @@ class TestApiServiceFunctions(unittest.TestCase):
         return
 
 ###
-    def test_record_error(self):
-        ...
+    def test_record_errors(self):
+        table = "current_errors"
+        data_to_add = {
+            "row_index": [randint(1,1000) for _ in range(2)],
+            "field": ["customer_name", "city"],
+            "value_type": ["str", "str"],
+            "value_content": ["mingledi", "dalers supply"],
+            "reason": ["name not in mapping"]*2
+        }
+        submission_id = randint(1,1000)
+        data_add_df = pd.DataFrame(data_to_add)
+        result = api_services.record_errors(self.db, submission_id, data_add_df)
+        self.assertTrue(result)
+
+        get_result = api_services.get_errors(self.db, submission_id)
+        
+        expected_new = data_add_df.copy()
+        expected_new.insert(0,"submission_id", submission_id)
+        expected_new.insert(0,"id",[len(self.entries_dfs[table])+num for num in range(1,3)])
+        expected = pd.concat([self.entries_dfs[table], expected_new])
+        expected = expected[expected.submission_id == submission_id].reset_index(drop=True)
+        
+        assert_frame_equal(get_result, expected)
+        return
+
+
     def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
 ###

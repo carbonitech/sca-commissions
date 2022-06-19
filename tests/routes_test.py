@@ -6,7 +6,7 @@ from typing import Dict
 from random import randint, choice, sample
 
 import pandas as pd
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -239,6 +239,37 @@ class TestApiServiceFunctions(unittest.TestCase):
         assert_frame_equal(result, expected)
         return
 
+    def test_record_submissions_metadata(self):
+        table = "report_submissions_log"
+        data_to_add = {
+            "submission_date": [datetime.datetime(2022,1,31), datetime.datetime(2022,3,15)],
+            "reporting_month": [12,2],
+            "reporting_year": [2021,2022]
+        }
+        data_df = pd.DataFrame(data_to_add)
+        report_ids = [choice(self.entries_dfs["manufacturers_reports"].loc[:,"id"].tolist()) for _ in range(2)]
+        for i,rid in enumerate(report_ids):
+            record_result = api_services.record_submission_metadata(self.db, report_id=rid, data=data_df.iloc[i])
+            self.assertGreater(record_result,0)
+            manf_id = self.entries_dfs["manufacturers_reports"] \
+                .loc[self.entries_dfs["manufacturers_reports"].id == rid] \
+                .manufacturer_id.iat[0]
+            manf_id = manf_id.item()
+            get_result = api_services.get_submissions_metadata(self.db, manf_id)
+            get_result_filtered = get_result[get_result.id == record_result].reset_index(drop=True)
+            ### MAJOR ISSUES WITH TYPING AND FRAME STRUCTURE RECREATION - TODO: REWORK HOW THE EXPECTED COND. IS GENERATED
+            expected = pd.concat([data_df.iloc[i],pd.Series({"report_id": rid})]).to_frame().T
+            expected["reporting_month"] = expected["reporting_month"].astype("int64")
+            expected["reporting_year"] = expected["reporting_year"].astype("int64")
+            expected["report_id"] = expected["report_id"].astype("int64")
+            print("\n",data_df.dtypes)
+            print("\n",expected.dtypes)
+            assert_frame_equal(
+                get_result_filtered.loc[:,~get_result_filtered.columns.isin(["id"])],
+                expected
+            )
+        return
+
     def test_get_processing_steps(self):
         table = 'report_processing_steps_log'
         rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
@@ -280,7 +311,6 @@ class TestApiServiceFunctions(unittest.TestCase):
         assert_frame_equal(get_result,expected)
         return
      
-###
     def test_get_errors(self):
         table = 'current_errors'
         rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
@@ -292,7 +322,9 @@ class TestApiServiceFunctions(unittest.TestCase):
         assert_frame_equal(result,expected)
         return
 
-    def test_record_errors(self): self.assertTrue(False)
+###
+    def test_record_error(self):
+        ...
     def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
 ###

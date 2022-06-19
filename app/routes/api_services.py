@@ -68,6 +68,16 @@ def get_submissions_metadata(conn: Engine, manufacturer_id: int) -> pd.DataFrame
         con=conn)
     return result
 
+def record_submission_metadata(engine: Engine, report_id: int, data: pd.Series) -> int:
+    data = pd.concat([data,pd.Series({"report_id": report_id})])
+    sql = sqlalchemy.insert(SUBMISSIONS_META_TABLE).returning(SUBMISSIONS_META_TABLE.id)\
+            .values(data.to_dict())
+    with Session(bind=engine) as session:
+        result = session.execute(sql)
+        session.commit()
+
+    return result.fetchone()[0]
+
 def del_submission(database: Engine, submission_id: int) -> bool: ...
 
 
@@ -114,9 +124,10 @@ def get_errors(engine: Engine, submission_id: int) -> pd.DataFrame:
     result = pd.read_sql(sql, con=engine)
     return result
 
-def record_errors(database: Engine, submission_id: int, data: pd.DataFrame) -> bool: ...
-def correct_error(database: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
-def del_error(database: Engine, error_id: int) -> bool: ...
+def record_error(engine: Engine, submission_id: int, data: pd.DataFrame) -> bool:
+    ...
+def correct_error(engine: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
+def del_error(engine: Engine, error_id: int) -> bool: ...
 
 
 ### admin functions will be developed below here, but they are not needed for MVP ###

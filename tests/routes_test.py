@@ -348,7 +348,6 @@ class TestApiCRUDFunctions(unittest.TestCase):
         return
 
 
-    def test_correct_error(self): self.assertTrue(False)
     def test_del_error(self): self.assertTrue(False)
 ###
 

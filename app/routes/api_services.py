@@ -135,7 +135,6 @@ def record_errors(engine: Engine, submission_id: int, data: pd.DataFrame) -> boo
         session.commit()
     return True
     
-def correct_error(engine: Engine, error_id: int, data: pd.DataFrame) -> bool: ...
 def del_error(engine: Engine, error_id: int) -> bool: ...
 
 

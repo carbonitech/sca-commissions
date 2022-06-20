@@ -135,7 +135,12 @@ def record_errors(engine: Engine, submission_id: int, data: pd.DataFrame) -> boo
         session.commit()
     return True
     
-def del_error(engine: Engine, error_id: int) -> bool: ...
-
+def del_error(engine: Engine, error_id: int) -> bool:
+    """delete errors from the errors table by error id"""
+    sql = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.id == error_id)
+    with Session(bind=engine) as session:
+        session.execute(sql)
+        session.commit()
+    return True    
 
 ### admin functions will be developed below here, but they are not needed for MVP ###

@@ -321,7 +321,6 @@ class TestApiCRUDFunctions(unittest.TestCase):
         assert_frame_equal(result,expected)
         return
 
-###
     def test_record_errors(self):
         table = "current_errors"
         data_to_add = {
@@ -348,10 +347,27 @@ class TestApiCRUDFunctions(unittest.TestCase):
         return
 
 
-    def test_del_error(self): self.assertTrue(False)
-###
+    def test_del_error(self):
+        setup_df = self.entries_dfs["current_errors"]
+        rec_to_del = choice(setup_df["id"].tolist())
+        result = api_services.del_error(self.db, rec_to_del)
+        self.assertTrue(result)
 
+        sub_id_of_rec = setup_df["submission_id"].loc[setup_df.id == rec_to_del].item()
+        get_result = api_services.get_errors(self.db, sub_id_of_rec)
+        expected = setup_df.loc[setup_df.id != rec_to_del]
+        expected = expected.loc[expected.submission_id == sub_id_of_rec]
+
+        #TODO: address typing issues causing comp of empty dfs to fail
+        if get_result.empty:
+            self.assertTrue(get_result.empty)
+            self.assertTrue(expected.empty)
+        else:
+            assert_frame_equal(get_result, expected)
+
+###
     def test_del_submission(self): self.assertTrue(False)
+###
     def test_get_submission_files(self): self.assertTrue(False)
     def test_record_submission_file(self): self.assertTrue(False)
     def test_del_submission_file(self): self.assertTrue(False)

@@ -2,6 +2,7 @@ import unittest
 import dotenv
 import os
 import datetime
+from json import dumps
 from typing import Dict
 from random import randint, choice, sample
 
@@ -65,7 +66,15 @@ class TestApiCRUDFunctions(unittest.TestCase):
                 "value_content": ["Mingledroff", "forrrest park", "NaN", "-999999", "trane supplies"],
                 "reason": ["customer name not in the mapping table", "city name not in the mapping table",
                         "expected value to be a number", "value is a high negative number",
-                        "custome name not in the mapping table"]
+                        "custome name not in the mapping table"],
+                "row_data": [
+                        dumps({"Customer": "Mingledroff", "other_data": "other data"}),
+                        dumps({"City": "forrrest park", "other data": "other data"}),
+                        dumps({"inv_amt": None, "other data": 1354}),
+                        dumps({"comm_amt": -999999, "other data": "other data"}),
+                        dumps({"customer_name": "trane supplies", "other_data": "other data"})
+
+                ]
             }
         }
 
@@ -328,7 +337,9 @@ class TestApiCRUDFunctions(unittest.TestCase):
             "field": ["customer_name", "city"],
             "value_type": ["str", "str"],
             "value_content": ["mingledi", "dalers supply"],
-            "reason": ["name not in mapping"]*2
+            "reason": ["name not in mapping"]*2,
+            "row_data": [dumps({"customer_name": "mingledi", "OTHER": 0.1234}),
+                    dumps({"city": "dalers supply", "OTHER": 1234})]
         }
         submission_id = randint(1,1000)
         data_add_df = pd.DataFrame(data_to_add)

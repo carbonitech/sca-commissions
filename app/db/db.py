@@ -1,6 +1,6 @@
 """Database Table Models"""
 
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -96,6 +96,7 @@ class CurrentError(Base):
     value_type = Column(String)
     value_content = Column(String)
     reason = Column(String)
+    row_data = Column(TEXT)
 
 
 class Representative(Base):

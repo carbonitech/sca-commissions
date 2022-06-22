@@ -69,6 +69,7 @@ def get_submissions_metadata(conn: Engine, manufacturer_id: int) -> pd.DataFrame
     return result
 
 def record_submission_metadata(engine: Engine, report_id: int, data: pd.Series) -> int:
+    """record a submission into the submissions log"""
     data = pd.concat([data,pd.Series({"report_id": report_id})])
     sql = sqlalchemy.insert(SUBMISSIONS_META_TABLE).returning(SUBMISSIONS_META_TABLE.id)\
             .values(data.to_dict())
@@ -78,7 +79,16 @@ def record_submission_metadata(engine: Engine, report_id: int, data: pd.Series) 
 
     return result.fetchone()[0]
 
-def del_submission(database: Engine, submission_id: int) -> bool: ...
+def del_submission(engine: Engine, submission_id: int) -> bool:
+    """delete a submission using the submission id"""
+    sql = sqlalchemy.delete(SUBMISSIONS_META_TABLE)\
+            .where(SUBMISSIONS_META_TABLE.id == submission_id)
+
+    with Session(bind=engine) as session:
+        session.execute(sql)
+        session.commit()
+
+    return True
 
 
 # original submission files
@@ -141,6 +151,6 @@ def del_error(engine: Engine, error_id: int) -> bool:
     with Session(bind=engine) as session:
         session.execute(sql)
         session.commit()
-    return True    
+    return True
 
 ### admin functions will be developed below here, but they are not needed for MVP ###

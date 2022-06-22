@@ -277,6 +277,36 @@ class TestApiCRUDFunctions(unittest.TestCase):
                 expected
             )
         return
+###
+    def test_del_submission(self):
+        metadata_table = 'report_submissions_log'
+        rec_to_del = choice(self.entries_dfs[metadata_table].loc[:,"id"].tolist())
+        
+        del_result = api_services.del_submission(self.db, rec_to_del)
+        self.assertTrue(del_result)
+
+        report_id_of_sub = self.entries_dfs[metadata_table]["report_id"]\
+                .loc[self.entries_dfs[metadata_table]["id"] == rec_to_del].item()
+        manf_id_of_sub = self.entries_dfs["manufacturers_reports"]["manufacturer_id"]\
+                .loc[self.entries_dfs["manufacturers_reports"]["id"] == report_id_of_sub].item()
+
+        get_result = api_services.get_submissions_metadata(self.db, manufacturer_id=manf_id_of_sub)
+
+        manufacturers_reports = api_services.get_manufacturers_reports(self.db,manf_id_of_sub)
+        manf_report_ids = manufacturers_reports.loc[:,"id"].tolist()
+        expected = self.entries_dfs[metadata_table]\
+                .loc[(self.entries_dfs[metadata_table]["id"] != rec_to_del)
+                & (self.entries_dfs[metadata_table]["id"].isin(manf_report_ids))]
+        expected = expected.reset_index(drop=True)
+
+        # Index mismatch error arises when DFs are empty
+        # TODO: FIX expected case to account for this, only one assert test
+        if get_result.empty and expected.empty:
+            self.assertTrue(get_result.empty)
+            self.assertTrue(expected.empty)
+        else:
+            assert_frame_equal(get_result, expected)
+###
 
     def test_get_processing_steps(self):
         table = 'report_processing_steps_log'
@@ -376,9 +406,8 @@ class TestApiCRUDFunctions(unittest.TestCase):
         else:
             assert_frame_equal(get_result, expected)
 
-###
-    def test_del_submission(self): self.assertTrue(False)
-###
+
+
     def test_get_submission_files(self): self.assertTrue(False)
     def test_record_submission_file(self): self.assertTrue(False)
     def test_del_submission_file(self): self.assertTrue(False)

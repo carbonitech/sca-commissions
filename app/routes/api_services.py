@@ -6,66 +6,70 @@ from sqlalchemy.engine.base import Engine
 from app.db import db
 from typing import Dict, Union
 
-# mappings
+## mappings
 MAPPING_TABLES = {
     "map_customer_name": db.MapCustomerName,
     "map_city_names": db.MapCityName,
     "map_reps_customers": db.MapRepsToCustomer
 }
-def get_mapping_tables(conn: Engine) -> set:
-    return {table for table in sqlalchemy.inspect(conn).get_table_names() if table.split("_")[0] == "map"}
 
-def get_mappings(conn: Engine, table: str) -> pd.DataFrame:    
-    return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),conn)
+def get_mapping_tables(engine: Engine) -> set:
+    return {table for table in sqlalchemy.inspect(engine).get_table_names() if table.split("_")[0] == "map"}
 
-def set_mapping(database: Engine, table: str, data: pd.DataFrame) -> bool:
-    rows_affected = data.to_sql(table, con=database, if_exists="append", index=False)
+def get_mappings(engine: Engine, table: str) -> pd.DataFrame:    
+    return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),engine)
+
+def set_mapping(engine: Engine, table: str, data: pd.DataFrame) -> bool:
+    rows_affected = data.to_sql(table, con=engine, if_exists="append", index=False)
     if rows_affected and rows_affected > 0:
         return True
     else:
         False
 
-def del_mapping(database: Engine, table: str, id: int) -> bool:
-    with Session(database) as session:
+def del_mapping(engine: Engine, table: str, id: int) -> bool:
+    with Session(engine) as session:
         row = session.query(MAPPING_TABLES[table]).filter_by(id=id).first()
         session.delete(row)
         session.commit()
     return True
 
 
-# final commission data
+## final commission data
 COMMISSION_DATA_TABLE = db.FinalCommissionData
-def get_final_data(conn: Engine) -> pd.DataFrame:
-    return pd.read_sql(sqlalchemy.select(COMMISSION_DATA_TABLE),conn)
 
-def record_final_data(conn: Engine, data: pd.DataFrame) -> bool:
-    rows_affected = data.to_sql(COMMISSION_DATA_TABLE.__table__.name, con=conn, if_exists="append", index=False)
+def get_final_data(engine: Engine) -> pd.DataFrame:
+    return pd.read_sql(sqlalchemy.select(COMMISSION_DATA_TABLE),engine)
+
+def record_final_data(engine: Engine, data: pd.DataFrame) -> bool:
+    rows_affected = data.to_sql(COMMISSION_DATA_TABLE.__table__.name, con=engine, if_exists="append", index=False)
     if rows_affected and rows_affected > 0:
         return True
     else:
         False
 
-# manufactuers tables
+
+## manufactuers tables
 MANUFACTURER_TABLES = {
     "manufacturers": db.Manufacturer,
     "manufacturers_reports": db.ManufacturersReport
 }
-def get_manufacturers(conn: Engine, id: Union[int, None]=None): ...
-def get_manufacturers_reports(conn: Engine, manufacturer_id: int) -> pd.DataFrame:
+def get_manufacturers(engine: Engine, id: Union[int, None]=None): ...
+def get_manufacturers_reports(engine: Engine, manufacturer_id: int) -> pd.DataFrame:
     table = "manufacturers_reports"
     table_obj = MANUFACTURER_TABLES[table]
-    result = pd.read_sql(sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id), con=conn)
+    result = pd.read_sql(sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id), con=engine)
     return result
 
-# submission metadata
+
+## submission metadata
 SUBMISSIONS_META_TABLE = db.ReportSubmissionsLog
-def get_submissions_metadata(conn: Engine, manufacturer_id: int) -> pd.DataFrame:
+def get_submissions_metadata(engine: Engine, manufacturer_id: int) -> pd.DataFrame:
     """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
-    manufacturers_reports = get_manufacturers_reports(conn,manufacturer_id)
+    manufacturers_reports = get_manufacturers_reports(engine,manufacturer_id)
     report_ids = manufacturers_reports.loc[:,"id"].tolist()
     result = pd.read_sql(
         sqlalchemy.select(SUBMISSIONS_META_TABLE).where(SUBMISSIONS_META_TABLE.report_id.in_(report_ids)),
-        con=conn)
+        con=engine)
     return result
 
 def record_submission_metadata(engine: Engine, report_id: int, data: pd.Series) -> int:
@@ -91,19 +95,16 @@ def del_submission(engine: Engine, submission_id: int) -> bool:
     return True
 
 
-# original submission files
-def get_submission_files(database: Engine, manufacturer_id: int) -> Dict[int,str]: ...
-def record_submission_file(database: Engine, manufactuer_id: int, file: bytes) -> bool: ...
-def del_submission_file(database: Engine, id: int) -> bool: ...
 
 
-# processing steps log
+## processing steps log
 PROCESS_STEPS_LOG = db.ReportProcessingStepsLog
-def get_processing_steps(conn: Engine, submission_id: int) -> pd.DataFrame:
+
+def get_processing_steps(engine: Engine, submission_id: int) -> pd.DataFrame:
     """get all report processing steps for a commission report submission"""
     result = pd.read_sql(
         sqlalchemy.select(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id),
-        con=conn
+        con=engine
     )
     return result
 
@@ -126,8 +127,10 @@ def del_processing_steps(engine: Engine, submission_id: int) -> bool:
         session.commit()
     return True
 
-# errors
+
+## errors
 ERRORS_TABLE = db.CurrentError
+
 def get_errors(engine: Engine, submission_id: int) -> pd.DataFrame:
     """get all report processing errors for a commission report submission"""
     sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
@@ -153,4 +156,8 @@ def del_error(engine: Engine, error_id: int) -> bool:
         session.commit()
     return True
 
+# original submission files
+def get_submission_files(engine: Engine, manufacturer_id: int) -> Dict[int,str]: ...
+def record_submission_file(engine: Engine, manufactuer_id: int, file: bytes) -> bool: ...
+def del_submission_file(engine: Engine, id: int) -> bool: ...
 ### admin functions will be developed below here, but they are not needed for MVP ###

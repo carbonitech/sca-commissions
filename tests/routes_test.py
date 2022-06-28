@@ -7,7 +7,7 @@ from typing import Dict
 from random import randint, choice, sample
 
 import pandas as pd
-from pandas.testing import assert_frame_equal, assert_series_equal
+from pandas.testing import assert_frame_equal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -277,7 +277,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
                 expected
             )
         return
-###
+
     def test_del_submission(self):
         metadata_table = 'report_submissions_log'
         rec_to_del = choice(self.entries_dfs[metadata_table].loc[:,"id"].tolist())
@@ -306,7 +306,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
             self.assertTrue(expected.empty)
         else:
             assert_frame_equal(get_result, expected)
-###
+        return
 
     def test_get_processing_steps(self):
         table = 'report_processing_steps_log'

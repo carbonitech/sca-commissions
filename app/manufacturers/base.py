@@ -22,8 +22,9 @@ class Submission:
     errors = None
     processing_steps = None
 
-    def __init__(self, manufacturer: Manufacturer) -> None:
+    def __init__(self, manufacturer: Manufacturer, file: bytes) -> None:
         self.manufacturer = manufacturer
+        self.file = file
 
     def process(self):
         return

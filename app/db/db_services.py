@@ -3,14 +3,14 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
-from app.db import db
+from app.db import models
 from typing import Dict, Union
 
 ## mappings
 MAPPING_TABLES = {
-    "map_customer_name": db.MapCustomerName,
-    "map_city_names": db.MapCityName,
-    "map_reps_customers": db.MapRepsToCustomer
+    "map_customer_name": models.MapCustomerName,
+    "map_city_names": models.MapCityName,
+    "map_reps_customers": models.MapRepsToCustomer
 }
 
 def get_mapping_tables(engine: Engine) -> set:
@@ -35,7 +35,7 @@ def del_mapping(engine: Engine, table: str, id: int) -> bool:
 
 
 ## final commission data
-COMMISSION_DATA_TABLE = db.FinalCommissionData
+COMMISSION_DATA_TABLE = models.FinalCommissionData
 
 def get_final_data(engine: Engine) -> pd.DataFrame:
     return pd.read_sql(sqlalchemy.select(COMMISSION_DATA_TABLE),engine)
@@ -50,8 +50,8 @@ def record_final_data(engine: Engine, data: pd.DataFrame) -> bool:
 
 ## manufactuers tables
 MANUFACTURER_TABLES = {
-    "manufacturers": db.Manufacturer,
-    "manufacturers_reports": db.ManufacturersReport
+    "manufacturers": models.Manufacturer,
+    "manufacturers_reports": models.ManufacturersReport
 }
 def get_manufacturers(engine: Engine, id: Union[int, None]=None): ...
 def get_manufacturers_reports(engine: Engine, manufacturer_id: int) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def get_manufacturers_reports(engine: Engine, manufacturer_id: int) -> pd.DataFr
 
 
 ## submission metadata
-SUBMISSIONS_META_TABLE = db.ReportSubmissionsLog
+SUBMISSIONS_META_TABLE = models.ReportSubmissionsLog
 def get_submissions_metadata(engine: Engine, manufacturer_id: int) -> pd.DataFrame:
     """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
     manufacturers_reports = get_manufacturers_reports(engine,manufacturer_id)
@@ -98,7 +98,7 @@ def del_submission(engine: Engine, submission_id: int) -> bool:
 
 
 ## processing steps log
-PROCESS_STEPS_LOG = db.ReportProcessingStepsLog
+PROCESS_STEPS_LOG = models.ReportProcessingStepsLog
 
 def get_processing_steps(engine: Engine, submission_id: int) -> pd.DataFrame:
     """get all report processing steps for a commission report submission"""
@@ -129,7 +129,7 @@ def del_processing_steps(engine: Engine, submission_id: int) -> bool:
 
 
 ## errors
-ERRORS_TABLE = db.CurrentError
+ERRORS_TABLE = models.CurrentError
 
 def get_errors(engine: Engine, submission_id: int) -> pd.DataFrame:
     """get all report processing errors for a commission report submission"""

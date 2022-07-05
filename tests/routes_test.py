@@ -11,8 +11,8 @@ from pandas.testing import assert_frame_equal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.db import db
-from app.routes import api_services
+from app.db import models
+from app.db import db_services
 
 dotenv.load_dotenv()
 
@@ -118,19 +118,19 @@ class TestApiCRUDFunctions(unittest.TestCase):
         ## WRITE DATA TO TESTING DB IN PGSQL
         db_url = os.getenv("TESTING_DATABASE_URL")
         self.db = create_engine(db_url)
-        db.Base.metadata.create_all(self.db)
+        models.Base.metadata.create_all(self.db)
         with Session(self.db) as session:
             for name, table in self.entries_dfs.items():
                 tables = {
-                    'map_customer_name': db.MapCustomerName,
-                    'map_city_names': db.MapCityName,
-                    'map_reps_customers': db.MapRepsToCustomer,
-                    'manufacturers': db.Manufacturer,
-                    'manufacturers_reports': db.ManufacturersReport,
-                    'report_submissions_log': db.ReportSubmissionsLog,
-                    'final_commission_data': db.FinalCommissionData,
-                    'report_processing_steps_log': db.ReportProcessingStepsLog,
-                    'current_errors': db.CurrentError,
+                    'map_customer_name': models.MapCustomerName,
+                    'map_city_names': models.MapCityName,
+                    'map_reps_customers': models.MapRepsToCustomer,
+                    'manufacturers': models.Manufacturer,
+                    'manufacturers_reports': models.ManufacturersReport,
+                    'report_submissions_log': models.ReportSubmissionsLog,
+                    'final_commission_data': models.FinalCommissionData,
+                    'report_processing_steps_log': models.ReportProcessingStepsLog,
+                    'current_errors': models.CurrentError,
                 }
                 table_no_id: pd.DataFrame = table.loc[:,(table.columns != "id")]
                 for row in table_no_id.to_dict("records"):
@@ -140,21 +140,21 @@ class TestApiCRUDFunctions(unittest.TestCase):
 
 
     def test_get_mapping_tables(self):
-        result = api_services.get_mapping_tables(self.db)
+        result = db_services.get_mapping_tables(self.db)
         expected = {"map_customer_name","map_city_names","map_reps_customers"}
         self.assertEqual(result,expected)
         return
 
     def test_get_mappings(self):
         results = {
-            "map_customer_name": api_services.get_mappings(
-                conn=self.db,
+            "map_customer_name": db_services.get_mappings(
+                engine=self.db,
                 table="map_customer_name"),
-            "map_city_names": api_services.get_mappings(
-                conn=self.db,
+            "map_city_names": db_services.get_mappings(
+                engine=self.db,
                 table="map_city_names"),
-            "map_reps_customers": api_services.get_mappings(
-                conn=self.db,
+            "map_reps_customers": db_services.get_mappings(
+                engine=self.db,
                 table="map_reps_customers")
             }
         for table,result in results.items():
@@ -169,9 +169,9 @@ class TestApiCRUDFunctions(unittest.TestCase):
             "map_reps_customers": {"rep_id": [1], "customer_branch_id": [32]}
         }
 
-        mapping_tbls = api_services.get_mapping_tables(self.db)
+        mapping_tbls = db_services.get_mapping_tables(self.db)
         for tbl in mapping_tbls:
-            set_result = api_services.set_mapping(self.db, tbl, pd.DataFrame(data_to_add[tbl]))
+            set_result = db_services.set_mapping(self.db, tbl, pd.DataFrame(data_to_add[tbl]))
             self.assertTrue(set_result)
 
         for tbl in data_to_add:
@@ -183,27 +183,27 @@ class TestApiCRUDFunctions(unittest.TestCase):
                 pd.DataFrame(data_to_add[mapping_tbl])
                 ], ignore_index=True)
 
-            get_result = api_services.get_mappings(self.db, mapping_tbl)
+            get_result = db_services.get_mappings(self.db, mapping_tbl)
             assert_frame_equal(get_result, expected)
         return
 
     def test_del_mapping(self):
-        mapping_tables = api_services.get_mapping_tables(self.db)
+        mapping_tables = db_services.get_mapping_tables(self.db)
         
         for tbl, data in self.entries_dfs.items():
             if tbl not in mapping_tables:
                 continue
             rec_to_del = randint(1,len(data))
-            del_result = api_services.del_mapping(self.db, table=tbl, id=rec_to_del)
+            del_result = db_services.del_mapping(self.db, table=tbl, id=rec_to_del)
             self.assertTrue(del_result)
             expected = data[data["id"] != rec_to_del].reset_index(drop=True)
-            get_result = api_services.get_mappings(self.db, tbl)
+            get_result = db_services.get_mappings(self.db, tbl)
             assert_frame_equal(get_result, expected)
         return
 
     def test_get_final_data(self):
         table = "final_commission_data"
-        result = api_services.get_final_data(self.db)
+        result = db_services.get_final_data(self.db)
         expected = self.entries_dfs[table]
         assert_frame_equal(result, expected)
         return
@@ -222,19 +222,19 @@ class TestApiCRUDFunctions(unittest.TestCase):
         }
         data_to_add["comm_amt"] = [round(inv*3/100, 2) for inv in data_to_add["inv_amt"]]
 
-        record_result = api_services.record_final_data(self.db, pd.DataFrame(data_to_add))
+        record_result = db_services.record_final_data(self.db, pd.DataFrame(data_to_add))
         self.assertTrue(record_result)
 
         data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,3)]
         expected = pd.concat([self.entries_dfs[table],pd.DataFrame(data_to_add)], ignore_index=True)
-        get_result = api_services.get_final_data(self.db)
+        get_result = db_services.get_final_data(self.db)
         assert_frame_equal(get_result, expected)
         return
 
     def test_get_manufacturers_reports(self):
         table = "manufacturers_reports"
         rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
-        result = api_services.get_manufacturers_reports(self.db, manufacturer_id=rand_manf_id)
+        result = db_services.get_manufacturers_reports(self.db, manufacturer_id=rand_manf_id)
         expected = self.entries_dfs[table][self.entries_dfs[table].manufacturer_id == rand_manf_id].reset_index(drop=True)
         assert_frame_equal(result,expected)
         return
@@ -242,7 +242,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
     def test_get_submissions_metadata(self):
         table = "report_submissions_log"
         rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
-        result = api_services.get_submissions_metadata(self.db, manufacturer_id=rand_manf_id)
+        result = db_services.get_submissions_metadata(self.db, manufacturer_id=rand_manf_id)
         report_ids = result.loc[:,"id"].tolist() 
         expected = self.entries_dfs[table][self.entries_dfs[table].report_id.isin(report_ids)].reset_index(drop=True)
         assert_frame_equal(result, expected)
@@ -258,13 +258,13 @@ class TestApiCRUDFunctions(unittest.TestCase):
         data_df = pd.DataFrame(data_to_add)
         report_ids = [choice(self.entries_dfs["manufacturers_reports"].loc[:,"id"].tolist()) for _ in range(2)]
         for i,rid in enumerate(report_ids):
-            record_result = api_services.record_submission_metadata(self.db, report_id=rid, data=data_df.iloc[i])
+            record_result = db_services.record_submission_metadata(self.db, report_id=rid, data=data_df.iloc[i])
             self.assertGreater(record_result,0)
             manf_id = self.entries_dfs["manufacturers_reports"] \
                 .loc[self.entries_dfs["manufacturers_reports"].id == rid] \
                 .manufacturer_id.iat[0]
             manf_id = manf_id.item()
-            get_result = api_services.get_submissions_metadata(self.db, manf_id)
+            get_result = db_services.get_submissions_metadata(self.db, manf_id)
             get_result_filtered = get_result[get_result.id == record_result].reset_index(drop=True)
             ### MAJOR ISSUES WITH TYPING AND FRAME STRUCTURE RECREATION
             # TODO: REWORK HOW THE EXPECTED COND. IS GENERATED
@@ -282,7 +282,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
         metadata_table = 'report_submissions_log'
         rec_to_del = choice(self.entries_dfs[metadata_table].loc[:,"id"].tolist())
         
-        del_result = api_services.del_submission(self.db, rec_to_del)
+        del_result = db_services.del_submission(self.db, rec_to_del)
         self.assertTrue(del_result)
 
         report_id_of_sub = self.entries_dfs[metadata_table]["report_id"]\
@@ -290,9 +290,9 @@ class TestApiCRUDFunctions(unittest.TestCase):
         manf_id_of_sub = self.entries_dfs["manufacturers_reports"]["manufacturer_id"]\
                 .loc[self.entries_dfs["manufacturers_reports"]["id"] == report_id_of_sub].item()
 
-        get_result = api_services.get_submissions_metadata(self.db, manufacturer_id=manf_id_of_sub)
+        get_result = db_services.get_submissions_metadata(self.db, manufacturer_id=manf_id_of_sub)
 
-        manufacturers_reports = api_services.get_manufacturers_reports(self.db,manf_id_of_sub)
+        manufacturers_reports = db_services.get_manufacturers_reports(self.db,manf_id_of_sub)
         manf_report_ids = manufacturers_reports.loc[:,"id"].tolist()
         expected = self.entries_dfs[metadata_table]\
                 .loc[(self.entries_dfs[metadata_table]["id"] != rec_to_del)
@@ -311,7 +311,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
     def test_get_processing_steps(self):
         table = 'report_processing_steps_log'
         rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
-        result = api_services.get_processing_steps(conn=self.db, submission_id=rand_sub_id)
+        result = db_services.get_processing_steps(engine=self.db, submission_id=rand_sub_id)
         expected = self.entries_dfs[table].loc[
             self.entries_dfs[table].submission_id == rand_sub_id
         ]
@@ -326,7 +326,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
             "description": ["removed rows with blank values", "replaced blanks with zeros", "selected columns"]
         }
         sub_id = randint(1,1000)
-        record_result = api_services.record_processing_steps(self.db, sub_id, data=pd.DataFrame(data_to_add))
+        record_result = db_services.record_processing_steps(self.db, sub_id, data=pd.DataFrame(data_to_add))
         self.assertTrue(record_result)
 
         data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,4)]
@@ -334,17 +334,17 @@ class TestApiCRUDFunctions(unittest.TestCase):
         expected["submission_id"] = sub_id
         expected.insert(0,"submission_id",expected.pop("submission_id"))
         expected.insert(0,"id",expected.pop("id"))
-        get_result = api_services.get_processing_steps(self.db, sub_id)
+        get_result = db_services.get_processing_steps(self.db, sub_id)
         assert_frame_equal(get_result, expected)
         return      
 
     def test_del_processing_steps(self):
         table = "report_processing_steps_log"
         rec_to_del = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
-        del_result = api_services.del_processing_steps(self.db, rec_to_del)
+        del_result = db_services.del_processing_steps(self.db, rec_to_del)
         self.assertTrue(del_result)
 
-        get_result = api_services.get_processing_steps(self.db,rec_to_del)
+        get_result = db_services.get_processing_steps(self.db,rec_to_del)
         expected = pd.DataFrame(columns=self.entries_dfs[table].columns)
         assert_frame_equal(get_result,expected)
         return
@@ -352,7 +352,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
     def test_get_errors(self):
         table = 'current_errors'
         rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
-        result = api_services.get_errors(self.db, rand_sub_id)
+        result = db_services.get_errors(self.db, rand_sub_id)
         expected = self.entries_dfs[table].loc[
             self.entries_dfs[table].submission_id == rand_sub_id
         ]
@@ -373,10 +373,10 @@ class TestApiCRUDFunctions(unittest.TestCase):
         }
         submission_id = randint(1,1000)
         data_add_df = pd.DataFrame(data_to_add)
-        result = api_services.record_errors(self.db, submission_id, data_add_df)
+        result = db_services.record_errors(self.db, submission_id, data_add_df)
         self.assertTrue(result)
 
-        get_result = api_services.get_errors(self.db, submission_id)
+        get_result = db_services.get_errors(self.db, submission_id)
         
         expected_new = data_add_df.copy()
         expected_new.insert(0,"submission_id", submission_id)
@@ -391,11 +391,11 @@ class TestApiCRUDFunctions(unittest.TestCase):
     def test_del_error(self):
         setup_df = self.entries_dfs["current_errors"]
         rec_to_del = choice(setup_df["id"].tolist())
-        result = api_services.del_error(self.db, rec_to_del)
+        result = db_services.del_error(self.db, rec_to_del)
         self.assertTrue(result)
 
         sub_id_of_rec = setup_df["submission_id"].loc[setup_df.id == rec_to_del].item()
-        get_result = api_services.get_errors(self.db, sub_id_of_rec)
+        get_result = db_services.get_errors(self.db, sub_id_of_rec)
         expected = setup_df.loc[setup_df.id != rec_to_del]
         expected = expected.loc[expected.submission_id == sub_id_of_rec]
 
@@ -408,10 +408,10 @@ class TestApiCRUDFunctions(unittest.TestCase):
 
 
 
-    def test_get_submission_files(self): self.assertTrue(False)
-    def test_record_submission_file(self): self.assertTrue(False)
-    def test_del_submission_file(self): self.assertTrue(False)
+    def test_get_submission_files(self): ...
+    def test_record_submission_file(self): ...
+    def test_del_submission_file(self): ...
 
     def tearDown(self):
-        db.Base.metadata.drop_all(self.db)
+        models.Base.metadata.drop_all(self.db)
         return

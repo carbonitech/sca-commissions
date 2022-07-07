@@ -68,6 +68,7 @@ class ReportSubmissionsLog(Base):
 class FinalCommissionData(Base):    # TODO: make this table customizable instead of hard-coded
     __tablename__ = 'final_commission_data'
     id = Column(Integer,primary_key=True)
+    submission_id = Column(Integer)
     year = Column(Integer)
     month = Column(String)
     manufacturer = Column(String)

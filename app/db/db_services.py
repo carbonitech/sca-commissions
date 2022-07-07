@@ -28,17 +28,38 @@ class DatabaseServices:
 
     ## mappings
     def get_mapping_tables(self) -> set:
-        return {table for table in sqlalchemy.inspect(self.engine).get_table_names() if table.split("_")[0] == "map"}
+        return {table for table in sqlalchemy.inspect(self.engine).get_table_names() 
+                if table.split("_")[0] == "map"}
+
 
     def get_mappings(self, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),self.engine)
 
+
     def set_mapping(self, table: str, data: pd.DataFrame) -> bool:
-        rows_affected = data.to_sql(table, con=self.engine, if_exists="append", index=False)
-        if rows_affected and rows_affected > 0:
-            return True
+
+        col_list = data.columns.tolist()
+
+        # make sure everything is capitalized
+        for column in col_list:
+            data[column] = data.loc[:,column].apply(str.upper)
+
+        # check for duplication and proceed with de-dupped data
+        current_table = self.get_mappings(table)
+        merged = pd.merge(data, current_table, how="left", on=col_list, indicator=True)
+        uniques = merged[merged["_merge"]=="left_only"].loc[:,col_list]
+
+        # execute if there's still data to commit and return a bool based on what happens
+        if len(uniques) > 0:
+            rows_affected = uniques.to_sql(table, con=self.engine, if_exists="append", index=False)
+
+            if rows_affected:
+                return True
+            else:
+                return False
         else:
             False
+
 
     def del_mapping(self, table: str, id: int) -> bool:
         with Session(self.engine) as session:

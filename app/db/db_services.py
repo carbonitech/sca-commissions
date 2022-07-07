@@ -61,7 +61,14 @@ class DatabaseServices:
 
 
     ## manufactuers tables
-    def get_manufacturers(self, id: Union[int, None]=None): ...
+    def get_manufacturer_id(self, name: str) -> int:
+        table = 'manufacturers'
+        table_obj = MANUFACTURER_TABLES[table]
+        sql = sqlalchemy.select(table_obj).where(table_obj.name==name)
+        with Session(bind=self.engine) as session:
+            manf_id = session.execute(sql).fetchone()[0]
+        return manf_id
+
     def get_manufacturers_reports(self, manufacturer_id: int) -> pd.DataFrame:
         table = "manufacturers_reports"
         table_obj = MANUFACTURER_TABLES[table]

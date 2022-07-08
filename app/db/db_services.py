@@ -40,8 +40,10 @@ class DatabaseServices:
 
         col_list = data.columns.tolist()
 
-        # make sure everything is capitalized
+        # make sure all text is capitalized
         for column in col_list:
+            if data[column].dtype != 'object':
+                continue
             data[column] = data.loc[:,column].apply(str.upper)
 
         # check for duplication and proceed with de-dupped data

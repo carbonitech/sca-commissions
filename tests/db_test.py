@@ -16,7 +16,7 @@ from app.db import db_services
 
 dotenv.load_dotenv()
 
-class TestApiCRUDFunctions(unittest.TestCase):
+class TestCRUDFunctions(unittest.TestCase):
 
     def setUp(self):
         make_date = lambda *args: datetime.datetime(*args)
@@ -34,6 +34,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
                 "standard_name": ["CHATTANOOGA", "PORT SAINT LUCIE", "BLUE RIDGE"]
             },
             "final_commission_data": {
+                "submission_id": [randint(1,100)]*4,
                 "year": [2019,2020,2021,2022],
                 "month": ["January", "November", "April", "July"],
                 "manufacturer": ["ADP", "Berry", "Allied", "Atco"],
@@ -210,6 +211,7 @@ class TestApiCRUDFunctions(unittest.TestCase):
     def test_record_final_data(self):
         table = "final_commission_data"
         data_to_add = {
+            "submission_id": [randint(101,200)]*2,
             "year": [2022, 2022],
             "month": ["June","April"],
             "manufacturer": ["AMBRO CONTROLS","AMBRO CONTROLS"],

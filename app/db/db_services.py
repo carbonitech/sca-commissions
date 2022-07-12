@@ -6,6 +6,11 @@ from sqlalchemy.engine.base import Engine
 from app.db import models
 from typing import Dict, Union
 
+CUSTOMERS = {
+    'customers': models.Customer,
+    'customer_branches': models.CustomerBranch
+}
+REPS = models.Representative
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
@@ -70,7 +75,6 @@ class DatabaseServices:
             session.commit()
         return True
 
-
     ## final commission data
     def get_final_data(self) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(COMMISSION_DATA_TABLE),self.engine)
@@ -95,7 +99,46 @@ class DatabaseServices:
     def get_manufacturers_reports(self, manufacturer_id: int) -> pd.DataFrame:
         table = "manufacturers_reports"
         table_obj = MANUFACTURER_TABLES[table]
-        result = pd.read_sql(sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id), con=self.engine)
+        result = pd.read_sql(
+                    sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id),
+                    con=self.engine
+                )
+        return result
+
+    def get_report_id(self, manufacturer_id: int, report_name: str) -> int:
+        table = "manufacturers_reports"
+        table_obj = MANUFACTURER_TABLES[table]
+        sql = sqlalchemy.select(table_obj.id) \
+                        .where(sqlalchemy.and_(
+                            table_obj.manufacturer_id == manufacturer_id,
+                            table_obj.report_name == report_name
+                        ))
+        with Session(bind=self.engine) as session:
+            report_id = session.execute(sql).fetchone()[0]
+        
+        return report_id
+
+
+    ## other tables
+    def get_customers(self) -> pd.DataFrame:
+        customers = CUSTOMERS["customers"]
+        branches = CUSTOMERS["customer_branches"]
+        sql = sqlalchemy.select(customers).join(branches)
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+    def get_reps_to_cust_ref(self) -> pd.DataFrame:
+        customers = CUSTOMERS["customers"]
+        branches = CUSTOMERS["customer_branches"]
+        reps = REPS
+        rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        sql = sqlalchemy \
+            .select(customers.name, branches.city, branches.state, reps.initials) \
+            .join(branches) \
+            .join(rep_mapping) \
+            .join(reps)
+
+        result = pd.read_sql(sql, con=self.engine)
         return result
 
 

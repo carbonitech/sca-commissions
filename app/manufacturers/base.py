@@ -1,8 +1,12 @@
 """Defines manufacturer and submission base classes"""
 import os
 import dotenv
+from datetime import datetime
 from dataclasses import dataclass
+
+import pandas as pd
 from sqlalchemy import create_engine
+
 import app.db.db_services as db_serv
 
 dotenv.load_dotenv()
@@ -26,6 +30,7 @@ class Manufacturer:
     def __init__(self):
         self.mappings = {table: database.get_mappings(table) for table in database.get_mapping_tables()}
         self.id = database.get_manufacturer_id(self.name)
+        self.customer_rep_reference = database.get_reps_to_cust_ref()
         
     
 
@@ -44,11 +49,20 @@ class Submission:
     final_comm_data = None
     total_comm = 0  # tracking cents, not dollars
 
-    def __init__(self, rep_mon: int, rep_year: int, file: bytes) -> None:
+    def __init__(self, rep_mon: int, rep_year: int, report_id: int, file: bytes) -> None:
         self.file = file
         self.report_month = rep_mon
         self.report_year = rep_year
-        self.id = ...
+        self.report_id = report_id
+        self.submission_date = datetime.today()
+        self.id = database.record_submission_metadata(
+                    report_id=self.report_id,
+                    data=pd.Series({
+                        "submission_date": self.submission_date,
+                        "reporting_month": self.report_month,
+                        "reporting_year": self.report_year
+                    })
+                )
 
 
 @dataclass

@@ -1,7 +1,7 @@
 """Database Table Models"""
 
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -9,15 +9,17 @@ class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
+    branches = relationship("CustomerBranch")
 
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
     id = Column(Integer,primary_key=True)
-    customer_id = Column(Integer)
+    customer_id = Column(Integer, ForeignKey("customers.id"))
     city = Column(String)
     state = Column(String)
     zip = Column(Integer)
+    rep = relationship("MapRepsToCustomer")
 
 
 class MapCustomerName(Base):
@@ -37,8 +39,8 @@ class MapCityName(Base):
 class MapRepsToCustomer(Base):
     __tablename__ = 'map_reps_customers'
     id = Column(Integer,primary_key=True)
-    rep_id = Column(Integer)
-    customer_branch_id = Column(Integer)
+    rep_id = Column(Integer, ForeignKey("representatives.id"))
+    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
 
 
 class Manufacturer(Base):
@@ -105,4 +107,6 @@ class Representative(Base):
     id = Column(Integer,primary_key=True)
     first_name = Column(String)
     last_name = Column(String)
+    initials = Column(String)
     date_joined = Column(DateTime)
+    branches = relationship("MapRepsToCustomer")

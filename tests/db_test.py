@@ -26,8 +26,8 @@ class TestCRUDFunctions(unittest.TestCase):
                 "standard_name": ["MINGLEDORFFS", "EDS SUPPLY COMPANY","DEALERS SUPPLY COMPANY"]
             },
             "map_reps_customers": {
-                "rep_id": [6,6,2],
-                "customer_branch_id": [350,19,31],
+                "rep_id": [1,2,3],
+                "customer_branch_id": [1,2,3],
             },
             "map_city_names": {
                 "recorded_name": ["CHATNOGA", "PT_ST_LUCIE", "BLUERIDGE"],
@@ -76,6 +76,22 @@ class TestCRUDFunctions(unittest.TestCase):
                         dumps({"customer_name": "trane supplies", "other_data": "other data"})
 
                 ]
+            },
+            "customers": {
+                "name" : ["WITTICHEN", "ED'S SUPPLY", "MINGLEDORFF'S"]
+            },
+            "customer_branches": {
+                "customer_id": [1,2,3],
+                "city": ["Birmingham", "Nashville", "Norcross"],
+                "state": ["AL","TN","GA"],
+                "zip": [35233, 37203, 30092]
+            },
+            "representatives": {
+                "first_name": ["Roger", "Matt", "Joe"],
+                "last_name": ["Daniel", "Reiners", "Carboni"],
+                "initials": ["red", "mwr", "jdc"],
+                "date_joined": [make_date(1997,6,23), make_date(2004,9,2), 
+                        make_date(2014,1,1)]
             }
         }
 
@@ -132,6 +148,9 @@ class TestCRUDFunctions(unittest.TestCase):
                     'final_commission_data': models.FinalCommissionData,
                     'report_processing_steps_log': models.ReportProcessingStepsLog,
                     'current_errors': models.CurrentError,
+                    "customers": models.Customer,
+                    "customer_branches": models.CustomerBranch,
+                    "representatives": models.Representative
                 }
                 table_no_id: pd.DataFrame = table.loc[:,(table.columns != "id")]
                 for row in table_no_id.to_dict("records"):
@@ -140,6 +159,17 @@ class TestCRUDFunctions(unittest.TestCase):
 
         self.db_services = db_services.DatabaseServices(engine=self.db)
         return
+
+    
+    def test_get_reps_to_cust_ref(self):
+        result = self.db_services.get_reps_to_cust_ref()
+        expected = pd.DataFrame(
+            {'name': ['WITTICHEN', "ED'S SUPPLY", "MINGLEDORFF'S"],
+            'city': ['Birmingham', 'Nashville', 'Norcross'],
+            'state': ['AL', 'TN', 'GA'],
+            'initials': ['red', 'mwr', 'jdc']})
+        assert_frame_equal(result,expected)
+
 
 
     def test_get_mapping_tables(self):

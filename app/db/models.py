@@ -5,6 +5,21 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
+## Core Tables
+class City(Base):
+    __tablename__ = 'cities'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)    
+    branch_cities = relationship("CustomerBranch")
+
+
+class State(Base):
+    __tablename__ = 'states'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
+    branch_states = relationship("CustomerBranch")
+
+
 class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
@@ -16,31 +31,9 @@ class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
     id = Column(Integer,primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    city = Column(String)
-    state = Column(String)
-    zip = Column(Integer)
+    city = Column(Integer, ForeignKey("cities.id"))
+    state = Column(Integer, ForeignKey("states.id"))
     rep = relationship("MapRepsToCustomer")
-
-
-class MapCustomerName(Base):
-    __tablename__ = 'map_customer_name'
-    id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
-    standard_name = Column(String)
-
-
-class MapCityName(Base):
-    __tablename__ = 'map_city_names'
-    id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
-    standard_name = Column(String)
-
-
-class MapRepsToCustomer(Base):
-    __tablename__ = 'map_reps_customers'
-    id = Column(Integer,primary_key=True)
-    rep_id = Column(Integer, ForeignKey("representatives.id"))
-    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
 
 
 class Manufacturer(Base):
@@ -49,37 +42,56 @@ class Manufacturer(Base):
     name = Column(String)
 
 
+
 class ManufacturersReport(Base):
     __tablename__ = 'manufacturers_reports'
     id = Column(Integer,primary_key=True)
-    manufacturer_id = Column(Integer)
+    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
     report_name = Column(String)
     yearly_frequency = Column(Integer)
     POS_report = Column(Boolean)
 
 
+class Representative(Base):
+    __tablename__ = 'representatives'
+    id = Column(Integer,primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    initials = Column(String)
+    date_joined = Column(DateTime)
+    branches = relationship("MapRepsToCustomer")
+
+## Mappings
+class MapCustomerName(Base):
+    __tablename__ = 'map_customer_name'
+    id = Column(Integer,primary_key=True)
+    recorded_name = Column(String)
+    standard_name = Column(String) # TODO change to customer id
+
+
+class MapCityName(Base):
+    __tablename__ = 'map_city_names'
+    id = Column(Integer,primary_key=True)
+    recorded_name = Column(String)
+    standard_name = Column(String) # TODO change to city id
+
+
+class MapRepsToCustomer(Base):
+    __tablename__ = 'map_reps_customers'
+    id = Column(Integer,primary_key=True)
+    rep_id = Column(Integer, ForeignKey("representatives.id"))
+    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
+    commission_data = relationship("FinalCommissionData")
+
+## Submissions
 class ReportSubmissionsLog(Base):
     __tablename__ = 'report_submissions_log'
     id = Column(Integer,primary_key=True)
     submission_date = Column(DateTime)
     reporting_month = Column(Integer)
     reporting_year = Column(Integer)
-    report_id = Column(Integer)
-
-
-class FinalCommissionData(Base):    # TODO: make this table customizable instead of hard-coded
-    __tablename__ = 'final_commission_data'
-    id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer)
-    year = Column(Integer)
-    month = Column(String)
-    manufacturer = Column(String)
-    salesman = Column(String)
-    customer_name = Column(String)
-    city = Column(String)
-    state = Column(String)
-    inv_amt = Column(Float)
-    comm_amt = Column(Float)
+    report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    commission_data = relationship("FinalCommissionData")
 
 
 class ReportProcessingStepsLog(Base):
@@ -102,11 +114,12 @@ class CurrentError(Base):
     row_data = Column(TEXT)
 
 
-class Representative(Base):
-    __tablename__ = 'representatives'
-    id = Column(Integer,primary_key=True)
-    first_name = Column(String)
-    last_name = Column(String)
-    initials = Column(String)
-    date_joined = Column(DateTime)
-    branches = relationship("MapRepsToCustomer")
+## Final Data
+class FinalCommissionData(Base):
+    __tablename__ = 'final_commission_data'
+    row_id = Column(Integer,primary_key=True)
+    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
+    map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))
+    inv_amt = Column(Float)
+    comm_amt = Column(Float)
+

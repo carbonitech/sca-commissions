@@ -94,12 +94,14 @@ class ReportSubmissionsLog(Base):
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     commission_data = relationship("FinalCommissionData")
+    errors = relationship("CurrentError")
+    steps = relationship("ReportProcessingStepsLog")
 
 
 class ReportProcessingStepsLog(Base):
     __tablename__ = 'report_processing_steps_log'
     id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer)
+    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
     step_num = Column(Integer)
     description = Column(String)
 
@@ -107,7 +109,7 @@ class ReportProcessingStepsLog(Base):
 class CurrentError(Base):
     __tablename__ = 'current_errors'
     id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer)
+    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
     row_index = Column(Integer)
     field = Column(String)
     value_type = Column(String)

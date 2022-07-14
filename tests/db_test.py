@@ -133,7 +133,7 @@ class TestCRUDFunctions(unittest.TestCase):
         )
 
         ## WRITE DATA TO TESTING DB IN PGSQL
-        db_url = os.getenv("TESTING_DATABASE_URL")
+        db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
         with Session(self.db) as session:

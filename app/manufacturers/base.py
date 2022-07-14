@@ -11,7 +11,7 @@ import app.db.db_services as db_serv
 
 dotenv.load_dotenv()
 
-DB_URL = os.getenv("SCA_DATABASE_URL")
+DB_URL = os.getenv("DATABASE_URL")
 DB_ENGINE = create_engine(DB_URL)
 
 database = db_serv.DatabaseServices(DB_ENGINE)
@@ -25,7 +25,7 @@ class Manufacturer:
     This is a base class for creating manufacturers
     """
 
-    name = None
+    name: str = None # defined by subclasses, manufacturer's db name
 
     def __init__(self):
         self.mappings = {table: database.get_mappings(table) for table in database.get_mapping_tables()}

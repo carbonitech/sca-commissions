@@ -33,8 +33,8 @@ class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
     id = Column(Integer,primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    city = Column(Integer, ForeignKey("cities.id"))
-    state = Column(Integer, ForeignKey("states.id"))
+    city_id = Column(Integer, ForeignKey("cities.id"))
+    state_id = Column(Integer, ForeignKey("states.id"))
     rep = relationship("MapRepsToCustomer")
 
 

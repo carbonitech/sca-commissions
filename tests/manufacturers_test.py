@@ -1,10 +1,6 @@
 import unittest
 import dotenv
 import os
-import datetime
-from json import dumps
-from typing import Dict
-from random import randint, choice, sample
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -18,18 +14,20 @@ dotenv.load_dotenv()
 
 # keys must match file names in ./tests/db_tables
 DB_TABLES = {
+        'cities': models.City,
+        'states': models.State,
+        'customers': models.Customer,
+        'customer_branches': models.CustomerBranch,
+        'manufacturers': models.Manufacturer,
+        'manufacturers_reports': models.ManufacturersReport,
+        'representatives': models.Representative,
         'map_customer_name': models.MapCustomerName,
         'map_city_names': models.MapCityName,
         'map_reps_customers': models.MapRepsToCustomer,
-        'manufacturers': models.Manufacturer,
-        'manufacturers_reports': models.ManufacturersReport,
         'report_submissions_log': models.ReportSubmissionsLog,
-        'final_commission_data': models.FinalCommissionData,
         'report_processing_steps_log': models.ReportProcessingStepsLog,
         'current_errors': models.CurrentError,
-        "customers": models.Customer,
-        "customer_branches": models.CustomerBranch,
-        "representatives": models.Representative
+        'final_commission_data': models.FinalCommissionData
 }
 
 

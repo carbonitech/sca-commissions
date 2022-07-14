@@ -42,6 +42,7 @@ class Manufacturer(Base):
     __tablename__ = 'manufacturers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
+    manuf_reports = relationship("ManufacturersReport")
 
 
 class ManufacturersReport(Base):

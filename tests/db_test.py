@@ -1,3 +1,4 @@
+from tokenize import cookie_re
 import unittest
 import dotenv
 import os
@@ -16,147 +17,58 @@ from app.db import db_services
 
 dotenv.load_dotenv()
 
+# keys must match file names in ./tests/db_tables
+DB_TABLES = {
+        'cities': models.City,
+        'states': models.State,
+        'customers': models.Customer,
+        'customer_branches': models.CustomerBranch,
+        'manufacturers': models.Manufacturer,
+        'manufacturers_reports': models.ManufacturersReport,
+        'representatives': models.Representative,
+        'map_customer_name': models.MapCustomerName,
+        'map_city_names': models.MapCityName,
+        'map_reps_customers': models.MapRepsToCustomer,
+        'report_submissions_log': models.ReportSubmissionsLog,
+        'report_processing_steps_log': models.ReportProcessingStepsLog,
+        'current_errors': models.CurrentError,
+        'final_commission_data': models.FinalCommissionData
+}
+
+
 class TestCRUDFunctions(unittest.TestCase):
 
     def setUp(self):
-        make_date = lambda *args: datetime.datetime(*args)
-        entries_by_table: Dict[str,dict] = {
-            "map_customer_name": {
-                "recorded_name": ["MINGLEDROFFS", "EDSSUPPLYCO", "DSC"],
-                "standard_name": ["MINGLEDORFFS", "EDS SUPPLY COMPANY","DEALERS SUPPLY COMPANY"]
-            },
-            "map_reps_customers": {
-                "rep_id": [1,2,3],
-                "customer_branch_id": [1,2,3],
-            },
-            "map_city_names": {
-                "recorded_name": ["CHATNOGA", "PT_ST_LUCIE", "BLUERIDGE"],
-                "standard_name": ["CHATTANOOGA", "PORT SAINT LUCIE", "BLUE RIDGE"]
-            },
-            "final_commission_data": {
-                "submission_id": [randint(1,100)]*4,
-                "year": [2019,2020,2021,2022],
-                "month": ["January", "November", "April", "July"],
-                "manufacturer": ["ADP", "Berry", "Allied", "Atco"],
-                "salesman": ["mwr","sca", "jdc", "red"],
-                "customer_name": ["Coastal Supply","Baker Distributing","Dealers Supply","Hinkle Metals"],
-                "city": ["Knoxville","Jacksonville","Forest Park","Birmingham"],
-                "state": ["TN","FL","GA","AL"]
-            },
-            "manufacturers_reports": {
-                "report_name": ["Famco Commission Report", "Baker POS Report", "ADP Salesman Report"],
-                "yearly_frequency": [12,4,12],
-                "POS_report": [False, True, False]
-            },
-            "report_submissions_log": {
-                "submission_date": [make_date(2022, 1, 31), make_date(2022,2,15,13),
-                        make_date(2022,3,3,8,19,49)],
-                "reporting_month": [12,1,2],
-                "reporting_year": [2021,2022,2022]
-            },
-            "report_processing_steps_log": {
-                "step_num": [1,2,3],
-                "description": ["removed blank rows", "corrected customer names",
-                        "added rep assignments"]
-            },
-            "current_errors": {
-                "submission_id": [randint(1,1000) for _ in range(5)],
-                "row_index": [randint(1,1000) for _ in range(5)],
-                "field": ["customer_name", "city", "inv_amt", "comm_amt", "customer_name"],
-                "value_type": ["str","str","None","float","str"],
-                "value_content": ["Mingledroff", "forrrest park", "NaN", "-999999", "trane supplies"],
-                "reason": ["customer name not in the mapping table", "city name not in the mapping table",
-                        "expected value to be a number", "value is a high negative number",
-                        "custome name not in the mapping table"],
-                "row_data": [
-                        dumps({"Customer": "Mingledroff", "other_data": "other data"}),
-                        dumps({"City": "forrrest park", "other data": "other data"}),
-                        dumps({"inv_amt": None, "other data": 1354}),
-                        dumps({"comm_amt": -999999, "other data": "other data"}),
-                        dumps({"customer_name": "trane supplies", "other_data": "other data"})
-
-                ]
-            },
-            "customers": {
-                "name" : ["WITTICHEN", "ED'S SUPPLY", "MINGLEDORFF'S"]
-            },
-            "customer_branches": {
-                "customer_id": [1,2,3],
-                "city": ["Birmingham", "Nashville", "Norcross"],
-                "state": ["AL","TN","GA"],
-                "zip": [35233, 37203, 30092]
-            },
-            "representatives": {
-                "first_name": ["Roger", "Matt", "Joe"],
-                "last_name": ["Daniel", "Reiners", "Carboni"],
-                "initials": ["red", "mwr", "jdc"],
-                "date_joined": [make_date(1997,6,23), make_date(2004,9,2), 
-                        make_date(2014,1,1)]
-            }
-        }
-
-        ## ADDITIONS TO THE ENTRIES_BY_TABLE DICT
-        # final commission data
-        inv_amts = [randint(100,50000000)/100 for _ in range(0,4)]
-        entries_by_table["final_commission_data"]["inv_amt"] = inv_amts
-        comm_amts = [round(num*3/100, 2) for num in inv_amts]
-        entries_by_table["final_commission_data"]["comm_amt"] = comm_amts
-
-        # manufacturer's reports
-        # dynamically range by length of an existing 'column'
-        manufacturer_ids = [
-            randint(1,20) for _ in range(
-                    len(entries_by_table["manufacturers_reports"]["report_name"])
-                )
-        ]
-        entries_by_table["manufacturers_reports"]["manufacturer_id"] = manufacturer_ids
-
-        # report submissions log
-        # make report_ids the same len and number as the id col in "manufacturers_reports"
-        report_ids = [num+1 for num in range(len(manufacturer_ids))]
-        entries_by_table["report_submissions_log"]["report_id"] = report_ids
-
-        # report processing steps
-        sub_ids = sample(report_ids,k=len(report_ids)) # needs to match id num range of report_submissions_log
-        entries_by_table["report_processing_steps_log"]["submission_id"] = sub_ids
-
-        ## CREATE DATAFRAMES FOR EACH DICT TABLE
-        self.entries_dfs = {tbl_name:pd.DataFrame(data) for tbl_name,data in entries_by_table.items()}
-        ## ADD ID COLUMNS BASED ON THE LENGTH OF THE TABLE - PGSQL INDEX STARTS AT 1
-        for tbl,df in self.entries_dfs.items():
-             self.entries_dfs[tbl].insert(0,"id",list(range(1,len(df)+1))) 
-
-        # reorder columns where needed
-        self.entries_dfs["manufacturers_reports"].insert(1,"manufacturer_id", self.entries_dfs["manufacturers_reports"].pop("manufacturer_id"))
-        self.entries_dfs["report_processing_steps_log"].insert(
-            1, "submission_id", self.entries_dfs["report_processing_steps_log"].pop("submission_id")
-        )
-
-        ## WRITE DATA TO TESTING DB IN PGSQL
+        
+        # set up database
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
+
+        # load csv files
+        tables_dir = './tests/db_tables'
+        files: list[str] = os.listdir(tables_dir)
+        self.tables: dict[str,pd.DataFrame] = {
+            file[:-4]: pd.read_csv(os.path.join(tables_dir,file))
+            for file in files
+        }
+
+        # populate database with csv data
         with Session(self.db) as session:
-            for name, table in self.entries_dfs.items():
-                tables = {
-                    'map_customer_name': models.MapCustomerName,
-                    'map_city_names': models.MapCityName,
-                    'map_reps_customers': models.MapRepsToCustomer,
-                    'manufacturers': models.Manufacturer,
-                    'manufacturers_reports': models.ManufacturersReport,
-                    'report_submissions_log': models.ReportSubmissionsLog,
-                    'final_commission_data': models.FinalCommissionData,
-                    'report_processing_steps_log': models.ReportProcessingStepsLog,
-                    'current_errors': models.CurrentError,
-                    "customers": models.Customer,
-                    "customer_branches": models.CustomerBranch,
-                    "representatives": models.Representative
-                }
-                table_no_id: pd.DataFrame = table.loc[:,(table.columns != "id")]
-                for row in table_no_id.to_dict("records"):
-                    session.add(tables[name](**row))
+            for table, data in self.tables.items():
+                for row in data.to_dict("records"):
+                    session.add(DB_TABLES[table](**row)) 
+                    # col names in csv must match table schema
             session.commit()
 
+        # insert expected id values into each table
+        add_one = lambda val: val+1
+        for dataset in self.tables.values():
+            dataset.reset_index(inplace=True)
+            dataset.rename(columns={"index":"id"}, inplace=True)
+            dataset.id = dataset.id.apply(add_one)
+
+            
         self.db_services = db_services.DatabaseServices(engine=self.db)
         return
 
@@ -188,7 +100,7 @@ class TestCRUDFunctions(unittest.TestCase):
                                 table="map_reps_customers")
             }
         for table,result in results.items():
-            expected = self.entries_dfs[table]
+            expected = self.tables[table]
             assert_frame_equal(result,expected)
             return
 

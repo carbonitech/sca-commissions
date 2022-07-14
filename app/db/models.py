@@ -11,6 +11,7 @@ class City(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)    
     branch_cities = relationship("CustomerBranch")
+    map_names = relationship("MapCityName")
 
 
 class State(Base):
@@ -25,6 +26,7 @@ class Customer(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     branches = relationship("CustomerBranch")
+    map_names = relationship("MapCustomerName")
 
 
 class CustomerBranch(Base):
@@ -40,7 +42,6 @@ class Manufacturer(Base):
     __tablename__ = 'manufacturers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
-
 
 
 class ManufacturersReport(Base):
@@ -61,19 +62,20 @@ class Representative(Base):
     date_joined = Column(DateTime)
     branches = relationship("MapRepsToCustomer")
 
+
 ## Mappings
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
-    standard_name = Column(String) # TODO change to customer id
+    customer_id = Column(Integer, ForeignKey("customers.id"))
 
 
 class MapCityName(Base):
     __tablename__ = 'map_city_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
-    standard_name = Column(String) # TODO change to city id
+    city_id = Column(Integer, ForeignKey("cities.id"))
 
 
 class MapRepsToCustomer(Base):

@@ -1,4 +1,5 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
+import numpy
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
@@ -9,6 +10,10 @@ from typing import Dict, Union
 CUSTOMERS = {
     'customers': models.Customer,
     'customer_branches': models.CustomerBranch
+}
+LOCATIONS = {
+    'cities': models.City,
+    'states': models.State
 }
 REPS = models.Representative
 MAPPING_TABLES = {
@@ -130,15 +135,26 @@ class DatabaseServices:
     def get_reps_to_cust_ref(self) -> pd.DataFrame:
         customers = CUSTOMERS["customers"]
         branches = CUSTOMERS["customer_branches"]
-        reps = REPS
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
         rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        reps = REPS
         sql = sqlalchemy \
-            .select(customers.name, branches.city, branches.state, reps.initials) \
+            .select(customers.name, cities.name, states.name, reps.initials) \
+            .select_from(customers) \
             .join(branches) \
+            .join(cities) \
+            .join(states) \
             .join(rep_mapping) \
             .join(reps)
 
         result = pd.read_sql(sql, con=self.engine)
+        result.columns = ["customer_name", "city", "state", "rep"]
+        
+        # replace string "NaN" with numpy nan - how pandas would represent it after .merge
+        for column in ["city","state"]:
+            result[column] = result.loc[:,column].apply(lambda val: numpy.nan if val == "NaN" else val)
+            
         return result
 
 

@@ -1,11 +1,9 @@
-from tokenize import cookie_re
 import unittest
 import dotenv
 import os
 import datetime
 from json import dumps
-from typing import Dict
-from random import randint, choice, sample
+from random import randint, choice
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -36,6 +34,7 @@ DB_TABLES = {
 }
 
 
+
 class TestCRUDFunctions(unittest.TestCase):
 
     def setUp(self):
@@ -44,6 +43,7 @@ class TestCRUDFunctions(unittest.TestCase):
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
+        self.db_services = db_services.DatabaseServices(engine=self.db)
 
         # load csv files
         tables_dir = './tests/db_tables'
@@ -61,25 +61,43 @@ class TestCRUDFunctions(unittest.TestCase):
                     # col names in csv must match table schema
             session.commit()
 
-        # insert expected id values into each table
+        # insert expected postgreSQL table id values into each pandas DataFrame
         add_one = lambda val: val+1
         for dataset in self.tables.values():
             dataset.reset_index(inplace=True)
             dataset.rename(columns={"index":"id"}, inplace=True)
             dataset.id = dataset.id.apply(add_one)
-
             
-        self.db_services = db_services.DatabaseServices(engine=self.db)
         return
 
     
     def test_get_reps_to_cust_ref(self):
+        customers_table: pd.DataFrame = self.tables["customers"]
+        branches: pd.DataFrame = self.tables["customer_branches"]
+        cities: pd.DataFrame = self.tables["cities"]
+        states: pd.DataFrame = self.tables["states"]
+        rep_map: pd.DataFrame = self.tables["map_reps_customers"]
+        reps: pd.DataFrame = self.tables["representatives"]
+        all_merged = customers_table \
+            .merge(branches, left_on="id", right_on="customer_id", suffixes=(None,"_branches")) \
+            .merge(cities, left_on="city_id", right_on="id", suffixes=(None,"_cities")) \
+            .merge(states, left_on="state_id", right_on="id", suffixes=(None,"_states")) \
+            .merge(rep_map, left_on="id_branches", right_on="customer_branch_id") \
+            .merge(reps, left_on="rep_id", right_on="id")
+        
+        expected = all_merged.loc[:,["name", "name_cities", "name_states", "initials"]]
+        expected.columns = ["customer_name", "city", "state", "rep"]
+
+        # pd.read_sql produces different ordering than pd.merge
+        # sorting both from left to right and resetting the index
+        # simply to execute a comparison for equality
+        expected.sort_values(by=expected.columns.tolist(), inplace=True)
+        expected.reset_index(drop=True, inplace=True)
+
         result = self.db_services.get_reps_to_cust_ref()
-        expected = pd.DataFrame(
-            {'name': ['WITTICHEN', "ED'S SUPPLY", "MINGLEDORFF'S"],
-            'city': ['Birmingham', 'Nashville', 'Norcross'],
-            'state': ['AL', 'TN', 'GA'],
-            'initials': ['red', 'mwr', 'jdc']})
+        result.sort_values(by=result.columns.tolist(), inplace=True)
+        result.reset_index(drop=True, inplace=True)
+
         assert_frame_equal(result,expected)
 
 
@@ -101,13 +119,17 @@ class TestCRUDFunctions(unittest.TestCase):
             }
         for table,result in results.items():
             expected = self.tables[table]
+            if expected.empty:
+                # empty dfs from pd.read_sql return a different index class than expected.
+                # this fix avoids failing test when comparing two empty dfs
+                expected.index = pd.Index([], dtype='object')
             assert_frame_equal(result,expected)
             return
 
     def test_set_mapping(self):
         data_to_add = {
-            "map_customer_name": {"recorded_name": ["WICHITTEN"], "standard_name": ["WITTICHEN SUPPLY COMPANY"]},
-            "map_city_names": {"recorded_name": ["FORREST PARK"], "standard_name": ["FOREST PARK"]},
+            "map_customer_name": {"recorded_name": ["WICHITTEN"], "customer_id": [44]},
+            "map_city_names": {"recorded_name": ["FORREST PARK"], "city_id": [24]},
             "map_reps_customers": {"rep_id": [1], "customer_branch_id": [32]}
         }
 
@@ -117,13 +139,17 @@ class TestCRUDFunctions(unittest.TestCase):
             self.assertTrue(set_result)
 
         for tbl in data_to_add:
-            data_to_add[tbl]["id"] = len(self.entries_dfs[tbl])+1
+            data_to_add[tbl]["id"] = len(self.tables[tbl])+1
         
         for mapping_tbl in mapping_tbls:
-            expected = pd.concat([
-                self.entries_dfs[mapping_tbl],
-                pd.DataFrame(data_to_add[mapping_tbl])
-                ], ignore_index=True)
+            if self.tables[mapping_tbl].empty:
+                expected = pd.DataFrame(data_to_add[mapping_tbl])
+                expected.insert(0,"id",expected.pop("id"))
+            else:
+                expected = pd.concat([
+                    self.tables[mapping_tbl],
+                    pd.DataFrame(data_to_add[mapping_tbl])
+                    ], ignore_index=True)
 
             get_result = self.db_services.get_mappings(mapping_tbl)
             assert_frame_equal(get_result, expected)
@@ -132,7 +158,7 @@ class TestCRUDFunctions(unittest.TestCase):
     def test_del_mapping(self):
         mapping_tables = self.db_services.get_mapping_tables()
         
-        for tbl, data in self.entries_dfs.items():
+        for tbl, data in self.tables.items():
             if tbl not in mapping_tables:
                 continue
             rec_to_del = randint(1,len(data))
@@ -146,7 +172,7 @@ class TestCRUDFunctions(unittest.TestCase):
     def test_get_final_data(self):
         table = "final_commission_data"
         result = self.db_services.get_final_data()
-        expected = self.entries_dfs[table]
+        expected = self.tables[table]
         assert_frame_equal(result, expected)
         return
 
@@ -168,26 +194,26 @@ class TestCRUDFunctions(unittest.TestCase):
         record_result = self.db_services.record_final_data(pd.DataFrame(data_to_add))
         self.assertTrue(record_result)
 
-        data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,3)]
-        expected = pd.concat([self.entries_dfs[table],pd.DataFrame(data_to_add)], ignore_index=True)
+        data_to_add["id"] = [len(self.tables[table])+num for num in range(1,3)]
+        expected = pd.concat([self.tables[table],pd.DataFrame(data_to_add)], ignore_index=True)
         get_result = self.db_services.get_final_data()
         assert_frame_equal(get_result, expected)
         return
 
     def test_get_manufacturers_reports(self):
         table = "manufacturers_reports"
-        rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
+        rand_manf_id = choice(self.tables["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
         result = self.db_services.get_manufacturers_reports(manufacturer_id=rand_manf_id)
-        expected = self.entries_dfs[table][self.entries_dfs[table].manufacturer_id == rand_manf_id].reset_index(drop=True)
+        expected = self.tables[table][self.tables[table].manufacturer_id == rand_manf_id].reset_index(drop=True)
         assert_frame_equal(result,expected)
         return
 
     def test_get_submissions_metadata(self):
         table = "report_submissions_log"
-        rand_manf_id = choice(self.entries_dfs["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
+        rand_manf_id = choice(self.tables["manufacturers_reports"].loc[:,"manufacturer_id"].tolist())
         result = self.db_services.get_submissions_metadata(manufacturer_id=rand_manf_id)
         report_ids = result.loc[:,"id"].tolist() 
-        expected = self.entries_dfs[table][self.entries_dfs[table].report_id.isin(report_ids)].reset_index(drop=True)
+        expected = self.tables[table][self.tables[table].report_id.isin(report_ids)].reset_index(drop=True)
         assert_frame_equal(result, expected)
         return
 
@@ -199,12 +225,12 @@ class TestCRUDFunctions(unittest.TestCase):
             "reporting_year": [2021,2022]
         }
         data_df = pd.DataFrame(data_to_add)
-        report_ids = [choice(self.entries_dfs["manufacturers_reports"].loc[:,"id"].tolist()) for _ in range(2)]
+        report_ids = [choice(self.tables["manufacturers_reports"].loc[:,"id"].tolist()) for _ in range(2)]
         for i,rid in enumerate(report_ids):
             record_result = self.db_services.record_submission_metadata(report_id=rid, data=data_df.iloc[i])
             self.assertGreater(record_result,0)
-            manf_id = self.entries_dfs["manufacturers_reports"] \
-                .loc[self.entries_dfs["manufacturers_reports"].id == rid] \
+            manf_id = self.tables["manufacturers_reports"] \
+                .loc[self.tables["manufacturers_reports"].id == rid] \
                 .manufacturer_id.iat[0]
             manf_id = manf_id.item()
             get_result = self.db_services.get_submissions_metadata(manf_id)
@@ -223,23 +249,23 @@ class TestCRUDFunctions(unittest.TestCase):
 
     def test_del_submission(self):
         metadata_table = 'report_submissions_log'
-        rec_to_del = choice(self.entries_dfs[metadata_table].loc[:,"id"].tolist())
+        rec_to_del = choice(self.tables[metadata_table].loc[:,"id"].tolist())
         
         del_result = self.db_services.del_submission(rec_to_del)
         self.assertTrue(del_result)
 
-        report_id_of_sub = self.entries_dfs[metadata_table]["report_id"]\
-                .loc[self.entries_dfs[metadata_table]["id"] == rec_to_del].item()
-        manf_id_of_sub = self.entries_dfs["manufacturers_reports"]["manufacturer_id"]\
-                .loc[self.entries_dfs["manufacturers_reports"]["id"] == report_id_of_sub].item()
+        report_id_of_sub = self.tables[metadata_table]["report_id"]\
+                .loc[self.tables[metadata_table]["id"] == rec_to_del].item()
+        manf_id_of_sub = self.tables["manufacturers_reports"]["manufacturer_id"]\
+                .loc[self.tables["manufacturers_reports"]["id"] == report_id_of_sub].item()
 
         get_result = self.db_services.get_submissions_metadata(manufacturer_id=manf_id_of_sub)
 
         manufacturers_reports = self.db_services.get_manufacturers_reports(manf_id_of_sub)
         manf_report_ids = manufacturers_reports.loc[:,"id"].tolist()
-        expected = self.entries_dfs[metadata_table]\
-                .loc[(self.entries_dfs[metadata_table]["id"] != rec_to_del)
-                & (self.entries_dfs[metadata_table]["id"].isin(manf_report_ids))]
+        expected = self.tables[metadata_table]\
+                .loc[(self.tables[metadata_table]["id"] != rec_to_del)
+                & (self.tables[metadata_table]["id"].isin(manf_report_ids))]
         expected = expected.reset_index(drop=True)
 
         # Index mismatch error arises when DFs are empty
@@ -253,10 +279,10 @@ class TestCRUDFunctions(unittest.TestCase):
 
     def test_get_processing_steps(self):
         table = 'report_processing_steps_log'
-        rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        rand_sub_id = choice(self.tables[table].loc[:,"submission_id"].tolist())
         result = self.db_services.get_processing_steps(submission_id=rand_sub_id)
-        expected = self.entries_dfs[table].loc[
-            self.entries_dfs[table].submission_id == rand_sub_id
+        expected = self.tables[table].loc[
+            self.tables[table].submission_id == rand_sub_id
         ]
         expected.reset_index(drop=True,inplace=True)
         assert_frame_equal(result,expected)
@@ -272,7 +298,7 @@ class TestCRUDFunctions(unittest.TestCase):
         record_result = self.db_services.record_processing_steps(sub_id, data=pd.DataFrame(data_to_add))
         self.assertTrue(record_result)
 
-        data_to_add["id"] = [len(self.entries_dfs[table])+num for num in range(1,4)]
+        data_to_add["id"] = [len(self.tables[table])+num for num in range(1,4)]
         expected = pd.DataFrame(data_to_add)
         expected["submission_id"] = sub_id
         expected.insert(0,"submission_id",expected.pop("submission_id"))
@@ -283,21 +309,21 @@ class TestCRUDFunctions(unittest.TestCase):
 
     def test_del_processing_steps(self):
         table = "report_processing_steps_log"
-        rec_to_del = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        rec_to_del = choice(self.tables[table].loc[:,"submission_id"].tolist())
         del_result = self.db_services.del_processing_steps(rec_to_del)
         self.assertTrue(del_result)
 
         get_result = self.db_services.get_processing_steps(rec_to_del)
-        expected = pd.DataFrame(columns=self.entries_dfs[table].columns)
+        expected = pd.DataFrame(columns=self.tables[table].columns)
         assert_frame_equal(get_result,expected)
         return
      
     def test_get_errors(self):
         table = 'current_errors'
-        rand_sub_id = choice(self.entries_dfs[table].loc[:,"submission_id"].tolist())
+        rand_sub_id = choice(self.tables[table].loc[:,"submission_id"].tolist())
         result = self.db_services.get_errors(rand_sub_id)
-        expected = self.entries_dfs[table].loc[
-            self.entries_dfs[table].submission_id == rand_sub_id
+        expected = self.tables[table].loc[
+            self.tables[table].submission_id == rand_sub_id
         ]
         expected.reset_index(drop=True,inplace=True)
         assert_frame_equal(result,expected)
@@ -323,8 +349,8 @@ class TestCRUDFunctions(unittest.TestCase):
         
         expected_new = data_add_df.copy()
         expected_new.insert(0,"submission_id", submission_id)
-        expected_new.insert(0,"id",[len(self.entries_dfs[table])+num for num in range(1,3)])
-        expected = pd.concat([self.entries_dfs[table], expected_new])
+        expected_new.insert(0,"id",[len(self.tables[table])+num for num in range(1,3)])
+        expected = pd.concat([self.tables[table], expected_new])
         expected = expected[expected.submission_id == submission_id].reset_index(drop=True)
         
         assert_frame_equal(get_result, expected)
@@ -332,7 +358,7 @@ class TestCRUDFunctions(unittest.TestCase):
 
 
     def test_del_error(self):
-        setup_df = self.entries_dfs["current_errors"]
+        setup_df = self.tables["current_errors"]
         rec_to_del = choice(setup_df["id"].tolist())
         result = self.db_services.del_error(rec_to_del)
         self.assertTrue(result)

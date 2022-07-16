@@ -35,7 +35,7 @@ DB_TABLES = {
 
 
 
-class TestCRUDFunctions(unittest.TestCase):
+class TestRefTableManagement(unittest.TestCase):
 
     def setUp(self):
         
@@ -45,7 +45,7 @@ class TestCRUDFunctions(unittest.TestCase):
         models.Base.metadata.create_all(self.db)
         self.db_services = db_services.DatabaseServices(engine=self.db)
 
-        # load csv files
+        # load csv files for db reference tables
         tables_dir = './tests/db_tables'
         files: list[str] = os.listdir(tables_dir)
         self.tables: dict[str,pd.DataFrame] = {
@@ -57,8 +57,8 @@ class TestCRUDFunctions(unittest.TestCase):
         with Session(self.db) as session:
             for table, data in self.tables.items():
                 for row in data.to_dict("records"):
-                    session.add(DB_TABLES[table](**row)) 
                     # col names in csv must match table schema
+                    session.add(DB_TABLES[table](**row)) 
             session.commit()
 
         # insert expected postgreSQL table id values into each pandas DataFrame
@@ -69,37 +69,6 @@ class TestCRUDFunctions(unittest.TestCase):
             dataset.id = dataset.id.apply(add_one)
             
         return
-
-    
-    def test_get_reps_to_cust_ref(self):
-        customers_table: pd.DataFrame = self.tables["customers"]
-        branches: pd.DataFrame = self.tables["customer_branches"]
-        cities: pd.DataFrame = self.tables["cities"]
-        states: pd.DataFrame = self.tables["states"]
-        rep_map: pd.DataFrame = self.tables["map_reps_customers"]
-        reps: pd.DataFrame = self.tables["representatives"]
-        all_merged = customers_table \
-            .merge(branches, left_on="id", right_on="customer_id", suffixes=(None,"_branches")) \
-            .merge(cities, left_on="city_id", right_on="id", suffixes=(None,"_cities")) \
-            .merge(states, left_on="state_id", right_on="id", suffixes=(None,"_states")) \
-            .merge(rep_map, left_on="id_branches", right_on="customer_branch_id") \
-            .merge(reps, left_on="rep_id", right_on="id")
-        
-        expected = all_merged.loc[:,["name", "name_cities", "name_states", "initials"]]
-        expected.columns = ["customer_name", "city", "state", "rep"]
-
-        # pd.read_sql produces different ordering than pd.merge
-        # sorting both from left to right and resetting the index
-        # simply to execute a comparison for equality
-        expected.sort_values(by=expected.columns.tolist(), inplace=True)
-        expected.reset_index(drop=True, inplace=True)
-
-        result = self.db_services.get_reps_to_cust_ref()
-        result.sort_values(by=result.columns.tolist(), inplace=True)
-        result.reset_index(drop=True, inplace=True)
-
-        assert_frame_equal(result,expected)
-
 
 
     def test_get_mapping_tables(self):
@@ -169,36 +138,6 @@ class TestCRUDFunctions(unittest.TestCase):
             assert_frame_equal(get_result, expected)
         return
 
-    def test_get_final_data(self):
-        table = "final_commission_data"
-        result = self.db_services.get_final_data()
-        expected = self.tables[table]
-        assert_frame_equal(result, expected)
-        return
-
-    def test_record_final_data(self):
-        table = "final_commission_data"
-        data_to_add = {
-            "submission_id": [randint(101,200)]*2,
-            "year": [2022, 2022],
-            "month": ["June","April"],
-            "manufacturer": ["AMBRO CONTROLS","AMBRO CONTROLS"],
-            "salesman": ["jdc","mwr"],
-            "customer_name": ["WINSUPPLY", "EDS SUPPLY COMPANY"],
-            "city": ["Baldwin","Nashville"],
-            "state": ["GA","TN"],
-            "inv_amt": [randint(100,50000000)/100 for _ in range(2)]
-        }
-        data_to_add["comm_amt"] = [round(inv*3/100, 2) for inv in data_to_add["inv_amt"]]
-
-        record_result = self.db_services.record_final_data(pd.DataFrame(data_to_add))
-        self.assertTrue(record_result)
-
-        data_to_add["id"] = [len(self.tables[table])+num for num in range(1,3)]
-        expected = pd.concat([self.tables[table],pd.DataFrame(data_to_add)], ignore_index=True)
-        get_result = self.db_services.get_final_data()
-        assert_frame_equal(get_result, expected)
-        return
 
     def test_get_manufacturers_reports(self):
         table = "manufacturers_reports"
@@ -207,6 +146,48 @@ class TestCRUDFunctions(unittest.TestCase):
         expected = self.tables[table][self.tables[table].manufacturer_id == rand_manf_id].reset_index(drop=True)
         assert_frame_equal(result,expected)
         return
+
+
+    def tearDown(self):
+        models.Base.metadata.drop_all(self.db)
+        return
+
+
+class TestSubmissionDataManagement(unittest.TestCase):
+
+    def setUp(self):
+        
+        # set up database
+        db_url = os.getenv("DATABASE_URL")
+        self.db = create_engine(db_url)
+        models.Base.metadata.create_all(self.db)
+        self.db_services = db_services.DatabaseServices(engine=self.db)
+
+        # load csv files for db reference tables
+        tables_dir = './tests/db_tables'
+        files: list[str] = os.listdir(tables_dir)
+        self.tables: dict[str,pd.DataFrame] = {
+            file[:-4]: pd.read_csv(os.path.join(tables_dir,file))
+            for file in files
+        }
+
+        # populate database with csv data
+        with Session(self.db) as session:
+            for table, data in self.tables.items():
+                for row in data.to_dict("records"):
+                    # col names in csv must match table schema
+                    session.add(DB_TABLES[table](**row)) 
+            session.commit()
+
+        # insert expected postgreSQL table id values into each pandas DataFrame
+        add_one = lambda val: val+1
+        for dataset in self.tables.values():
+            dataset.reset_index(inplace=True)
+            dataset.rename(columns={"index":"id"}, inplace=True)
+            dataset.id = dataset.id.apply(add_one)
+            
+        return
+
 
     def test_get_submissions_metadata(self):
         table = "report_submissions_log"
@@ -356,7 +337,6 @@ class TestCRUDFunctions(unittest.TestCase):
         assert_frame_equal(get_result, expected)
         return
 
-
     def test_del_error(self):
         setup_df = self.tables["current_errors"]
         rec_to_del = choice(setup_df["id"].tolist())
@@ -376,10 +356,116 @@ class TestCRUDFunctions(unittest.TestCase):
             assert_frame_equal(get_result, expected)
 
 
+    def test_record_final_data(self):
+        table = "final_commission_data"
+        data_to_add = {
+            "submission_id": [randint(101,200)]*2,
+            "year": [2022, 2022],
+            "month": ["June","April"],
+            "manufacturer": ["AMBRO CONTROLS","AMBRO CONTROLS"],
+            "salesman": ["jdc","mwr"],
+            "customer_name": ["WINSUPPLY", "EDS SUPPLY COMPANY"],
+            "city": ["Baldwin","Nashville"],
+            "state": ["GA","TN"],
+            "inv_amt": [randint(100,50000000)/100 for _ in range(2)]
+        }
+        data_to_add["comm_amt"] = [round(inv*3/100, 2) for inv in data_to_add["inv_amt"]]
 
+        record_result = self.db_services.record_final_data(pd.DataFrame(data_to_add))
+        self.assertTrue(record_result)
+
+        data_to_add["id"] = [len(self.tables[table])+num for num in range(1,3)]
+        expected = pd.concat([self.tables[table],pd.DataFrame(data_to_add)], ignore_index=True)
+        get_result = self.db_services.get_final_data()
+        assert_frame_equal(get_result, expected)
+        return
+
+    def test_get_final_data(self):
+        table = "final_commission_data"
+        result = self.db_services.get_final_data()
+        expected = self.tables[table]
+        assert_frame_equal(result, expected)
+        return
+
+
+    @unittest.skip
     def test_get_submission_files(self): ...
+    @unittest.skip
     def test_record_submission_file(self): ...
+    @unittest.skip
     def test_del_submission_file(self): ...
+
+    def tearDown(self):
+        models.Base.metadata.drop_all(self.db)
+        return
+
+ 
+class TestJoinedReferenceHelpers(unittest.TestCase):
+
+    def setUp(self):
+        
+        # set up database
+        db_url = os.getenv("DATABASE_URL")
+        self.db = create_engine(db_url)
+        models.Base.metadata.create_all(self.db)
+        self.db_services = db_services.DatabaseServices(engine=self.db)
+
+        # load csv files for db reference tables
+        tables_dir = './tests/db_tables'
+        files: list[str] = os.listdir(tables_dir)
+        self.tables: dict[str,pd.DataFrame] = {
+            file[:-4]: pd.read_csv(os.path.join(tables_dir,file))
+            for file in files
+        }
+
+        # populate database with csv data
+        with Session(self.db) as session:
+            for table, data in self.tables.items():
+                for row in data.to_dict("records"):
+                    # col names in csv must match table schema
+                    session.add(DB_TABLES[table](**row)) 
+            session.commit()
+
+        # insert expected postgreSQL table id values into each pandas DataFrame
+        add_one = lambda val: val+1
+        for dataset in self.tables.values():
+            dataset.reset_index(inplace=True)
+            dataset.rename(columns={"index":"id"}, inplace=True)
+            dataset.id = dataset.id.apply(add_one)
+            
+        return
+
+
+    def test_get_reps_to_cust_ref(self):
+        customers_table: pd.DataFrame = self.tables["customers"]
+        branches: pd.DataFrame = self.tables["customer_branches"]
+        cities: pd.DataFrame = self.tables["cities"]
+        states: pd.DataFrame = self.tables["states"]
+        rep_map: pd.DataFrame = self.tables["map_reps_customers"]
+        reps: pd.DataFrame = self.tables["representatives"]
+        all_merged = customers_table \
+            .merge(branches, left_on="id", right_on="customer_id", suffixes=(None,"_branches")) \
+            .merge(cities, left_on="city_id", right_on="id", suffixes=(None,"_cities")) \
+            .merge(states, left_on="state_id", right_on="id", suffixes=(None,"_states")) \
+            .merge(rep_map, left_on="id_branches", right_on="customer_branch_id") \
+            .merge(reps, left_on="rep_id", right_on="id")
+        
+        expected = all_merged.loc[:,["name", "name_cities", "name_states", "initials"]]
+        expected.columns = ["customer_name", "city", "state", "rep"]
+
+        # pd.read_sql produces different ordering than pd.merge
+        # sorting both from left to right and resetting the index
+        # simply to execute a comparison for equality
+        expected.sort_values(by=expected.columns.tolist(), inplace=True)
+        expected.reset_index(drop=True, inplace=True)
+
+        result = self.db_services.get_reps_to_cust_ref()
+        result.sort_values(by=result.columns.tolist(), inplace=True)
+        result.reset_index(drop=True, inplace=True)
+
+        assert_frame_equal(result,expected)
+        return
+
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

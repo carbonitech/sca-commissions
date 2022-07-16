@@ -5,7 +5,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
 from app.db import models
-from typing import Dict, Union
+from typing import Dict
 
 CUSTOMERS = {
     'customers': models.Customer,
@@ -154,7 +154,7 @@ class DatabaseServices:
         # replace string "NaN" with numpy nan - how pandas would represent it after .merge
         for column in ["city","state"]:
             result[column] = result.loc[:,column].apply(lambda val: numpy.nan if val == "NaN" else val)
-            
+
         return result
 
 

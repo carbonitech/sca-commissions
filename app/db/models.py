@@ -79,6 +79,13 @@ class MapCityName(Base):
     city_id = Column(Integer, ForeignKey("cities.id"))
 
 
+class MapStateName(Base):
+    __tablename__ = 'map_state_names'
+    id = Column(Integer,primary_key=True)
+    recorded_name = Column(String)
+    city_id = Column(Integer, ForeignKey("states.id"))
+
+
 class MapRepsToCustomer(Base):
     __tablename__ = 'map_reps_customers'
     id = Column(Integer,primary_key=True)

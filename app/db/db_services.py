@@ -124,40 +124,6 @@ class DatabaseServices:
         return report_id
 
 
-    ## other tables
-    def get_customers(self) -> pd.DataFrame:
-        customers = CUSTOMERS["customers"]
-        branches = CUSTOMERS["customer_branches"]
-        sql = sqlalchemy.select(customers).join(branches)
-        result = pd.read_sql(sql, con=self.engine)
-        return result
-
-    def get_reps_to_cust_ref(self) -> pd.DataFrame:
-        customers = CUSTOMERS["customers"]
-        branches = CUSTOMERS["customer_branches"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
-        rep_mapping = MAPPING_TABLES["map_reps_customers"]
-        reps = REPS
-        sql = sqlalchemy \
-            .select(customers.name, cities.name, states.name, reps.initials) \
-            .select_from(customers) \
-            .join(branches) \
-            .join(cities) \
-            .join(states) \
-            .join(rep_mapping) \
-            .join(reps)
-
-        result = pd.read_sql(sql, con=self.engine)
-        result.columns = ["customer_name", "city", "state", "rep"]
-        
-        # replace string "NaN" with numpy nan - how pandas would represent it after .merge
-        for column in ["city","state"]:
-            result[column] = result.loc[:,column].apply(lambda val: numpy.nan if val == "NaN" else val)
-
-        return result
-
-
     ## submission metadata
     def get_submissions_metadata(self, manufacturer_id: int) -> pd.DataFrame:
         """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
@@ -249,4 +215,41 @@ class DatabaseServices:
     def get_submission_files(self, manufacturer_id: int) -> Dict[int,str]: ...
     def record_submission_file(self, manufactuer_id: int, file: bytes) -> bool: ...
     def del_submission_file(self, id: int) -> bool: ...
+
+
+    ## other tables
+    def get_customers_branches(self) -> pd.DataFrame:
+        sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+    ## reference gen
+    def get_reps_to_cust_ref(self) -> pd.DataFrame:
+        customers = CUSTOMERS["customers"]
+        branches = CUSTOMERS["customer_branches"]
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
+        rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        reps = REPS
+        sql = sqlalchemy \
+            .select(customers.name, cities.id, cities.name, 
+                    states.id, states.name, reps.id, reps.initials) \
+            .select_from(customers) \
+            .join(branches) \
+            .join(cities) \
+            .join(states) \
+            .join(rep_mapping) \
+            .join(reps)
+
+        result = pd.read_sql(sql, con=self.engine)
+        result.columns = ["customer_name", "city_id", "city_name", 
+                "state_id", "state_name", "rep_id", "rep_initials"]
+        
+        # replace string "NaN" with numpy nan - how pandas would represent it after .merge
+        for column in ["city_name","state_name"]:
+            result[column] = result.loc[:,column].apply(lambda val: numpy.nan if val == "NaN" else val)
+
+        return result
+
+
     ### admin functions will be developed below here, but they are not needed for MVP ###

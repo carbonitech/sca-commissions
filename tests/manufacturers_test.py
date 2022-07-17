@@ -41,11 +41,6 @@ class TestADP(unittest.TestCase):
         only tables that are needed for data processing references
         """
 
-        # set adp file data (as bytes)
-        adp_file_loc: str = os.getenv("ADP_TEST_FILE")
-        with open(adp_file_loc, 'rb') as file:
-            self.adp_data: bytes = file.read()
-
         # set up database
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
@@ -63,10 +58,29 @@ class TestADP(unittest.TestCase):
         with Session(self.db) as session:
             for table, data in tables.items():
                 for row in data.to_dict("records"):
-                    session.add(DB_TABLES[table](**row)) 
                     # col names in csv must match table schema
+                    session.add(DB_TABLES[table](**row)) 
             session.commit()
 
+        # get adp file data (as bytes)
+        adp_file_loc: str = os.getenv("ADP_TEST_FILE")
+        with open(adp_file_loc, 'rb') as file:
+            adp_data: bytes = file.read()
+
+        # set up Submission Object
+        self.submission = base.Submission(
+            rep_mon=5, rep_year=2022,
+            report_id=1, file=adp_data
+        )
+
+        # set up Manufacturer obj
+        self.adp = adp.AdvancedDistributorProducts(self.submission)
+        
+        return
+
+    def test_process_standard_report(self):
+        self.adp._process_standard_report()
+        self.assertEqual(self.submission.total_comm, 4878986)
 
     def tearDown(self) -> None:
         models.Base.metadata.drop_all(self.db)

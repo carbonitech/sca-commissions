@@ -30,7 +30,7 @@ class Manufacturer:
     def __init__(self):
         self.mappings = {table: database.get_mappings(table) for table in database.get_mapping_tables()}
         self.id = database.get_manufacturer_id(self.name)
-        self.customer_rep_reference = database.get_reps_to_cust_ref()
+        self.customer_branches = database.get_customers_branches()
         
     
 

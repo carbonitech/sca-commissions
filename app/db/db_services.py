@@ -19,7 +19,8 @@ REPS = models.Representative
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
-    "map_reps_customers": models.MapRepsToCustomer
+    "map_reps_customers": models.MapRepsToCustomer,
+    "map_state_names": models.MapStateName
 }
 MANUFACTURER_TABLES = {
     "manufacturers": models.Manufacturer,
@@ -98,7 +99,7 @@ class DatabaseServices:
         table_obj = MANUFACTURER_TABLES[table]
         sql = sqlalchemy.select(table_obj).where(table_obj.name==name)
         with Session(bind=self.engine) as session:
-            manf_id = session.execute(sql).fetchone()[0]
+            manf_id = session.execute(sql).fetchone()[0].id # returns a list of model instances with attrs - id accessed
         return manf_id
 
     def get_manufacturers_reports(self, manufacturer_id: int) -> pd.DataFrame:

@@ -55,58 +55,25 @@ class AdvancedDistributorProducts(Manufacturer):
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
 
-        # sold-to and ship-to were needed to generate the new_data_table, but not needed for the final report
+        # sold-to and ship-to were needed to generate the result, but not needed for the final report
         result = result.drop(columns=["Customer","ShipTo"])
 
-        # rename the columns for the final report
-        result.rename(columns=["customer_name", "city", "state", "inv_amt", "comm_amt"])
-
-        # normalize names
-        customer_name_map = self.mappings["map_customer_name"]
-        merged_with_name_map = pd.merge(result, customer_name_map,
-                how="left", left_on="customer_name", right_on="recorded_name")
-        
-        match_is_null = merged_with_name_map["recorded_name"].isnull()
-        matches_table = merged_with_name_map[~match_is_null]
-        no_match_table = merged_with_name_map[match_is_null]
-
-        result.customer_name = matches_table.loc[:,"standard_name"]
-
-        for row_index, row_data in no_match_table.to_dict("index").items():
-            error_obj = Error(
-                submission_id=self.submission.id,
-                row_index=row_index,
-                field="Customer Name",
-                value_type=str,
-                value_content=row_data["customer_name"],
-                reason="Customer name in the commission file is not mapped to a standard name",
-                row_data={row_index: row_data})
-            self.submission.errors.append(error_obj)
-        
-        # map reps
-        merged_w_ref_table = pd.merge(
-                result, self.customer_rep_reference, how="left",
-                left_on=["customer_name", "city", "state"],
-                right_on=["customers.name", "customer_branches.city", "customer_branches.state"]
-        )
-        match_is_null = merged_w_ref_table["customers.name"].isnull()
-        matches_table = merged_w_ref_table[~match_is_null]
-        no_match_table = merged_w_ref_table[match_is_null]
-
-        result = matches_table.loc[:,["representatives.initials"]+result.columns.tolist()]
-        result = result.rename(columns={"representatives.initials": "salesman"})
-        # -- RECORD ERRORS HERE FOR NO MATCH TO CUSTOMERS TABLE --
-
-
+        result.columns=["customer", "city", "state", "inv_amt", "comm_amt"]
+        result = self.fill_customer_ids(result)
+        result = self.fill_city_ids(result)
+        result = self.fill_state_ids(result)
+        # use only customers with all ids for the next step
+        mask = result.all('columns')
+        result = self.add_customer_branch_ids(result[mask])
         # add manufacturer, year, and month columns
         #TODO add manufacturer, year, and month columns here
 
         # update report submission aggregates
-        self.submission.total_comm += result["Comm Amt"].sum()
+        self.submission.total_comm += result["comm_amt"].sum()
 
         # set cents back to dollars for the final report
-        result["Inv Amt"] = result.loc[:,"Inv Amt"].apply(lambda amt: amt/100)
-        result["Comm Amt"] = result.loc[:,"Comm Amt"].apply(lambda amt: amt/100)
+        # result["inv_amt"] = result.loc[:,"inv_amt"].apply(lambda amt: amt/100)
+        # result["comm_amt"] = result.loc[:,"comm_amt"].apply(lambda amt: amt/100)
 
         # set Submission attributes
         self.submission.final_comm_data = result
@@ -127,3 +94,102 @@ class AdvancedDistributorProducts(Manufacturer):
         """runs all reports, ignoring errors from 'missing' reports
         and recording errors for unexpected sheets
         returns final commission data"""
+
+    def fill_customer_ids(self, data):
+        customer_name_map = self.mappings["map_customer_name"]
+        merged_with_name_map = pd.merge(data, customer_name_map,
+                how="left", left_on="customer", right_on="recorded_name")
+        
+        match_is_null = merged_with_name_map["recorded_name"].isnull()
+        no_match_table = merged_with_name_map[match_is_null]
+
+        # customer column is going from a name string to an id integer
+        data.customer = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
+
+        # record unmapped values as errors
+        for row_index, row_data in no_match_table.to_dict("index").items():
+            error_obj = Error(
+                submission_id=self.submission.id,
+                row_index=row_index,
+                field="customer",
+                value_type=str,
+                value_content=row_data["customer"],
+                reason="Customer name in the commission file is not mapped to a standard name",
+                row_data={row_index: row_data})
+            self.submission.errors.append(error_obj)
+        return data
+
+    def fill_city_ids(self,data):
+        merged_w_cities_map = pd.merge(
+            data, self.mappings["map_city_names"],
+            how="left", left_on="city", right_on="recorded_name"
+        )
+
+        match_is_null = merged_w_cities_map["recorded_name"].isnull()
+        no_match_table = merged_w_cities_map[match_is_null]
+
+        # city column is going from a name string to an id integer
+        data.city = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
+
+        # record unmapped values as errors
+        for row_index, row_data in no_match_table.to_dict("index").items():
+            error_obj = Error(
+                submission_id=self.submission.id,
+                row_index=row_index,
+                field="city",
+                value_type=str,
+                value_content=row_data["city"],
+                reason="City name in the commission file is not mapped to a standard name",
+                row_data={row_index: row_data})
+            self.submission.errors.append(error_obj)
+        return data
+
+    def fill_state_ids(self, data):
+        merged_w_states_map = pd.merge(
+            data, self.mappings["map_state_names"],
+            how="left", left_on="state", right_on="recorded_name"
+        )
+
+        match_is_null = merged_w_states_map["recorded_name"].isnull()
+        no_match_table = merged_w_states_map[match_is_null]
+
+        # state column is going from a name string to an id integer
+        data.state = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
+
+        # record unmapped values as errors
+        for row_index, row_data in no_match_table.to_dict("index").items():
+            error_obj = Error(
+                submission_id=self.submission.id,
+                row_index=row_index,
+                field="state",
+                value_type=str,
+                value_content=row_data["state"],
+                reason="State name in the commission file is not mapped to a standard name",
+                row_data={row_index: row_data})
+            self.submission.errors.append(error_obj)
+        return data
+
+    def add_customer_branch_ids(self, data):
+        merged_w_customer_branches = pd.merge(
+            data, self.customer_branches,
+            how="left", left_on=["customer", "city", "state"], 
+            right_on=["customer_id","city_id","state_id"]
+        )
+
+        match_is_null = merged_w_customer_branches["customer_id"].isnull()
+        no_match_table = merged_w_customer_branches[match_is_null]
+
+        data["customer_branch_id"] = merged_w_customer_branches.loc[:,"id"].fillna(0).astype(int)
+
+        # record unmapped values as errors
+        for row_index, row_data in no_match_table.to_dict("index").items():
+            error_obj = Error(
+                submission_id=self.submission.id,
+                row_index=row_index,
+                field="customer_branch_id",
+                value_type=int,
+                value_content=0,
+                reason="",
+                row_data={row_index: row_data})
+            self.submission.errors.append(error_obj)
+        return data

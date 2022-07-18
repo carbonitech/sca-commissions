@@ -23,6 +23,7 @@ DB_TABLES = {
         'representatives': models.Representative,
         'map_customer_name': models.MapCustomerName,
         'map_city_names': models.MapCityName,
+        'map_state_names': models.MapStateName,
         'map_reps_customers': models.MapRepsToCustomer,
         'report_submissions_log': models.ReportSubmissionsLog,
         'report_processing_steps_log': models.ReportProcessingStepsLog,
@@ -45,6 +46,7 @@ class TestADP(unittest.TestCase):
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
+        self.db_serv = db_services.DatabaseServices(engine=self.db)
 
         # load csv files
         tables_dir = './tests/db_tables'
@@ -79,8 +81,36 @@ class TestADP(unittest.TestCase):
         return
 
     def test_process_standard_report(self):
+        """
+        test that the total commission amount reported in
+        the final commission data and contained in the error set
+        are equal in total to the sum of the "Rep1 Commission"
+        field in the "Data" tab of the original file 
+         - rounded nearest cent, represented as an integer
+        """
         self.adp._process_standard_report()
-        self.assertEqual(self.submission.total_comm, 4878986)
+
+        # calculate total commission in cents
+        total_comm_amt_in_errors = 0
+        comm_amts_in_errors = {}
+        for error in self.submission.errors:
+            error: base.Error
+            row_index = error.row_index
+            comm_amts_in_errors.update({row_index: error.row_data[row_index]["comm_amt"]})
+        for amt in comm_amts_in_errors.values():
+            total_comm_amt_in_errors += amt
+        total_comm = self.submission.total_comm \
+                    +round(total_comm_amt_in_errors)
+
+        # retrieve submission metadata recorded in db
+        submissions_for_adp = self.db_serv.get_submissions_metadata(self.adp.id)
+
+        # test things
+        self.assertEqual(total_comm, 4878986)
+        self.assertTrue(self.submission.id)
+        self.assertGreater(self.submission.id,0)
+        self.assertFalse(submissions_for_adp.empty)
+
 
     def tearDown(self) -> None:
         models.Base.metadata.drop_all(self.db)

@@ -19,6 +19,7 @@ class State(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     branch_states = relationship("CustomerBranch")
+    map_names = relationship("MapStateName")
 
 
 class Customer(Base):
@@ -83,7 +84,7 @@ class MapStateName(Base):
     __tablename__ = 'map_state_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
-    city_id = Column(Integer, ForeignKey("states.id"))
+    state_id = Column(Integer, ForeignKey("states.id"))
 
 
 class MapRepsToCustomer(Base):

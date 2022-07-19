@@ -85,7 +85,7 @@ class AdvancedDistributorProducts(Manufacturer):
 
 
     def _process_coburn_report(self):
-        pass
+        """process the 'Coburn' tab(s) of the ADP commission report"""
 
     def _process_re_michel_report(self):
         pass
@@ -98,6 +98,8 @@ class AdvancedDistributorProducts(Manufacturer):
         and recording errors for unexpected sheets
         returns final commission data"""
 
+
+
     def fill_customer_ids(self, data):
         customer_name_map = self.mappings["map_customer_name"]
         merged_with_name_map = pd.merge(data, customer_name_map,
@@ -108,18 +110,10 @@ class AdvancedDistributorProducts(Manufacturer):
 
         # customer column is going from a name string to an id integer
         data.customer = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
+        
+        error_reason = "Customer name in the commission file is not mapped to a standard name"
+        self.record_mapping_errors(no_match_table, "customer", error_reason, str)
 
-        # record unmapped values as errors
-        for row_index, row_data in no_match_table.to_dict("index").items():
-            error_obj = Error(
-                submission_id=self.submission.id,
-                row_index=row_index,
-                field="customer",
-                value_type=str,
-                value_content=row_data["customer"],
-                reason="Customer name in the commission file is not mapped to a standard name",
-                row_data={row_index: row_data})
-            self.submission.errors.append(error_obj)
         return data
 
     def fill_city_ids(self,data):
@@ -134,17 +128,9 @@ class AdvancedDistributorProducts(Manufacturer):
         # city column is going from a name string to an id integer
         data.city = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
 
-        # record unmapped values as errors
-        for row_index, row_data in no_match_table.to_dict("index").items():
-            error_obj = Error(
-                submission_id=self.submission.id,
-                row_index=row_index,
-                field="city",
-                value_type=str,
-                value_content=row_data["city"],
-                reason="City name in the commission file is not mapped to a standard name",
-                row_data={row_index: row_data})
-            self.submission.errors.append(error_obj)
+        error_reason = "City name in the commission file is not mapped to a standard name"
+        self.record_mapping_errors(no_match_table, "city", error_reason, str)
+
         return data
 
     def fill_state_ids(self, data):
@@ -159,17 +145,9 @@ class AdvancedDistributorProducts(Manufacturer):
         # state column is going from a name string to an id integer
         data.state = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
 
-        # record unmapped values as errors
-        for row_index, row_data in no_match_table.to_dict("index").items():
-            error_obj = Error(
-                submission_id=self.submission.id,
-                row_index=row_index,
-                field="state",
-                value_type=str,
-                value_content=row_data["state"],
-                reason="State name in the commission file is not mapped to a standard name",
-                row_data={row_index: row_data})
-            self.submission.errors.append(error_obj)
+        error_reason = "State name in the commission file is not mapped to a standard name"
+        self.record_mapping_errors(no_match_table, "state", error_reason, str)
+
         return data
 
     def add_customer_branch_ids(self, data):
@@ -184,15 +162,25 @@ class AdvancedDistributorProducts(Manufacturer):
 
         data["customer_branch_id"] = merged_w_customer_branches.loc[:,"id"].fillna(0).astype(int)
 
-        # record unmapped values as errors
-        for row_index, row_data in no_match_table.to_dict("index").items():
+        error_reason = "Customer does not have a branch association with the city and state listed"
+        self.record_mapping_errors(no_match_table, "customer_branch_id", error_reason, int, 0)
+
+        return data
+
+    def record_mapping_errors(
+            self, data: pd.DataFrame, field: str, reason: str,
+            value_type, value_content: str = None):
+
+        for row_index, row_data in data.to_dict("index").items():
+            if not value_content:
+                value_content = row_data[field]
             error_obj = Error(
                 submission_id=self.submission.id,
                 row_index=row_index,
-                field="customer_branch_id",
-                value_type=int,
+                field=field,
+                value_type=value_type,
                 value_content=0,
-                reason="",
+                reason=reason,
                 row_data={row_index: row_data})
+
             self.submission.errors.append(error_obj)
-        return data

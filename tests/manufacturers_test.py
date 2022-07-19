@@ -82,20 +82,33 @@ class TestADP(unittest.TestCase):
 
     def test_process_standard_report(self):
         """
-        test that the total commission amount reported in
-        the final commission data and contained in the error set
-        are equal in total to the sum of the "Rep1 Commission"
-        field in the "Data" tab of the original file 
-         - rounded nearest cent, represented as an integer
+        Tests: 
+            - total commission amount reported in
+                the final commission data and contained in the error set
+                are equal in total to the sum of the "Rep1 Commission"
+                field in the "Data" tab of the original file 
+                (rounded nearest cent, represented as an integer)
+            - submission id exists, isn't zero, and there is at least one record
+                returned when submissions are retrieved from the database for ADP
         """
         self.adp._process_standard_report()
 
-        # calculate total commission in cents
+        # retrieve total from file by summing the commission column,
+        # clean it, convert to cents, and sum for comparison
+        expected_comm: pd.DataFrame = pd.read_excel(self.submission.file,sheet_name="Detail")
+        expected_comm.dropna(subset=expected_comm.columns.tolist()[0], inplace=True)
+        expected_comm = expected_comm.loc[:,"Rep1 Commission"]
+        expected_comm = round(expected_comm.apply(lambda amt: amt*100).sum())
+
+        # calculate total commission from processing, in cents
         total_comm_amt_in_errors = 0
         comm_amts_in_errors = {}
         for error in self.submission.errors:
             error: base.Error
             row_index = error.row_index
+            # since a row could be reported for an error more than once,
+            # updating the same row_index won't add to the total
+            # in the summation loop in the next step
             comm_amts_in_errors.update({row_index: error.row_data[row_index]["comm_amt"]})
         for amt in comm_amts_in_errors.values():
             total_comm_amt_in_errors += amt
@@ -105,11 +118,23 @@ class TestADP(unittest.TestCase):
         # retrieve submission metadata recorded in db
         submissions_for_adp = self.db_serv.get_submissions_metadata(self.adp.id)
 
-        # test things
-        self.assertEqual(total_comm, 4878986)
+        # check added columns for month, year & manufacturer
+        all_months_same = (self.submission.final_comm_data.month == self.submission.report_month).all()
+        all_years_same = (self.submission.final_comm_data.year == self.submission.report_year).all()
+        all_manufacturers_same = (self.submission.final_comm_data.manufacturer == self.adp.name).all()
+
+        ## tests
+        # commission total compared to sum from original file
+        self.assertEqual(total_comm, expected_comm)
+        # existance of submission id, and it's not zero
         self.assertTrue(self.submission.id)
         self.assertGreater(self.submission.id,0)
+        # existance of a submission for adp in report_submissions_log
         self.assertFalse(submissions_for_adp.empty)
+        # check added columns have expected values
+        self.assertTrue(all_months_same)
+        self.assertTrue(all_years_same)
+        self.assertTrue(all_manufacturers_same)
 
 
     def tearDown(self) -> None:

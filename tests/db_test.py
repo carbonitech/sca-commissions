@@ -26,6 +26,7 @@ DB_TABLES = {
         'representatives': models.Representative,
         'map_customer_name': models.MapCustomerName,
         'map_city_names': models.MapCityName,
+        'map_state_names': models.MapStateName,
         'map_reps_customers': models.MapRepsToCustomer,
         'report_submissions_log': models.ReportSubmissionsLog,
         'report_processing_steps_log': models.ReportProcessingStepsLog,
@@ -73,7 +74,8 @@ class TestRefTableManagement(unittest.TestCase):
 
     def test_get_mapping_tables(self):
         result = self.db_services.get_mapping_tables()
-        expected = {"map_customer_name","map_city_names","map_reps_customers"}
+        expected = {"map_customer_name","map_city_names",
+            "map_state_names","map_reps_customers"}
         self.assertEqual(result,expected)
         return
 
@@ -84,7 +86,9 @@ class TestRefTableManagement(unittest.TestCase):
             "map_city_names": self.db_services.get_mappings(
                                 table="map_city_names"),
             "map_reps_customers": self.db_services.get_mappings(
-                                table="map_reps_customers")
+                                table="map_reps_customers"),
+            "map_state_names": self.db_services.get_mappings(
+                                table="map_state_names")
             }
         for table,result in results.items():
             expected = self.tables[table]
@@ -99,7 +103,8 @@ class TestRefTableManagement(unittest.TestCase):
         data_to_add = {
             "map_customer_name": {"recorded_name": ["WICHITTEN"], "customer_id": [44]},
             "map_city_names": {"recorded_name": ["FORREST PARK"], "city_id": [24]},
-            "map_reps_customers": {"rep_id": [1], "customer_branch_id": [32]}
+            "map_reps_customers": {"rep_id": [1], "customer_branch_id": [32]},
+            "map_state_names": {"recorded_name": ["GORGIA"], "state_id": [12]}
         }
 
         mapping_tbls = self.db_services.get_mapping_tables()
@@ -448,14 +453,16 @@ class TestJoinedReferenceHelpers(unittest.TestCase):
             .merge(cities, left_on="city_id", right_on="id", suffixes=(None,"_cities")) \
             .merge(states, left_on="state_id", right_on="id", suffixes=(None,"_states")) \
             .merge(rep_map, left_on="id_branches", right_on="customer_branch_id") \
-            .merge(reps, left_on="rep_id", right_on="id")
+            .merge(reps, left_on="rep_id", right_on="id", suffixes=(None,"_rep"))
         
-        expected = all_merged.loc[:,["name", "name_cities", "name_states", "initials"]]
-        expected.columns = ["customer_name", "city", "state", "rep"]
+        expected = all_merged.loc[:,["name", "id_cities", "name_cities", 
+                "id_states", "name_states", "id", "initials"]]
+        expected.columns = ["customer_name", "city_id", "city_name", 
+                "state_id", "state_name", "rep_id", "rep_initials"]
 
         # pd.read_sql produces different ordering than pd.merge
         # sorting both from left to right and resetting the index
-        # simply to execute a comparison for equality
+        # to execute a comparison for equality
         expected.sort_values(by=expected.columns.tolist(), inplace=True)
         expected.reset_index(drop=True, inplace=True)
 

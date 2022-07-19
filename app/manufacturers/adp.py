@@ -15,6 +15,12 @@ class AdvancedDistributorProducts(Manufacturer):
             albeit in predictable ways.
         - Reports are expected to come packaged together, so all report processing procedures
             should expect to be called, but fail gracefully or 'pass' when they aren't needed
+    Effects:
+        - Updates Submission object:
+            - total_comm: adds commission sum to the running total
+            - final_comm_data: concatenate the result from this process
+                with other results
+    Returns: None
     """
 
     name = "ADP" 
@@ -34,19 +40,17 @@ class AdvancedDistributorProducts(Manufacturer):
         
 
     def _process_standard_report(self):
-        """processes the 'Detail' tab of the ADP commission report
-            returns sales & commission data in the desired format"""
+        """processes the 'Detail' tab of the ADP commission report"""
 
         data: pd.DataFrame = pd.read_excel(self.submission.file, **self.reports_by_sheet['standard'])
-
-        # take spaces out of column names
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
+        data.dropna(subset=data.columns.tolist()[0], inplace=True)
         
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
         data.Rep1Commission = data.loc[:,"Rep1Commission"].apply(lambda amt: amt*100)
 
-        # use pivot table to sum by account and reset index to get flat table again (repeat labels)
+        # sum by account convert to a flat table
         piv_table_values = ["NetSales", "Rep1Commission"]
         piv_table_index = ["Customer.1","ShipToCity","ShpToState","Customer","ShipTo"]
         result = pd.pivot_table(
@@ -55,7 +59,7 @@ class AdvancedDistributorProducts(Manufacturer):
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
 
-        # sold-to and ship-to were needed to generate the result, but not needed for the final report
+        # sold-to and ship-to not needed for the final report
         result = result.drop(columns=["Customer","ShipTo"])
 
         result.columns=["customer", "city", "state", "inv_amt", "comm_amt"]
@@ -65,19 +69,18 @@ class AdvancedDistributorProducts(Manufacturer):
         # use only customers with all ids for the next step
         mask = result.all('columns')
         result = self.add_customer_branch_ids(result[mask])
+
         # add manufacturer, year, and month columns
-        #TODO add manufacturer, year, and month columns here
+        result["month"] = self.submission.report_month
+        result["year"] = self.submission.report_year
+        result["manufacturer"] = self.name
 
-        # update report submission aggregates
+        # update report submission
         self.submission.total_comm += result["comm_amt"].sum()
-
-        # set cents back to dollars for the final report
-        # result["inv_amt"] = result.loc[:,"inv_amt"].apply(lambda amt: amt/100)
-        # result["comm_amt"] = result.loc[:,"comm_amt"].apply(lambda amt: amt/100)
-
-        # set Submission attributes
-        self.submission.final_comm_data = result
-
+        
+        self.submission.final_comm_data = pd.concat(
+            [self.submission.final_comm_data, result]
+        )
         return
 
 

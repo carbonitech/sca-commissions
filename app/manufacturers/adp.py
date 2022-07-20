@@ -69,11 +69,13 @@ class AdvancedDistributorProducts(Manufacturer):
         # use only customers with all ids for the next step
         mask = result.all('columns')
         result = self.add_customer_branch_ids(result[mask])
+        result["submission_id"] = self.submission.id
+        # combine with reference to get the mapping id for customer branches
+        result = result.merge(self.reps_to_cust_branch_ref, how="left",
+                left_on=["customer", "city", "state"],
+                right_on=["customer_id","city_id","state_id"])
 
-        # add manufacturer, year, and month columns
-        result["month"] = self.submission.report_month
-        result["year"] = self.submission.report_year
-        result["manufacturer"] = self.name
+        result = result.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
 
         # update report submission
         self.submission.total_comm += result["comm_amt"].sum()

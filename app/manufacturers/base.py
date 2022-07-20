@@ -31,6 +31,7 @@ class Manufacturer:
         self.mappings = {table: database.get_mappings(table) for table in database.get_mapping_tables()}
         self.id = database.get_manufacturer_id(self.name)
         self.customer_branches = database.get_customers_branches()
+        self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
         
     
 

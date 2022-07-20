@@ -441,24 +441,14 @@ class TestJoinedReferenceHelpers(unittest.TestCase):
         return
 
 
-    def test_get_reps_to_cust_ref(self):
-        customers_table: pd.DataFrame = self.tables["customers"]
+    def test_get_reps_to_cust_branch_ref(self):
         branches: pd.DataFrame = self.tables["customer_branches"]
-        cities: pd.DataFrame = self.tables["cities"]
-        states: pd.DataFrame = self.tables["states"]
         rep_map: pd.DataFrame = self.tables["map_reps_customers"]
-        reps: pd.DataFrame = self.tables["representatives"]
-        all_merged = customers_table \
-            .merge(branches, left_on="id", right_on="customer_id", suffixes=(None,"_branches")) \
-            .merge(cities, left_on="city_id", right_on="id", suffixes=(None,"_cities")) \
-            .merge(states, left_on="state_id", right_on="id", suffixes=(None,"_states")) \
-            .merge(rep_map, left_on="id_branches", right_on="customer_branch_id") \
-            .merge(reps, left_on="rep_id", right_on="id", suffixes=(None,"_rep"))
+        all_merged = branches.merge(rep_map, left_on="id", right_on="customer_branch_id", suffixes=(None,"_repmap"))
         
-        expected = all_merged.loc[:,["name", "id_cities", "name_cities", 
-                "id_states", "name_states", "id", "initials"]]
-        expected.columns = ["customer_name", "city_id", "city_name", 
-                "state_id", "state_name", "rep_id", "rep_initials"]
+        expected = all_merged.loc[:,["id_repmap", "customer_id", "city_id", 
+                "state_id"]]
+        expected.rename(columns={"id_repmap": "map_rep_customer_id"}, inplace=True)
 
         # pd.read_sql produces different ordering than pd.merge
         # sorting both from left to right and resetting the index
@@ -466,7 +456,7 @@ class TestJoinedReferenceHelpers(unittest.TestCase):
         expected.sort_values(by=expected.columns.tolist(), inplace=True)
         expected.reset_index(drop=True, inplace=True)
 
-        result = self.db_services.get_reps_to_cust_ref()
+        result = self.db_services.get_reps_to_cust_branch_ref()
         result.sort_values(by=result.columns.tolist(), inplace=True)
         result.reset_index(drop=True, inplace=True)
 

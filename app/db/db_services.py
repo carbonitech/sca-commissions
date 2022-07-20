@@ -225,31 +225,21 @@ class DatabaseServices:
         return result
 
     ## reference gen
-    def get_reps_to_cust_ref(self) -> pd.DataFrame:
-        customers = CUSTOMERS["customers"]
+    def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
+        """generates a reference for matching the map_rep_customer id to
+        an array of customer, city, and state ids"""
         branches = CUSTOMERS["customer_branches"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
         rep_mapping = MAPPING_TABLES["map_reps_customers"]
-        reps = REPS
         sql = sqlalchemy \
-            .select(customers.name, cities.id, cities.name, 
-                    states.id, states.name, reps.id, reps.initials) \
-            .select_from(customers) \
+            .select(rep_mapping.id, branches.customer_id,
+                branches.city_id, branches.state_id) \
+            .select_from(rep_mapping) \
             .join(branches) \
-            .join(cities) \
-            .join(states) \
-            .join(rep_mapping) \
-            .join(reps)
 
         result = pd.read_sql(sql, con=self.engine)
-        result.columns = ["customer_name", "city_id", "city_name", 
-                "state_id", "state_name", "rep_id", "rep_initials"]
+        result.columns = ["map_rep_customer_id", "customer_id", "city_id", 
+                "state_id"]
         
-        # replace string "NaN" with numpy nan - how pandas would represent it after .merge
-        for column in ["city_name","state_name"]:
-            result[column] = result.loc[:,column].apply(lambda val: numpy.nan if val == "NaN" else val)
-
         return result
 
 

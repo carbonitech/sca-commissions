@@ -190,11 +190,12 @@ class Submission:
     final_comm_data = None
     total_comm = 0  # tracking cents, not dollars
 
-    def __init__(self, rep_mon: int, rep_year: int, report_id: int, file: bytes) -> None:
+    def __init__(self, rep_mon: int, rep_year: int, report_id: int, file: bytes, sheet_name: str=None) -> None:
         self.file = file
         self.report_month = rep_mon
         self.report_year = rep_year
         self.report_id = report_id
+        self.sheet_name = sheet_name
         self.submission_date = datetime.today()
         self.id = database.record_submission_metadata(
                     report_id=self.report_id,

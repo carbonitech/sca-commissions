@@ -72,7 +72,8 @@ class TestADP(unittest.TestCase):
         # set up Submission Object
         self.submission = base.Submission(
             rep_mon=5, rep_year=2022,
-            report_id=1, file=adp_data
+            report_id=1, file=adp_data,
+            sheet_name="Detail"
         )
 
         # set up Manufacturer obj
@@ -95,7 +96,7 @@ class TestADP(unittest.TestCase):
 
         # retrieve total from file by summing the commission column,
         # clean it, convert to cents, and sum for comparison
-        expected_comm: pd.DataFrame = pd.read_excel(self.submission.file,sheet_name="Detail")
+        expected_comm: pd.DataFrame = pd.read_excel(self.submission.file,sheet_name=self.submission.sheet_name)
         expected_comm.dropna(subset=expected_comm.columns.tolist()[0], inplace=True)
         expected_comm = expected_comm.loc[:,"Rep1 Commission"]
         expected_comm = round(expected_comm.apply(lambda amt: amt*100).sum())

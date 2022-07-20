@@ -12,8 +12,7 @@ class AdvancedDistributorProducts(Manufacturer):
         - ADP's report comes as a single file with multiple tabs
         - All reports have the 'Detail' tab, which I'm calling the 'standard' report,
             but other tabs for POS reports vary in name, and sometimes in structure.
-        - Reports are expected to come packaged together, so all report processing procedures
-            should expect to be called, but fail gracefully
+        - Reports are expected to come packaged together, seperated in one file by tabs
     Effects:
         - Updates Submission object:
             - total_comm: adds commission sum to the running total
@@ -23,16 +22,7 @@ class AdvancedDistributorProducts(Manufacturer):
     Returns: None
     """
 
-    name = "ADP" 
-
-    reports_by_sheet = {
-        'standard': {'sheet_name': 'Detail'},
-        'RE Michel POS': {'sheet_name': 'RE Michel', 'skiprows': 2},
-        'Coburn POS': {'sheet_name': 'Coburn'},
-        'Lennox POS': [{'sheet_name': 'Marshalltown'},
-            {'sheet_name': 'Houston'},
-            {'sheet_name': 'Carrollton'}]
-    }
+    name = "ADP"
 
     def __init__(self, submission: Submission):
         super().__init__()
@@ -42,7 +32,7 @@ class AdvancedDistributorProducts(Manufacturer):
     def process_standard_report(self):
         """processes the 'Detail' tab of the ADP commission report"""
 
-        data: pd.DataFrame = pd.read_excel(self.submission.file, **self.reports_by_sheet['standard'])
+        data: pd.DataFrame = pd.read_excel(self.submission.file, sheet_name=self.submission.sheet_name)
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         data.dropna(subset=data.columns.tolist()[0], inplace=True)
         

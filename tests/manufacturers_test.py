@@ -120,6 +120,8 @@ class TestADP(unittest.TestCase):
 
         # check added columns for month, year & manufacturer
         all_sub_id_same = (self.submission.final_comm_data.submission_id == self.submission.id).all()
+        
+        expected_columns = ["submission_id","map_rep_customer_id","inv_amt","comm_amt"]
 
         ## tests
         # commission total compared to sum from original file
@@ -129,8 +131,9 @@ class TestADP(unittest.TestCase):
         self.assertGreater(self.submission.id,0)
         # existance of a submission for adp in report_submissions_log
         self.assertFalse(submissions_for_adp.empty)
-        # check added columns have expected values
+        # check columns have expected values
         self.assertTrue(all_sub_id_same)
+        self.assertListEqual(self.submission.final_comm_data.columns.tolist(),expected_columns)
 
 
     def tearDown(self) -> None:

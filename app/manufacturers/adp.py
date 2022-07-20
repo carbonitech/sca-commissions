@@ -11,15 +11,15 @@ class AdvancedDistributorProducts(Manufacturer):
     Remarks:
         - ADP's report comes as a single file with multiple tabs
         - All reports have the 'Detail' tab, which I'm calling the 'standard' report,
-            but other tabs for POS reports vary in name, and sometimes in structure,
-            albeit in predictable ways.
+            but other tabs for POS reports vary in name, and sometimes in structure.
         - Reports are expected to come packaged together, so all report processing procedures
-            should expect to be called, but fail gracefully or 'pass' when they aren't needed
+            should expect to be called, but fail gracefully
     Effects:
         - Updates Submission object:
             - total_comm: adds commission sum to the running total
             - final_comm_data: concatenate the result from this process
                 with other results
+            - errors: appends Error objects
     Returns: None
     """
 
@@ -39,7 +39,7 @@ class AdvancedDistributorProducts(Manufacturer):
         self.submission = submission
         
 
-    def _process_standard_report(self):
+    def process_standard_report(self):
         """processes the 'Detail' tab of the ADP commission report"""
 
         data: pd.DataFrame = pd.read_excel(self.submission.file, **self.reports_by_sheet['standard'])
@@ -85,18 +85,12 @@ class AdvancedDistributorProducts(Manufacturer):
         return
 
 
-    def _process_coburn_report(self):
+    def process_coburn_report(self):
         """process the 'Coburn' tab(s) of the ADP commission report"""
 
-    def _process_re_michel_report(self):
+    def process_re_michel_report(self):
         pass
 
-    def _process_lennox_report(self):
+    def process_lennox_report(self):
         pass
-
-    def process_reports(self):
-        """runs all reports, ignoring errors from 'missing' reports
-        and recording errors for unexpected sheets
-        returns final commission data"""
-
 

@@ -91,7 +91,7 @@ class TestADP(unittest.TestCase):
             - submission id exists, isn't zero, and there is at least one record
                 returned when submissions are retrieved from the database for ADP
         """
-        self.adp._process_standard_report()
+        self.adp.process_standard_report()
 
         # retrieve total from file by summing the commission column,
         # clean it, convert to cents, and sum for comparison

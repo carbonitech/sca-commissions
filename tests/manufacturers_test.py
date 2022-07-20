@@ -119,9 +119,7 @@ class TestADP(unittest.TestCase):
         submissions_for_adp = self.db_serv.get_submissions_metadata(self.adp.id)
 
         # check added columns for month, year & manufacturer
-        all_months_same = (self.submission.final_comm_data.month == self.submission.report_month).all()
-        all_years_same = (self.submission.final_comm_data.year == self.submission.report_year).all()
-        all_manufacturers_same = (self.submission.final_comm_data.manufacturer == self.adp.name).all()
+        all_sub_id_same = (self.submission.final_comm_data.submission_id == self.submission.id).all()
 
         ## tests
         # commission total compared to sum from original file
@@ -132,9 +130,7 @@ class TestADP(unittest.TestCase):
         # existance of a submission for adp in report_submissions_log
         self.assertFalse(submissions_for_adp.empty)
         # check added columns have expected values
-        self.assertTrue(all_months_same)
-        self.assertTrue(all_years_same)
-        self.assertTrue(all_manufacturers_same)
+        self.assertTrue(all_sub_id_same)
 
 
     def tearDown(self) -> None:

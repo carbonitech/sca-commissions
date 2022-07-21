@@ -124,6 +124,8 @@ class TestADP(unittest.TestCase):
         
         expected_columns = ["submission_id","map_rep_customer_id","inv_amt","comm_amt"]
 
+        sequence_processing_steps = [step_obj.step_num for step_obj in self.submission.processing_steps]
+
         ## tests
         # commission total compared to sum from original file
         self.assertEqual(total_comm, expected_comm)
@@ -135,6 +137,11 @@ class TestADP(unittest.TestCase):
         # check columns have expected values
         self.assertTrue(all_sub_id_same)
         self.assertListEqual(self.submission.final_comm_data.columns.tolist(),expected_columns)
+        # check processing_steps
+        self.assertListEqual(sequence_processing_steps, list(range(1,len(sequence_processing_steps)+1)))
+        for step in self.submission.processing_steps:
+            print(step)
+
 
 
     def tearDown(self) -> None:

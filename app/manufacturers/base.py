@@ -209,10 +209,8 @@ class Manufacturer:
 
 
     def record_processing_step(self, step_description: str):
-        self.submission.processing_steps.append(
-            ProcessingStep(submission_id=self.submission.id, step_desctription=step_description)
-        )
-        ProcessingStep.increment_step_num()
+        processing_step = ProcessingStep(submission_id=self.submission.id, step_desctription=step_description)
+        self.submission.processing_steps.append(processing_step)
         return
 
 
@@ -229,16 +227,17 @@ class Error:
 
 class ProcessingStep:
 
-    step_num = 1 # overall processing step number is tracked by the class
+    total_steps = 1 # overall processing step number is tracked by the class
 
     def __init__(self, submission_id: int, step_desctription: str):
         self.submission_id = submission_id
         self.step_desctription = step_desctription
-        self.step_num = self.step_num # lock-in the step number on instantiation
+        self.step_num = self.total_steps
+        ProcessingStep.increment_total_step_num()
 
     @classmethod
-    def increment_step_num(cls):
-        cls.step_num += 1
+    def increment_total_step_num(cls):
+        cls.total_steps += 1
 
     def __str__(self) -> str:
         return f"submission_id = {self.submission_id}, step_num = {self.step_num}, description = {self.step_desctription}"

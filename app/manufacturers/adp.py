@@ -4,7 +4,7 @@ for Advanced Distributor Products (ADP)
 """
 import pandas as pd
 import numpy as np
-from app.manufacturers.base import Manufacturer, Submission
+from app.manufacturers.base import Manufacturer
 
 class AdvancedDistributorProducts(Manufacturer):
     """
@@ -20,22 +20,23 @@ class AdvancedDistributorProducts(Manufacturer):
                 with other results
             - errors: appends Error objects
     Returns: None
+
+    TODO - add internal checks on commission dollar amounts to ensure integrity
     """
 
     name = "ADP"
-
-    def __init__(self, submission: Submission):
-        super().__init__()
-        self.submission = submission
-        
 
     def process_standard_report(self):
         """processes the 'Detail' tab of the ADP commission report"""
 
         data: pd.DataFrame = pd.read_excel(self.submission.file, sheet_name=self.submission.sheet_name)
+
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
+        self.record_processing_step("removed spaces from column names")
+
         data.dropna(subset=data.columns.tolist()[0], inplace=True)
-        
+        self.record_processing_step("removed all rows that have no value in the first column")
+
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
         data.Rep1Commission = data.loc[:,"Rep1Commission"].apply(lambda amt: amt*100)
@@ -48,26 +49,56 @@ class AdvancedDistributorProducts(Manufacturer):
             values=piv_table_values,
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
+        self.record_processing_step("grouped NetSales and Rep1Commission by sold-to, "
+                "ship-to, customer name, city, and state (pivot table)")
 
-        # sold-to and ship-to not needed for the final report
         result = result.drop(columns=["Customer","ShipTo"])
+        self.record_processing_step("dropped the ship-to and sold-to id columns")
 
         result.columns=["customer", "city", "state", "inv_amt", "comm_amt"]
+
         result = self.fill_customer_ids(result, column="customer")
+        self.record_processing_step("replaced customer names with customer ids where "
+                "a customer reference name was found in the mapping in the database")
+        if self.submission.errors:
+            self.record_processing_step("failures in customer name mapping logged")
+            num_errors = len(self.submission.errors)
+        
         result = self.fill_city_ids(result, column="city")
+        self.record_processing_step("replaced city names with city ids where "
+                "a city reference name was found in the mapping in the database")
+        if len(self.submission.errors) > num_errors:
+            self.record_processing_step("failures in city name mapping logged")
+            num_errors = len(self.submission.errors)
+        
         result = self.fill_state_ids(result, column="state")
+        self.record_processing_step("replaced state names with state ids where "
+                "a state reference name was found in the mapping in the database")
+        if len(self.submission.errors) > num_errors:
+            self.record_processing_step("failures in state name mapping logged")
+            num_errors = len(self.submission.errors)
+
         mask = result.all('columns')
         map_rep_col_name = "map_rep_customer_id"
         result = self.add_rep_customer_ids(result[mask], ref_columns=["customer", "city", "state"],
             new_column=map_rep_col_name)  # pared down to only customers with all values != 0
+        self.record_processing_step("removed all rows that failed to map either a customer id, city id, or state id")
+        self.record_processing_step("added the rep-to-customer mapping id by looking up customer, "
+                "city, and state ids in a reference table")
+        if len(self.submission.errors) > num_errors:
+            self.record_processing_step("failurs in rep-to-customer mapping logged")
+
         mask = result.all('columns')
         result = result[mask]  # filter again for 0's. 0's have been recorded in the errors list
+        self.record_processing_step("removed all rows that failed to map rep-to-customer id")
+
         submission_id_col_name = "submission_id"
         result[submission_id_col_name] = self.submission.id
         result = result.loc[:,[submission_id_col_name,map_rep_col_name,"inv_amt","comm_amt"]]
 
         # update submission attrs
         self.submission.total_comm += result["comm_amt"].sum()
+        self.record_processing_step(f"total commissions successfully processed: ${self.submission.total_comm/100:.2f}")
         self.submission.final_comm_data = pd.concat(
             [self.submission.final_comm_data, result]
         )

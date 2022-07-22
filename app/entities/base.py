@@ -81,7 +81,7 @@ class Submission:
         self.report_id = report_id  # use this to determine manufacturer to use, and which method
         self.sheet_name = sheet_name
         self.submission_date = datetime.today()
-        self.id = database.record_submission_metadata(
+        self.id = database.record_submission(
                     report_id=self.report_id,
                     data=pd.Series({
                         "submission_date": self.submission_date,

@@ -118,7 +118,7 @@ class TestADP(unittest.TestCase):
                     +round(total_comm_amt_in_errors)
 
         # retrieve submission metadata recorded in db
-        submissions_for_adp = self.db_serv.get_submissions_metadata(self.adp.id)
+        submissions_for_adp = self.db_serv.get_submissions(self.adp.id)
 
         # check added columns for month, year & manufacturer
         all_sub_id_same = (self.submission.final_comm_data.submission_id == self.submission.id).all()

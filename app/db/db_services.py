@@ -126,7 +126,7 @@ class DatabaseServices:
 
 
     ## submission metadata
-    def get_submissions_metadata(self, manufacturer_id: int) -> pd.DataFrame:
+    def get_submissions(self, manufacturer_id: int) -> pd.DataFrame:
         """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
         manufacturers_reports = self.get_manufacturers_reports(manufacturer_id)
         report_ids = manufacturers_reports.loc[:,"id"].tolist()
@@ -135,7 +135,7 @@ class DatabaseServices:
             con=self.engine)
         return result
 
-    def record_submission_metadata(self, report_id: int, data: pd.Series) -> int:
+    def record_submission(self, report_id: int, data: pd.Series) -> int:
         """record a submission into the submissions log"""
         data = pd.concat([data,pd.Series({"report_id": report_id})])
         sql = sqlalchemy.insert(SUBMISSIONS_META_TABLE).returning(SUBMISSIONS_META_TABLE.id)\

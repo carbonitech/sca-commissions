@@ -1,7 +1,7 @@
 """Defines manufacturer and submission base classes"""
 import os
 import dotenv
-from typing import Union
+from typing import List, Union
 from datetime import datetime
 from dataclasses import dataclass
 
@@ -18,6 +18,45 @@ DB_ENGINE = create_engine(DB_URL)
 database = db_serv.DatabaseServices(DB_ENGINE)
 
 
+@dataclass
+class Error:
+    submission_id: int
+    row_index: int
+    field: str
+    value_type: type
+    value_content: str
+    reason: str
+    row_data: dict
+
+    def keys(self):
+        return list(self.__dict__.keys())
+        
+    def __getitem__(self,key):
+        return getattr(self,key)
+
+class ProcessingStep:
+    total_steps = 1 # overall processing step number is tracked by the class
+
+    def __init__(self, submission_id: int, description: str):
+        self.submission_id = submission_id
+        self.description = description
+        self.step_num = self.total_steps
+        ProcessingStep.increment_total_step_num()
+
+    @classmethod
+    def increment_total_step_num(cls):
+        cls.total_steps += 1
+
+    def __str__(self) -> str:
+        return f"submission_id = {self.submission_id}, step_num = {self.step_num}, description = {self.step_desctription}"
+
+    def keys(self):
+        return list(self.__dict__.keys())
+        
+    def __getitem__(self,key):
+        return getattr(self,key)
+
+
 class Submission:
     """
     handles report processing:
@@ -27,9 +66,11 @@ class Submission:
 
     takes a Manufacturer object in the constructor to access
     manufacturer attributes and report processing procedures
+
+    TODO implement methods that handle persisting errors, processing, steps, etc.
     """
-    errors = []
-    processing_steps = []
+    errors: List[Error] = []
+    processing_steps: List[ProcessingStep] = []
     final_comm_data = None
     total_comm = 0  # tracking cents, not dollars
 
@@ -37,7 +78,7 @@ class Submission:
         self.file = file
         self.report_month = rep_mon
         self.report_year = rep_year
-        self.report_id = report_id
+        self.report_id = report_id  # use this to determine manufacturer to use, and which method
         self.sheet_name = sheet_name
         self.submission_date = datetime.today()
         self.id = database.record_submission_metadata(
@@ -48,6 +89,15 @@ class Submission:
                         "reporting_year": self.report_year
                     })
                 )
+    
+    def record_errors(self):
+        for error in self.errors:
+            database.record_error(error)
+        return
+
+    def record_processing_steps(self):
+        database.record_processing_step(**self.processing_steps)
+        return
 
 
 class Manufacturer:
@@ -212,32 +262,3 @@ class Manufacturer:
         processing_step = ProcessingStep(submission_id=self.submission.id, step_desctription=step_description)
         self.submission.processing_steps.append(processing_step)
         return
-
-
-@dataclass
-class Error:
-    submission_id: int
-    row_index: int
-    field: str
-    value_type: type
-    value_content: str
-    reason: str
-    row_data: dict
-
-
-class ProcessingStep:
-
-    total_steps = 1 # overall processing step number is tracked by the class
-
-    def __init__(self, submission_id: int, step_desctription: str):
-        self.submission_id = submission_id
-        self.step_desctription = step_desctription
-        self.step_num = self.total_steps
-        ProcessingStep.increment_total_step_num()
-
-    @classmethod
-    def increment_total_step_num(cls):
-        cls.total_steps += 1
-
-    def __str__(self) -> str:
-        return f"submission_id = {self.submission_id}, step_num = {self.step_num}, description = {self.step_desctription}"

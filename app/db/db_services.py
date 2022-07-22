@@ -1,11 +1,11 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
-import numpy
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
 from app.db import models
 from typing import Dict
+from app.entities.base import Error, ProcessingStep
 
 CUSTOMERS = {
     'customers': models.Customer,
@@ -166,14 +166,11 @@ class DatabaseServices:
         )
         return result
 
-    def record_processing_steps(self, submission_id: int, data: pd.DataFrame) -> bool:
+    def record_processing_step(self, step_obj: ProcessingStep) -> bool:
         """commit all report processing stesp for a commission report submission"""
-        data_copy = data.copy()
-        data_copy["submission_id"] = submission_id
-        records = data_copy.to_dict("records")
         sql = sqlalchemy.insert(PROCESS_STEPS_LOG)
         with Session(bind=self.engine) as session:
-            session.execute(sql,records)
+            session.execute(sql, **step_obj)
             session.commit()
         return True
 
@@ -193,14 +190,11 @@ class DatabaseServices:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def record_errors(self, submission_id: int, data: pd.DataFrame) -> bool:
+    def record_error(self, error_obj: Error) -> bool:
         """record errors into the current_errors table"""
-        data_copy = data.copy()
-        data_copy["submission_id"] = submission_id
-        records = data_copy.to_dict("records")
         with Session(bind=self.engine) as session:
             sql = sqlalchemy.insert(ERRORS_TABLE)
-            session.execute(sql, records)
+            session.execute(sql, **error_obj)
             session.commit()
         return True
         

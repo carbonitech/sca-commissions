@@ -4,7 +4,7 @@ for Advanced Distributor Products (ADP)
 """
 import pandas as pd
 import numpy as np
-from app.manufacturers.base import Manufacturer
+from app.entities.base import Manufacturer
 
 class AdvancedDistributorProducts(Manufacturer):
     """

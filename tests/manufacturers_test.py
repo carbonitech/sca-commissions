@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db import db_services, models
-from app.manufacturers import base, adp
+from app.entities import base
+from app.entities.manufacturers import adp
 
 dotenv.load_dotenv()
 

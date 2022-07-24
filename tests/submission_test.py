@@ -4,11 +4,13 @@ import os
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.db import models
-from app.db import db_services
+from app.entities import base
+from app.entities.manufacturers import adp
+
 
 dotenv.load_dotenv()
 
@@ -34,47 +36,72 @@ DB_TABLES = {
 
 class TestSubmissionDataManagement(unittest.TestCase):
 
-    def setUp(self):
-        
+    def setUp(self) -> None:
+        """
+        set up will be only for ADP data
+        more manufacturers will be added here as more are implemented
+
+        not all database tables are populated in set up
+        only tables that are needed for data processing references
+        """
+
         # set up database
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
-        self.db_services = db_services.DatabaseServices(engine=self.db)
 
-        # load csv files for db reference tables
+        # load csv files
         tables_dir = './tests/db_tables'
         files: list[str] = os.listdir(tables_dir)
-        self.tables: dict[str,pd.DataFrame] = {
+        tables: dict[str,pd.DataFrame] = {
             file[:-4]: pd.read_csv(os.path.join(tables_dir,file))
             for file in files
         }
 
         # populate database with csv data
         with Session(self.db) as session:
-            for table, data in self.tables.items():
+            for table, data in tables.items():
                 for row in data.to_dict("records"):
                     # col names in csv must match table schema
                     session.add(DB_TABLES[table](**row)) 
             session.commit()
 
-        # insert expected postgreSQL table id values into each pandas DataFrame
-        add_one = lambda val: val+1
-        for dataset in self.tables.values():
-            dataset.reset_index(inplace=True)
-            dataset.rename(columns={"index":"id"}, inplace=True)
-            dataset.id = dataset.id.apply(add_one)
-            
+        # get adp file data (as bytes)
+        adp_file_loc: str = os.getenv("ADP_TEST_FILE")
+        with open(adp_file_loc, 'rb') as file:
+            adp_data: bytes = file.read()
+
+        # set up Submission Object
+        self.submission = base.Submission(
+            rep_mon=5, rep_year=2022,
+            report_id=1, file=adp_data,
+            sheet_name="Detail"
+        )
+
+        # process report using the Manufacturer's process
+        adp.AdvancedDistributorProducts(self.submission).process_standard_report()
+        
         return
 
-    def test_get_submissions(self): ...
     def test_record_submission(self): ...
+    def test_get_submissions(self): ...
     def test_del_submission(self): ...
-    def test_get_processing_steps(self): ...
     def test_record_processing_steps(self): ...
+    def test_get_processing_steps(self): ...
     def test_del_processing_steps(self): ...
+    def test_record_errors(self):
+        self.submission.record_errors()
+        
+        sql = select(DB_TABLES['current_errors'])
+        persisted_data = pd.read_sql(sql, con=self.db)
+        if self.submission.errors:
+            self.assertFalse(persisted_data.empty)
+            self.assertEqual(len(self.submission.errors), len(persisted_data))
+        else:
+            self.assertTrue(persisted_data.empty)
+
+
     def test_get_errors(self): ...
-    def test_record_errors(self): ...
     def test_del_error(self): ...
     def test_record_final_data(self): ...
     def test_get_final_data(self): ...

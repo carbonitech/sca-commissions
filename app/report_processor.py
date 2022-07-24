@@ -1,125 +1,31 @@
-"""Defines manufacturer and submission base classes"""
-import os
-import dotenv
-from typing import List, Union
-from datetime import datetime
-from dataclasses import dataclass
-
+from typing import Union, List
 import pandas as pd
-from sqlalchemy import create_engine
 
-import app.db.db_services as db_serv
+from db import db_services
 
-dotenv.load_dotenv()
-
-DB_URL = os.getenv("DATABASE_URL")
-DB_ENGINE = create_engine(DB_URL)
-
-database = db_serv.DatabaseServices(DB_ENGINE)
+from entities.preprocessed_data import PreProcessedData
+from entities.processing_step import ProcessingStep
+from entities.manufacturer import Manufacturer
+from entities.submission import NewSubmission
+from entities.error import Error
 
 
-@dataclass
-class Error:
-    submission_id: int
-    row_index: int
-    field: str
-    value_type: type
-    value_content: str
-    reason: str
-    row_data: dict
 
-    def keys(self):
-        return list(self.__dict__.keys())
-        
-    def __getitem__(self,key):
-        return getattr(self,key)
-
-class ProcessingStep:
-    total_steps = 1 # overall processing step number is tracked by the class
-
-    def __init__(self, submission_id: int, description: str):
-        self.submission_id = submission_id
-        self.description = description
-        self.step_num = self.total_steps
-        ProcessingStep.increment_total_step_num()
-
-    @classmethod
-    def increment_total_step_num(cls):
-        cls.total_steps += 1
-
-    def __str__(self) -> str:
-        return f"submission_id = {self.submission_id}, step_num = {self.step_num}, description = {self.step_desctription}"
-
-    def keys(self):
-        return list(self.__dict__.keys())
-        
-    def __getitem__(self,key):
-        return getattr(self,key)
-
-
-class Submission:
-    """
-    handles report processing:
-    tracks the state of submission attributes such as id,
-    errors, processing steps, etc. to use in post-processing
-    database operations
-
-    takes a Manufacturer object in the constructor to access
-    manufacturer attributes and report processing procedures
-
-    TODO implement methods that handle persisting errors, processing, steps, etc.
-    """
-    errors: List[Error] = []
-    processing_steps: List[ProcessingStep] = []
-    final_comm_data = None
-    total_comm = 0  # tracking cents, not dollars
-
-    def __init__(self, rep_mon: int, rep_year: int, report_id: int, file: bytes, sheet_name: str=None) -> None:
-        self.file = file
-        self.report_month = rep_mon
-        self.report_year = rep_year
-        self.report_id = report_id  # use this to determine manufacturer to use, and which method
-        self.sheet_name = sheet_name
-        self.submission_date = datetime.today()
-        self.id = database.record_submission(
-                    report_id=self.report_id,
-                    data=pd.Series({
-                        "submission_date": self.submission_date,
-                        "reporting_month": self.report_month,
-                        "reporting_year": self.report_year
-                    })
-                )
+class ReportProcessor:
     
-    def record_errors(self):
-        for error in self.errors:
-            database.record_error(error)
-        return
-
-    def record_processing_steps(self):
-        database.record_processing_step(**self.processing_steps)
-        return
-
-
-class Manufacturer:
-    """
-    defines manufacturer-specific attributes
-    and handles report processing execution
-
-    This is a base class for creating manufacturers
-    """
-
-    name: str = None # defined by subclasses, manufacturer's db name
-
-    def __init__(self, submission: Submission):
-        self.mappings = {table: database.get_mappings(table) for table in database.get_mapping_tables()}
-        self.id = database.get_manufacturer_id(self.name)
-        self.customer_branches = database.get_customers_branches()
-        self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
-        self.submission = submission
+    def __init__(self, data: PreProcessedData, manufacturer: Manufacturer):
+        self.mappings = {}
+        self.map_customer_name = pd.DataFrame()
+        self.map_city_names = pd.DataFrame()
+        self.map_state_names = pd.DataFrame()
+        self.customer_branches = pd.DataFrame()
+        self.reps_to_cust_branch_ref = pd.DataFrame(),
+        self.data = data
+        self.manufacturer = manufacturer
         
 
     def fill_customer_ids(self, data: pd.DataFrame, column: Union[str,int]) -> pd.DataFrame:
-
+        """converts column supplied in the args to id #s using the map_customer_name reference table"""
         data_cols = data.columns.tolist()
         left_on_name = None
 
@@ -148,7 +54,7 @@ class Manufacturer:
 
 
     def fill_city_ids(self, data: pd.DataFrame, column: Union[str,int]) -> pd.DataFrame:
-
+        """converts column supplied in the args to id #s using the map_city_names reference table"""
         data_cols = data.columns.tolist()
         left_on_name = None
 
@@ -178,7 +84,7 @@ class Manufacturer:
 
 
     def fill_state_ids(self, data: pd.DataFrame, column: Union[str,int]) -> pd.DataFrame:
-        
+        """converts column supplied in the args to id #s using the map_state_names reference table"""
         data_cols = data.columns.tolist()
         left_on_name = None
 
@@ -209,7 +115,11 @@ class Manufacturer:
 
     def add_rep_customer_ids(self, data: pd.DataFrame, 
             ref_columns: list, new_column: str = "map_rep_customer_id") -> pd.DataFrame:
-        
+        """
+        adds a map_rep_customer id column by comparing the customer, city,
+        and state columns named in ref_columns to respective columns in a derived
+        reps-to-customer reference table
+        """
         data_cols = data.columns.tolist()
         left_on_list = []
         for column in ref_columns:
@@ -238,15 +148,20 @@ class Manufacturer:
         return data
 
 
-    def record_mapping_errors(
-            self, data: pd.DataFrame, field: str, reason: str,
-            value_type, value_content: str = None):
+    @staticmethod
+    def processing_step_factory(submission: NewSubmission, step_description: str) -> ProcessingStep:
+        return ProcessingStep(submission_id=submission.id, step_desctription=step_description)
+
+    @staticmethod
+    def error_factory(
+            submission: NewSubmission, data: pd.DataFrame, field: str, reason: str,
+            value_type, value_content: str = None) -> Error:
 
         for row_index, row_data in data.to_dict("index").items():
             if not value_content:
                 value_content = row_data[field]
             error_obj = Error(
-                submission_id=self.submission.id,
+                submission_id=submission.id,
                 row_index=row_index,
                 field=field,
                 value_type=value_type,
@@ -254,11 +169,60 @@ class Manufacturer:
                 reason=reason,
                 row_data={row_index: row_data})
 
-            self.submission.errors.append(error_obj)
-        return
+        return error_obj
+
+    def process(self, submission: NewSubmission, manufacturer: Manufacturer):
+
+        process_errors: List[Error] = []
+        process_steps: List[ProcessingStep] = []
+
+        
+        result = self.fill_customer_ids(result, column="customer")
+        process_steps.append(self.processing_step_factory(submission,"replaced customer names with customer ids where "
+                "a customer reference name was found in the mapping in the database"))
+        if submission.errors:
+            process_steps.append(self.processing_step_factory(submission,"failures in customer name mapping logged"))
+            num_errors = len(submission.errors)
+        
+        result = self.fill_city_ids(result, column="city")
+        process_steps.append(self.processing_step_factory(submission,"replaced city names with city ids where "
+                "a city reference name was found in the mapping in the database"))
+        if len(submission.errors) > num_errors:
+            process_steps.append(self.processing_step_factory(submission,"failures in city name mapping logged"))
+            num_errors = len(submission.errors)
+        
+        result = self.fill_state_ids(result, column="state")
+        process_steps.append(self.processing_step_factory(submission,"replaced state names with state ids where "
+                "a state reference name was found in the mapping in the database"))
+        if len(submission.errors) > num_errors:
+            process_steps.append(self.processing_step_factory(submission,"failures in state name mapping logged"))
+            num_errors = len(submission.errors)
+
+        mask = result.all('columns')
+        map_rep_col_name = "map_rep_customer_id"
+        result = self.add_rep_customer_ids(result[mask], ref_columns=["customer", "city", "state"],
+            new_column=map_rep_col_name)  # pared down to only customers with all values != 0
+        process_steps.append(self.processing_step_factory(submission,"removed all rows that failed to map either a customer id, city id, or state id"))
+        process_steps.append(self.processing_step_factory(submission,"added the rep-to-customer mapping id by looking up customer, "
+                "city, and state ids in a reference table"))
+        if len(submission.errors) > num_errors:
+            process_steps.append(self.processing_step_factory(submission,"failurs in rep-to-customer mapping logged"))
+
+        mask = result.all('columns')
+        result = result[mask]  # filter again for 0's. 0's have been recorded in the errors list
+        process_steps.append(self.processing_step_factory(submission,"removed all rows that failed to map rep-to-customer id"))
+
+        submission_id_col_name = "submission_id"
+        result[submission_id_col_name] = submission.id
+        result = result.loc[:,[submission_id_col_name,map_rep_col_name,"inv_amt","comm_amt"]]
+
+        # update submission attrs
+        submission.total_comm += result["comm_amt"].sum()
+        process_steps.append(self.processing_step_factory(submission,f"total commissions successfully processed: ${submission.total_comm/100:.2f}"))
+        submission.final_comm_data = pd.concat(
+            [submission.final_comm_data, result]
+        )
 
 
-    def record_processing_step(self, step_description: str):
-        processing_step = ProcessingStep(submission_id=self.submission.id, step_desctription=step_description)
-        self.submission.processing_steps.append(processing_step)
-        return
+
+

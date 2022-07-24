@@ -1,11 +1,12 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
+from typing import Dict
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.base import Engine
-from app.db import models
-from typing import Dict
-from app.entities.base import Error, ProcessingStep
+from db import models
+from entities.error import Error
+from entities.processing_step import ProcessingStep
 
 CUSTOMERS = {
     'customers': models.Customer,
@@ -19,17 +20,17 @@ REPS = models.Representative
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
-    "map_reps_customers": models.MapRepsToCustomer,
+    "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
 MANUFACTURER_TABLES = {
-    "manufacturers": models.Manufacturer,
+    "manufacturers": models.ManufacturerDTO,
     "manufacturers_reports": models.ManufacturersReport
 }
-COMMISSION_DATA_TABLE = models.FinalCommissionData
-SUBMISSIONS_META_TABLE = models.ReportSubmissionsLog
-PROCESS_STEPS_LOG = models.ReportProcessingStepsLog
-ERRORS_TABLE = models.CurrentError
+COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
+SUBMISSIONS_META_TABLE = models.SubmissionDTO
+PROCESS_STEPS_LOG = models.ProcessingStepDTO
+ERRORS_TABLE = models.ErrorDTO
 
 
 class DatabaseServices:

@@ -1,11 +1,15 @@
-"""Database Table Models"""
+"""Database Table Models / Data Transfer Objects"""
 
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
+from entities.submission import NewSubmission, RegisteredSubmission
+from entities.error import Error
+from entities.processing_step import ProcessingStep
+
 Base = declarative_base()
 
-## Core Tables
+## Model-only Tables
 class City(Base):
     __tablename__ = 'cities'
     id = Column(Integer,primary_key=True)
@@ -36,14 +40,7 @@ class CustomerBranch(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"))
     city_id = Column(Integer, ForeignKey("cities.id"))
     state_id = Column(Integer, ForeignKey("states.id"))
-    rep = relationship("MapRepsToCustomer")
-
-
-class Manufacturer(Base):
-    __tablename__ = 'manufacturers'
-    id = Column(Integer,primary_key=True)
-    name = Column(String)
-    manuf_reports = relationship("ManufacturersReport")
+    rep = relationship("MapRepToCustomer")
 
 
 class ManufacturersReport(Base):
@@ -62,10 +59,8 @@ class Representative(Base):
     last_name = Column(String)
     initials = Column(String)
     date_joined = Column(DateTime)
-    branches = relationship("MapRepsToCustomer")
+    branches = relationship("MapRepToCustomer")
 
-
-## Mappings
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
     id = Column(Integer,primary_key=True)
@@ -87,38 +82,59 @@ class MapStateName(Base):
     state_id = Column(Integer, ForeignKey("states.id"))
 
 
-class MapRepsToCustomer(Base):
+class MapRepToCustomer(Base):
     __tablename__ = 'map_reps_customers'
     id = Column(Integer,primary_key=True)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     commission_data = relationship("FinalCommissionData")
 
-## Submissions
-class ReportSubmissionsLog(Base):
-    __tablename__ = 'report_submissions_log'
+## Entity DTOs
+class ManufacturerDTO(Base):
+    __tablename__ = 'manufacturers'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
+    manuf_reports = relationship("ManufacturersReport")
+
+
+class SubmissionDTO(Base):
+    __tablename__ = 'submissions'
     id = Column(Integer,primary_key=True)
     submission_date = Column(DateTime)
     reporting_month = Column(Integer)
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     commission_data = relationship("FinalCommissionData")
-    errors = relationship("CurrentError")
-    steps = relationship("ReportProcessingStepsLog")
+    errors = relationship("Error")
+    steps = relationship("ProcessingStep")
+
+    def get_reg_submission(self) -> RegisteredSubmission:
+        return RegisteredSubmission(
+            self.id,
+            self.reporting_month,
+            self.reporting_year,
+            self.report_id,
+            self.submission_date
+        )
+
+    @staticmethod
+    def submission_dto(submission: NewSubmission) -> 'SubmissionDTO':
+        return SubmissionDTO(**submission)
 
 
-class ReportProcessingStepsLog(Base):
-    __tablename__ = 'report_processing_steps_log'
+class ProcessingStepDTO(Base):
+    __tablename__ = 'processing_steps'
     id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
+    submission_id = Column(Integer, ForeignKey("submissions.id"))
     step_num = Column(Integer)
     description = Column(String)
+    
 
 
-class CurrentError(Base):
-    __tablename__ = 'current_errors'
+class ErrorDTO(Base):
+    __tablename__ = 'errors'
     id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
+    submission_id = Column(Integer, ForeignKey("submissions.id"))
     row_index = Column(Integer)
     field = Column(String)
     value_type = Column(String)
@@ -127,11 +143,10 @@ class CurrentError(Base):
     row_data = Column(TEXT)
 
 
-## Final Data
-class FinalCommissionData(Base):
+class FinalCommissionDataDTO(Base):
     __tablename__ = 'final_commission_data'
     row_id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer, ForeignKey("report_submissions_log.id"))
+    submission_id = Column(Integer, ForeignKey("submissions.id"))
     map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))
     inv_amt = Column(Float)
     comm_amt = Column(Float)

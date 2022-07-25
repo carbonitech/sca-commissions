@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 @dataclass
 class Error:
-    submission_id: int
     row_index: int
     field: str
     value_type: type

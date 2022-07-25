@@ -3,7 +3,7 @@ import pandas as pd
 
 from db import db_services
 
-from entities.preprocessed_data import PreProcessedData
+from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.manufacturer import Manufacturer
 from entities.submission import NewSubmission
@@ -24,8 +24,9 @@ class ReportProcessor:
         self.manufacturer = manufacturer
         
 
-    def fill_customer_ids(self, data: pd.DataFrame, column: Union[str,int]) -> pd.DataFrame:
+    def fill_customer_ids(self, column: Union[str,int]) -> pd.DataFrame:
         """converts column supplied in the args to id #s using the map_customer_name reference table"""
+        data = self.data.data
         data_cols = data.columns.tolist()
         left_on_name = None
 
@@ -149,19 +150,17 @@ class ReportProcessor:
 
 
     @staticmethod
-    def processing_step_factory(submission: NewSubmission, step_description: str) -> ProcessingStep:
-        return ProcessingStep(submission_id=submission.id, step_desctription=step_description)
+    def processing_step_factory(step_description: str) -> ProcessingStep:
+        return ProcessingStep(step_desctription=step_description)
 
     @staticmethod
-    def error_factory(
-            submission: NewSubmission, data: pd.DataFrame, field: str, reason: str,
+    def error_factory(data: pd.DataFrame, field: str, reason: str,
             value_type, value_content: str = None) -> Error:
 
         for row_index, row_data in data.to_dict("index").items():
             if not value_content:
                 value_content = row_data[field]
             error_obj = Error(
-                submission_id=submission.id,
                 row_index=row_index,
                 field=field,
                 value_type=value_type,
@@ -206,7 +205,7 @@ class ReportProcessor:
         process_steps.append(self.processing_step_factory(submission,"added the rep-to-customer mapping id by looking up customer, "
                 "city, and state ids in a reference table"))
         if len(submission.errors) > num_errors:
-            process_steps.append(self.processing_step_factory(submission,"failurs in rep-to-customer mapping logged"))
+            process_steps.append(self.processing_step_factory(submission,"failures in rep-to-customer mapping logged"))
 
         mask = result.all('columns')
         result = result[mask]  # filter again for 0's. 0's have been recorded in the errors list

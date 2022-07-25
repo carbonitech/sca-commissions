@@ -5,7 +5,6 @@ from db import db_services
 
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
-from entities.manufacturer import Manufacturer
 from entities.submission import NewSubmission
 from entities.error import Error
 
@@ -13,15 +12,15 @@ from entities.error import Error
 
 class ReportProcessor:
     
-    def __init__(self, data: PreProcessedData, manufacturer: Manufacturer):
+    def __init__(self, data: PreProcessedData, submission: NewSubmission):
         self.mappings = {}
         self.map_customer_name = pd.DataFrame()
         self.map_city_names = pd.DataFrame()
         self.map_state_names = pd.DataFrame()
         self.customer_branches = pd.DataFrame()
         self.reps_to_cust_branch_ref = pd.DataFrame(),
+        self.submission = submission
         self.data = data
-        self.manufacturer = manufacturer
         
 
     def fill_customer_ids(self, column: Union[str,int]) -> pd.DataFrame:
@@ -170,57 +169,60 @@ class ReportProcessor:
 
         return error_obj
 
-    def process(self, submission: NewSubmission, manufacturer: Manufacturer):
+    def register_submission(self) -> int:
+        """reigsters a new submission to the database and returns the id number of that submission"""
+
+    def process(self):
 
         process_errors: List[Error] = []
         process_steps: List[ProcessingStep] = []
 
         
         result = self.fill_customer_ids(result, column="customer")
-        process_steps.append(self.processing_step_factory(submission,"replaced customer names with customer ids where "
+        process_steps.append(self.processing_step_factory("replaced customer names with customer ids where "
                 "a customer reference name was found in the mapping in the database"))
-        if submission.errors:
-            process_steps.append(self.processing_step_factory(submission,"failures in customer name mapping logged"))
-            num_errors = len(submission.errors)
+        if process_errors:
+            process_steps.append(self.processing_step_factory("failures in customer name mapping logged"))
+            num_errors = len(process_errors)
         
         result = self.fill_city_ids(result, column="city")
-        process_steps.append(self.processing_step_factory(submission,"replaced city names with city ids where "
+        process_steps.append(self.processing_step_factory("replaced city names with city ids where "
                 "a city reference name was found in the mapping in the database"))
-        if len(submission.errors) > num_errors:
-            process_steps.append(self.processing_step_factory(submission,"failures in city name mapping logged"))
-            num_errors = len(submission.errors)
+        if len(process_errors) > num_errors:
+            process_steps.append(self.processing_step_factory("failures in city name mapping logged"))
+            num_errors = len(process_errors)
         
         result = self.fill_state_ids(result, column="state")
-        process_steps.append(self.processing_step_factory(submission,"replaced state names with state ids where "
+        process_steps.append(self.processing_step_factory("replaced state names with state ids where "
                 "a state reference name was found in the mapping in the database"))
-        if len(submission.errors) > num_errors:
-            process_steps.append(self.processing_step_factory(submission,"failures in state name mapping logged"))
-            num_errors = len(submission.errors)
+        if len(process_errors) > num_errors:
+            process_steps.append(self.processing_step_factory("failures in state name mapping logged"))
+            num_errors = len(process_errors)
 
         mask = result.all('columns')
         map_rep_col_name = "map_rep_customer_id"
         result = self.add_rep_customer_ids(result[mask], ref_columns=["customer", "city", "state"],
             new_column=map_rep_col_name)  # pared down to only customers with all values != 0
-        process_steps.append(self.processing_step_factory(submission,"removed all rows that failed to map either a customer id, city id, or state id"))
-        process_steps.append(self.processing_step_factory(submission,"added the rep-to-customer mapping id by looking up customer, "
+        process_steps.append(self.processing_step_factory("removed all rows that failed to map either a customer id, city id, or state id"))
+        process_steps.append(self.processing_step_factory("added the rep-to-customer mapping id by looking up customer, "
                 "city, and state ids in a reference table"))
-        if len(submission.errors) > num_errors:
-            process_steps.append(self.processing_step_factory(submission,"failures in rep-to-customer mapping logged"))
+        if len(process_errors) > num_errors:
+            process_steps.append(self.processing_step_factory("failures in rep-to-customer mapping logged"))
 
         mask = result.all('columns')
         result = result[mask]  # filter again for 0's. 0's have been recorded in the errors list
-        process_steps.append(self.processing_step_factory(submission,"removed all rows that failed to map rep-to-customer id"))
+        process_steps.append(self.processing_step_factory("removed all rows that failed to map rep-to-customer id"))
 
+
+        #TODO - DEVELOP METHODS THAT USE db_services TO COMMIT the submission, processing steps, and errors TO THE DATABASE AND RETRIEVE NEEDED VALUES
+
+        submission_id = self.register_submission()
         submission_id_col_name = "submission_id"
-        result[submission_id_col_name] = submission.id
+        result[submission_id_col_name] = submission_id
         result = result.loc[:,[submission_id_col_name,map_rep_col_name,"inv_amt","comm_amt"]]
 
         # update submission attrs
-        submission.total_comm += result["comm_amt"].sum()
-        process_steps.append(self.processing_step_factory(submission,f"total commissions successfully processed: ${submission.total_comm/100:.2f}"))
-        submission.final_comm_data = pd.concat(
-            [submission.final_comm_data, result]
-        )
+        process_steps.append(self.processing_step_factory(f"total commissions successfully processed: ${submission.total_comm/100:.2f}"))
 
 
 

@@ -5,7 +5,7 @@ for Advanced Distributor Products (ADP)
 from typing import List
 import pandas as pd
 import numpy as np
-from entities.preprocessed_data import PreProcessedData
+from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.manufacturer import Manufacturer
 from entities.submission import NewSubmission
@@ -17,15 +17,8 @@ class AdvancedDistributorProducts(Manufacturer):
         - All reports have the 'Detail' tab, which I'm calling the 'standard' report,
             but other tabs for POS reports vary in name, and sometimes in structure.
         - Reports are expected to come packaged together, seperated in one file by tabs
-    Effects:
-        - Updates Submission object:
-            - total_comm: adds commission sum to the running total
-            - final_comm_data: concatenate the result from this process
-                with other results
-            - errors: appends Error objects
-    Returns: None
-
-    TODO - add internal checks on commission dollar amounts to ensure integrity
+        
+    Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
     name = "ADP"
@@ -35,13 +28,13 @@ class AdvancedDistributorProducts(Manufacturer):
 
         process_steps: List[ProcessingStep] = []
 
-        data: pd.DataFrame = pd.read_excel(submission.file, sheet_name=submission.sheet_name)
+        data = submission.file_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        process_steps.append(self.processing_step_factory(submission,"removed spaces from column names"))
+        process_steps.append(self.processing_step_factory("removed spaces from column names"))
 
         data.dropna(subset=data.columns.tolist()[0], inplace=True)
-        process_steps.append(self.processing_step_factory(submission,"removed all rows that have no value in the first column"))
+        process_steps.append(self.processing_step_factory("removed all rows that have no value in the first column"))
 
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
@@ -55,11 +48,11 @@ class AdvancedDistributorProducts(Manufacturer):
             values=piv_table_values,
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
-        process_steps.append(self.processing_step_factory(submission,"grouped NetSales and Rep1Commission by sold-to, "
+        process_steps.append(self.processing_step_factory("grouped NetSales and Rep1Commission by sold-to, "
                 "ship-to, customer name, city, and state (pivot table)"))
 
         result = result.drop(columns=["Customer","ShipTo"])
-        process_steps.append(self.processing_step_factory(submission,"dropped the ship-to and sold-to id columns"))
+        process_steps.append(self.processing_step_factory("dropped the ship-to and sold-to id columns"))
 
         customer_name_col = 'customer'
         city_name_col = 'city'
@@ -82,7 +75,7 @@ class AdvancedDistributorProducts(Manufacturer):
 
     @staticmethod
     def processing_step_factory(step_description: str) -> ProcessingStep:
-        return ProcessingStep(step_desctription=step_description)
+        return ProcessingStep(description=step_description)
 
 
     def preprocess(self, submission: NewSubmission) -> PreProcessedData:

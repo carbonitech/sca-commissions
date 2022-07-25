@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
-from entities.submission import NewSubmission, RegisteredSubmission
+from entities.submission import NewSubmission
 from entities.error import Error
 from entities.processing_step import ProcessingStep
 
@@ -107,15 +107,6 @@ class SubmissionDTO(Base):
     commission_data = relationship("FinalCommissionData")
     errors = relationship("Error")
     steps = relationship("ProcessingStep")
-
-    def get_reg_submission(self) -> RegisteredSubmission:
-        return RegisteredSubmission(
-            self.id,
-            self.reporting_month,
-            self.reporting_year,
-            self.report_id,
-            self.submission_date
-        )
 
     @staticmethod
     def submission_dto(submission: NewSubmission) -> 'SubmissionDTO':

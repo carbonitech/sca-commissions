@@ -7,10 +7,10 @@ import pandas as pd
 import numpy as np
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
-from entities.manufacturer import Manufacturer
+from entities.preprocessor import PreProcessor
 from entities.submission import NewSubmission
 
-class AdvancedDistributorProducts(Manufacturer):
+class ADPPreProcessor(PreProcessor):
     """
     Remarks:
         - ADP's report comes as a single file with multiple tabs

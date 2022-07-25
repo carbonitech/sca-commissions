@@ -7,10 +7,8 @@ from pandas.testing import assert_frame_equal
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.db import models
-from app.entities import base
-from app.entities.manufacturers import adp
-
+from db import models
+from entities.manufacturers import adp
 
 dotenv.load_dotenv()
 
@@ -20,17 +18,17 @@ DB_TABLES = {
         'states': models.State,
         'customers': models.Customer,
         'customer_branches': models.CustomerBranch,
-        'manufacturers': models.Manufacturer,
+        'manufacturers': models.ManufacturerDTO,
         'manufacturers_reports': models.ManufacturersReport,
         'representatives': models.Representative,
         'map_customer_name': models.MapCustomerName,
         'map_city_names': models.MapCityName,
         'map_state_names': models.MapStateName,
-        'map_reps_customers': models.MapRepsToCustomer,
-        'report_submissions_log': models.ReportSubmissionsLog,
-        'report_processing_steps_log': models.ReportProcessingStepsLog,
-        'current_errors': models.CurrentError,
-        'final_commission_data': models.FinalCommissionData
+        'map_reps_customers': models.MapRepToCustomer,
+        'report_submissions_log': models.SubmissionDTO,
+        'report_processing_steps_log': models.ProcessingStepDTO,
+        'current_errors': models.ErrorDTO,
+        'final_commission_data': models.FinalCommissionDataDTO
 }
 
 

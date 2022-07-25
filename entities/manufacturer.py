@@ -11,5 +11,5 @@ class Manufacturer(ABC):
     name: str = None # defined by subclasses, manufacturer's db name
 
     @abstractmethod
-    def preprocess():
+    def preprocess(self, submission):
         pass

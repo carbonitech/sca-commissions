@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from entities.manufacturers import adp
+import entities.manufacturers as manufacturers
 from entities.submission import NewSubmission
 from entities.commission_file import CommissionFile
 from entities.commission_data import PreProcessedData
@@ -36,7 +36,7 @@ class TestADP(unittest.TestCase):
             report_id=1, manufacturer_id=1
         )
 
-        pp_data = adp.AdvancedDistributorProducts().preprocess(submission=submission)
+        pp_data = manufacturers.adp.ADPPreProcessor().preprocess(submission=submission)
 
 
         # retrieve total from file by summing the commission column,

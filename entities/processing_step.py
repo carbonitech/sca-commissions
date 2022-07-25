@@ -10,8 +10,12 @@ class ProcessingStep:
     def increment_total_step_num(cls):
         cls.total_steps += 1
 
+    @classmethod
+    def set_total_step_num(cls, new_num):
+        cls.total_steps = new_num
+
     def __str__(self) -> str:
-        return f"submission_id = {self.submission_id}, step_num = {self.step_num}, description = {self.step_desctription}"
+        return f"step_num = {self.step_num}, description = {self.description}"
 
     def keys(self):
         return list(self.__dict__.keys())

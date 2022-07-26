@@ -3,7 +3,6 @@ import dotenv
 import os
 
 import pandas as pd
-from pandas.testing import assert_frame_equal
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
@@ -87,18 +86,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
     def test_record_processing_steps(self): ...
     def test_get_processing_steps(self): ...
     def test_del_processing_steps(self): ...
-    def test_record_errors(self):
-        self.submission.record_errors()
-        
-        sql = select(DB_TABLES['current_errors'])
-        persisted_data = pd.read_sql(sql, con=self.db)
-        if self.submission.errors:
-            self.assertFalse(persisted_data.empty)
-            self.assertEqual(len(self.submission.errors), len(persisted_data))
-        else:
-            self.assertTrue(persisted_data.empty)
-
-
+    def test_record_errors(self): ...
     def test_get_errors(self): ...
     def test_del_error(self): ...
     def test_record_final_data(self): ...

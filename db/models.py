@@ -87,7 +87,7 @@ class MapRepToCustomer(Base):
     id = Column(Integer,primary_key=True)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
-    commission_data = relationship("FinalCommissionData")
+    commission_data = relationship("FinalCommissionDataDTO")
 
 ## Entity DTOs
 class ManufacturerDTO(Base):
@@ -104,9 +104,9 @@ class SubmissionDTO(Base):
     reporting_month = Column(Integer)
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
-    commission_data = relationship("FinalCommissionData")
-    errors = relationship("Error")
-    steps = relationship("ProcessingStep")
+    commission_data = relationship("FinalCommissionDataDTO")
+    errors = relationship("ErrorDTO")
+    steps = relationship("ProcessingStepDTO")
 
     @staticmethod
     def submission_dto(submission: NewSubmission) -> 'SubmissionDTO':

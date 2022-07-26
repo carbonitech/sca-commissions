@@ -19,7 +19,7 @@ class TestADP(unittest.TestCase):
         
         return
 
-    def test_process_standard_report(self):
+    def test_standard_report_preprocessing(self):
         """
         Tests:
             - Manufacturer.preprocess() returns a PreProcessedData object
@@ -36,7 +36,7 @@ class TestADP(unittest.TestCase):
             report_id=1, manufacturer_id=1
         )
 
-        pp_data = manufacturers.adp.ADPPreProcessor().preprocess(submission=submission)
+        pp_data = manufacturers.adp.ADPPreProcessor(submission).preprocess()
 
 
         # retrieve total from file by summing the commission column,
@@ -56,3 +56,21 @@ class TestADP(unittest.TestCase):
         self.assertEqual(pp_data.total_commission(), expected_comm)
         self.assertEqual(pp_data.total_sales(), expected_sales)
         self.assertListEqual(sequence_processing_steps, list(range(1,len(sequence_processing_steps)+1)))
+        return
+
+    def test_coburn_report_preprocessing(self): ...
+    def test_re_michel_report_preprocessing(self): ...
+    def test_lennox_report_preprocessing(self): ...
+
+    def test_no_matching_report(self):
+        file = CommissionFile(file_data=self.adp_data, sheet_name="Detail")
+        submission = NewSubmission(
+            file=file,
+            report_month=5, report_year=2022,
+            report_id=999, manufacturer_id=1
+        )
+
+        pp_data = manufacturers.adp.ADPPreProcessor(submission).preprocess()
+
+        self.assertFalse(pp_data)
+    

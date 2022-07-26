@@ -1,9 +1,12 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 from typing import Dict
+from os import getenv
+
+from dotenv import load_dotenv
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
-from sqlalchemy.engine.base import Engine
+
 from db import models
 from entities.error import Error
 from entities.processing_step import ProcessingStep
@@ -32,21 +35,19 @@ SUBMISSIONS_META_TABLE = models.SubmissionDTO
 PROCESS_STEPS_LOG = models.ProcessingStepDTO
 ERRORS_TABLE = models.ErrorDTO
 
+load_dotenv()
 
 class DatabaseServices:
 
-    def __init__(self, engine: Engine):
-        self.engine = engine
+    engine = sqlalchemy.create_engine(getenv("DATABASE_URL"))
 
     ## mappings
     def get_mapping_tables(self) -> set:
         return {table for table in sqlalchemy.inspect(self.engine).get_table_names() 
                 if table.split("_")[0] == "map"}
 
-
     def get_mappings(self, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),self.engine)
-
 
     def set_mapping(self, table: str, data: pd.DataFrame) -> bool:
 
@@ -74,13 +75,13 @@ class DatabaseServices:
         else:
             False
 
-
     def del_mapping(self, table: str, id: int) -> bool:
         with Session(self.engine) as session:
             row = session.query(MAPPING_TABLES[table]).filter_by(id=id).first()
             session.delete(row)
             session.commit()
         return True
+
 
     ## final commission data
     def get_final_data(self) -> pd.DataFrame:
@@ -158,6 +159,7 @@ class DatabaseServices:
 
         return True
 
+
     ## processing steps log
     def get_processing_steps(self, submission_id: int) -> pd.DataFrame:
         """get all report processing steps for a commission report submission"""
@@ -213,13 +215,12 @@ class DatabaseServices:
     def del_submission_file(self, id: int) -> bool: ...
 
 
-    ## other tables
+    ## table views
     def get_customers_branches(self) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    ## reference gen
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
         """generates a reference for matching the map_rep_customer id to
         an array of customer, city, and state ids"""

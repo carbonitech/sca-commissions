@@ -1,5 +1,5 @@
 """
-Manufacturer report processing definition
+Manufacturer report preprocessing definition
 for Advanced Distributor Products (ADP)
 """
 from typing import List
@@ -8,7 +8,6 @@ import numpy as np
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.preprocessor import PreProcessor
-from entities.submission import NewSubmission
 
 class ADPPreProcessor(PreProcessor):
     """
@@ -21,14 +20,17 @@ class ADPPreProcessor(PreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    name = "ADP"
+    @staticmethod
+    def processing_step_factory(step_description: str) -> ProcessingStep:
+        return ProcessingStep(description=step_description)
 
-    def _standard_report_preprocessing(self, submission: NewSubmission) -> PreProcessedData:
+
+    def _standard_report_preprocessing(self) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
 
         process_steps: List[ProcessingStep] = []
 
-        data = submission.file_df()
+        data = self.submission.file_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         process_steps.append(self.processing_step_factory("removed spaces from column names"))
@@ -57,36 +59,25 @@ class ADPPreProcessor(PreProcessor):
         customer_name_col = 'customer'
         city_name_col = 'city'
         state_name_col = 'state'
-        ref_cols = result.columns.tolist()[:3]
         result.columns=[customer_name_col,city_name_col,state_name_col,"inv_amt","comm_amt"]
+        ref_cols = result.columns.tolist()[:3]
 
         return PreProcessedData(result,process_steps,ref_cols,customer_name_col,city_name_col,state_name_col)
 
 
-    def _coburn_report_preprocessing(self, submission: NewSubmission) -> PreProcessedData:
-        pass
+    def _coburn_report_preprocessing(self) -> PreProcessedData: ...
+    def _re_michel_report_preprocessing(self) -> PreProcessedData: ...
+    def _lennox_report_preprocessing(self) -> PreProcessedData: ...
 
-    def _re_michel_report_preprocessing(self, submission: NewSubmission) -> PreProcessedData:
-        pass
-
-    def _lennox_report_preprocessing(self, submission: NewSubmission) -> PreProcessedData:
-        pass
-
-
-    @staticmethod
-    def processing_step_factory(step_description: str) -> ProcessingStep:
-        return ProcessingStep(description=step_description)
-
-
-    def preprocess(self, submission: NewSubmission) -> PreProcessedData:
+    def preprocess(self) -> PreProcessedData:
         method_by_id = {
             1: self._standard_report_preprocessing,
             2: self._coburn_report_preprocessing,
             3: self._lennox_report_preprocessing,
             4: self._re_michel_report_preprocessing
         }
-        preprocess_method = method_by_id.get(submission.report_id, None)
+        preprocess_method = method_by_id.get(self.submission.report_id, None)
         if preprocess_method:
-            return preprocess_method(submission)
+            return preprocess_method()
         else:
             return

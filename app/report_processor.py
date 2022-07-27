@@ -1,5 +1,6 @@
 from typing import List
 import pandas as pd
+from db import db_services
 
 from db.db_services import DatabaseServices
 
@@ -153,12 +154,13 @@ class ReportProcessor:
         return self
 
 
-    def add_rep_customer_ids(self, new_column: str="map_rep_customer_id") -> 'ReportProcessor':
+    def add_rep_customer_ids(self) -> 'ReportProcessor':
         """
         adds a map_rep_customer id column by comparing the customer, city,
         and state columns named in ref_columns to respective columns in a derived
         reps-to-customer reference table
         """
+        new_column = "map_rep_customer_id"
         left_on_list = self.ppdata.map_rep_customer_ref_cols
 
         merged_w_reference = pd.merge(
@@ -200,8 +202,16 @@ class ReportProcessor:
         return self
 
 
-    def register_submission(self) -> int:
+    def register_submission_and_add_id(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
+        id_num = self.database.record_submission(self.submission)
+        self.staged_data["submission_id"] = id_num
+        return self
+
+
+    def drop_extra_columns(self) -> 'ReportProcessor':
+        self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
+        return self
 
 
     def process_and_commit(self) -> None:
@@ -214,21 +224,14 @@ class ReportProcessor:
                 to the database 
         """
 
-        map_rep_col_name = "map_rep_customer_id"
-
         self.fill_customer_ids()                \
             .fill_city_ids()                    \
             .fill_state_ids()                   \
             .filter_out_any_rows_unmapped()     \
-            .add_rep_customer_ids(
-                new_column=map_rep_col_name)    \
-            .filter_out_any_rows_unmapped()
+            .add_rep_customer_ids()             \
+            .filter_out_any_rows_unmapped()     \
+            .register_submission_and_add_id()   \
+            .drop_extra_columns()
 
-        #TODO - DEVELOP METHODS THAT USE db_services TO COMMIT the submission, processing steps, and errors TO THE DATABASE AND RETRIEVE NEEDED VALUES
-
-        # submission_id = self.register_submission()
-        # submission_id_col_name = "submission_id"
-        # self.staged_data[submission_id_col_name] = submission_id
-        # self.staged_data = self.staged_data.loc[:,[submission_id_col_name,map_rep_col_name,"inv_amt","comm_amt"]]
 
         return

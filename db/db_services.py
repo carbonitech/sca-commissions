@@ -1,14 +1,15 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 from typing import Dict
 from os import getenv
-
 from dotenv import load_dotenv
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 
 from db import models
+
 from entities.error import Error
+from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
 
 CUSTOMERS = {
@@ -31,7 +32,7 @@ MANUFACTURER_TABLES = {
     "manufacturers_reports": models.ManufacturersReport
 }
 COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
-SUBMISSIONS_META_TABLE = models.SubmissionDTO
+SUBMISSIONS_TABLE = models.SubmissionDTO
 PROCESS_STEPS_LOG = models.ProcessingStepDTO
 ERRORS_TABLE = models.ErrorDTO
 
@@ -127,21 +128,19 @@ class DatabaseServices:
         return report_id
 
 
-    ## submission metadata
+    ## submission
     def get_submissions(self, manufacturer_id: int) -> pd.DataFrame:
         """get a dataframe of all manufacturer's report submissions by manufacturer's id"""
         manufacturers_reports = self.get_manufacturers_reports(manufacturer_id)
         report_ids = manufacturers_reports.loc[:,"id"].tolist()
         result = pd.read_sql(
-            sqlalchemy.select(SUBMISSIONS_META_TABLE).where(SUBMISSIONS_META_TABLE.report_id.in_(report_ids)),
+            sqlalchemy.select(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.report_id.in_(report_ids)),
             con=self.engine)
         return result
 
-    def record_submission(self, report_id: int, data: pd.Series) -> int:
-        """record a submission into the submissions log"""
-        data = pd.concat([data,pd.Series({"report_id": report_id})])
-        sql = sqlalchemy.insert(SUBMISSIONS_META_TABLE).returning(SUBMISSIONS_META_TABLE.id)\
-                .values(data.to_dict())
+    def record_submission(self, submission: NewSubmission) -> int:
+        sql = sqlalchemy.insert(SUBMISSIONS_TABLE).returning(SUBMISSIONS_TABLE.id)\
+                .values(**submission)
         with Session(bind=self.engine) as session:
             result = session.execute(sql)
             session.commit()
@@ -150,8 +149,8 @@ class DatabaseServices:
 
     def del_submission(self, submission_id: int) -> bool:
         """delete a submission using the submission id"""
-        sql = sqlalchemy.delete(SUBMISSIONS_META_TABLE)\
-                .where(SUBMISSIONS_META_TABLE.id == submission_id)
+        sql = sqlalchemy.delete(SUBMISSIONS_TABLE)\
+                .where(SUBMISSIONS_TABLE.id == submission_id)
 
         with Session(bind=self.engine) as session:
             session.execute(sql)

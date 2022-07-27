@@ -74,7 +74,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
         # set up Submission Object
         file = CommissionFile(adp_data, "Detail")
         self.submission = NewSubmission(
-            report_month=5, report_year=2022,
+            reporting_month=5, reporting_year=2022,
             report_id=1, manufacturer_id=1,
             file=file
         )
@@ -85,6 +85,11 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
 
     def test_process_and_committ(self):
+        """
+        Tests:
+            - Processing steps are an ascending sequence of integers starting at 1
+            - Data staged for committing has the 4 columns expected, by name, and only those columns
+        """
         report_processor = ReportProcessor(
             data=self.adp_preprocessed_data,
             submission=self.submission,
@@ -93,10 +98,14 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
         report_processor.process_and_commit()
 
-        self.assertTrue(
+        self.assertListEqual(
             [step.step_num for step in report_processor.process_steps],
-            list(range(len(report_processor.process_steps)+1))
+            list(range(1,len(report_processor.process_steps)+1))
             )
+        self.assertListEqual(
+            report_processor.staged_data.columns.tolist(),
+            ["submission_id","map_rep_customer_id","inv_amt","comm_amt"]
+        )
 
         return
 

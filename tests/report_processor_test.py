@@ -109,6 +109,38 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
         return
 
+    def test_total_commissions(self):
+        report_processor = ReportProcessor(
+            data=self.adp_preprocessed_data,
+            submission=self.submission,
+            database=db_services.DatabaseServices()
+        )
+
+        report_processor.process_and_commit()
+        total_commissions = report_processor.total_commissions()
+
+        exp_total_commissions = self.submission.file_df().dropna(subset="Customer").loc[:,"Rep1 Commission"]*100
+        exp_total_commissions = round(exp_total_commissions.sum())
+
+        self.assertEqual(total_commissions, exp_total_commissions)
+        return
+
+    def test_total_sales(self):
+        report_processor = ReportProcessor(
+            data=self.adp_preprocessed_data,
+            submission=self.submission,
+            database=db_services.DatabaseServices()
+        )
+
+        report_processor.process_and_commit()
+        total_sales = report_processor.total_sales()
+
+        exp_total_sales = self.submission.file_df().dropna(subset="Customer").loc[:,"  Net Sales"]*100
+        exp_total_sales = round(exp_total_sales.sum())
+
+        self.assertEqual(total_sales, exp_total_sales)
+        return
+
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

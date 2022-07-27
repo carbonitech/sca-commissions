@@ -32,7 +32,7 @@ class TestADP(unittest.TestCase):
         file = CommissionFile(file_data=self.adp_data, sheet_name="Detail")
         submission = NewSubmission(
             file=file,
-            report_month=5, report_year=2022,
+            reporting_month=5, reporting_year=2022,
             report_id=1, manufacturer_id=1
         )
 
@@ -66,7 +66,7 @@ class TestADP(unittest.TestCase):
         file = CommissionFile(file_data=self.adp_data, sheet_name="Detail")
         submission = NewSubmission(
             file=file,
-            report_month=5, report_year=2022,
+            reporting_month=5, reporting_year=2022,
             report_id=999, manufacturer_id=1
         )
 

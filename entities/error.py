@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from json import dumps
+from json import dumps, loads
 
 @dataclass
 class Error:
@@ -22,3 +22,6 @@ class Error:
 
     def add_submission_id(self, value: int) -> None:
         self.submission_id = value
+
+    def get_row_data(self) -> dict:
+        return loads(self.row_data)

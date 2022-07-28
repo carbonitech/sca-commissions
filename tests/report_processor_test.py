@@ -80,7 +80,16 @@ class TestSubmissionDataManagement(unittest.TestCase):
         )
 
         # process report using the Manufacturer's process
-        self.adp_preprocessed_data = adp.ADPPreProcessor(self.submission).preprocess()        
+        self.adp_preprocessed_data = adp.ADPPreProcessor(self.submission).preprocess()
+
+        self.report_processor = ReportProcessor(
+            data=self.adp_preprocessed_data,
+            submission=self.submission,
+            database=db_services.DatabaseServices()
+        )
+
+        self.report_processor.process_and_commit()
+
         return
 
 
@@ -90,13 +99,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
             - Processing steps are an ascending sequence of integers starting at 1
             - Data staged for committing has the 4 columns expected, by name, and only those columns
         """
-        report_processor = ReportProcessor(
-            data=self.adp_preprocessed_data,
-            submission=self.submission,
-            database=db_services.DatabaseServices()
-        )
-
-        report_processor.process_and_commit()
+        report_processor = self.report_processor
 
         self.assertListEqual(
             [step.step_num for step in report_processor.process_steps],
@@ -110,13 +113,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
         return
 
     def test_total_commissions(self):
-        report_processor = ReportProcessor(
-            data=self.adp_preprocessed_data,
-            submission=self.submission,
-            database=db_services.DatabaseServices()
-        )
-
-        report_processor.process_and_commit()
+        report_processor = self.report_processor
         total_commissions = report_processor.total_commissions()
 
         exp_total_commissions = self.submission.file_df().dropna(subset="Customer").loc[:,"Rep1 Commission"]*100
@@ -124,6 +121,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
         self.assertEqual(total_commissions, exp_total_commissions)
         return
+
 
     def test_total_sales(self):
         report_processor = ReportProcessor(
@@ -141,6 +139,18 @@ class TestSubmissionDataManagement(unittest.TestCase):
         self.assertEqual(total_sales, exp_total_sales)
         return
 
+
+    def test_register_all_errors(self):
+        database = db_services.DatabaseServices()
+        errors = database.get_errors(self.report_processor.submission_id)
+        self.assertEqual(len(self.report_processor.process_errors), len(errors))
+        return
+
+
+    def test_register_all_process_steps(self):
+        database = db_services.DatabaseServices()
+        process_steps = database.get_processing_steps(self.report_processor.submission_id)
+        self.assertEqual(len(self.report_processor.process_steps), len(process_steps))
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

@@ -1,9 +1,7 @@
 from typing import List
 import pandas as pd
-from db import db_services
 
 from db.db_services import DatabaseServices
-
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.submission import NewSubmission
@@ -51,6 +49,7 @@ class ReportProcessor:
             return_values.append(error_obj)
         return return_values
 
+
     def total_commissions(self) -> int:
         """calculate sum of commissions (in cents, rounded to an integer) present in staged data and errors"""
         # key-value over-writes using row-index deduplicates commission values
@@ -62,6 +61,7 @@ class ReportProcessor:
         total_comm += self.staged_data.loc[:,"comm_amt"].sum()
         return round(total_comm)
 
+
     def total_sales(self) -> int:
         errors_sales_dict = {
                 error_obj.row_index: error_obj.row_data[error_obj.row_index]["inv_amt"]
@@ -70,6 +70,7 @@ class ReportProcessor:
         total_sales = sum(list(errors_sales_dict.values()))
         total_sales += self.staged_data.loc[:,"inv_amt"].sum()
         return round(total_sales)
+
 
     def fill_customer_ids(self) -> 'ReportProcessor':
         """converts customer column customer id #s using the map_customer_name reference table"""
@@ -100,8 +101,6 @@ class ReportProcessor:
                 self.processing_step_factory("failures in customer name mapping logged")
             )
             self.last_num_errors = len(self.process_errors)
-
-
         return self
 
 
@@ -224,7 +223,22 @@ class ReportProcessor:
     def register_submission_and_add_id(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
         id_num = self.database.record_submission(self.submission)
+        self.submission_id = id_num
         self.staged_data["submission_id"] = id_num
+        return self
+
+
+    def register_all_errors(self) -> 'ReportProcessor':
+        for error_obj in self.process_errors:
+            error_obj.add_submission_id(self.submission_id)
+            self.database.record_error(error_obj=error_obj)
+        return self
+
+    
+    def register_all_process_steps(self) -> 'ReportProcessor':
+        for process_obj in self.process_steps:
+            process_obj.add_submission_id(self.submission_id)
+            self.database.record_processing_step(step_obj=process_obj)
         return self
 
 
@@ -250,7 +264,8 @@ class ReportProcessor:
             .add_rep_customer_ids()             \
             .filter_out_any_rows_unmapped()     \
             .register_submission_and_add_id()   \
-            .drop_extra_columns()
-
+            .drop_extra_columns()               \
+            .register_all_errors()              \
+            .register_all_process_steps()       
 
         return

@@ -170,9 +170,9 @@ class DatabaseServices:
 
     def record_processing_step(self, step_obj: ProcessingStep) -> bool:
         """commit all report processing stesp for a commission report submission"""
-        sql = sqlalchemy.insert(PROCESS_STEPS_LOG)
+        sql = sqlalchemy.insert(PROCESS_STEPS_LOG).values(**step_obj)
         with Session(bind=self.engine) as session:
-            session.execute(sql, **step_obj)
+            session.execute(sql)
             session.commit()
         return True
 
@@ -192,13 +192,13 @@ class DatabaseServices:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def record_error(self, error_obj: Error) -> bool:
+    def record_error(self, error_obj: Error) -> None:
         """record errors into the current_errors table"""
         with Session(bind=self.engine) as session:
-            sql = sqlalchemy.insert(ERRORS_TABLE)
-            session.execute(sql, **error_obj)
+            sql = sqlalchemy.insert(ERRORS_TABLE).values(**error_obj)
+            session.execute(sql)
             session.commit()
-        return True
+        return
         
     def del_error(self, error_id: int) -> bool:
         """delete errors from the errors table by error id"""

@@ -14,6 +14,9 @@ class ProcessingStep:
     def set_total_step_num(cls, new_num):
         cls.total_steps = new_num
 
+    def add_submission_id(self, value: int) -> None:
+        self.submission_id = value
+
     def __str__(self) -> str:
         return f"step_num = {self.step_num}, description = {self.description}"
 

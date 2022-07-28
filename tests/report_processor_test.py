@@ -124,13 +124,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
 
     def test_total_sales(self):
-        report_processor = ReportProcessor(
-            data=self.adp_preprocessed_data,
-            submission=self.submission,
-            database=db_services.DatabaseServices()
-        )
-
-        report_processor.process_and_commit()
+        report_processor = self.report_processor
         total_sales = report_processor.total_sales()
 
         exp_total_sales = self.submission.file_df().dropna(subset="Customer").loc[:,"  Net Sales"]*100
@@ -151,6 +145,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
         database = db_services.DatabaseServices()
         process_steps = database.get_processing_steps(self.report_processor.submission_id)
         self.assertEqual(len(self.report_processor.process_steps), len(process_steps))
+
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

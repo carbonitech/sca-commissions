@@ -41,7 +41,7 @@ class TestRefTableManagement(unittest.TestCase):
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
-        self.db_services = db_services.DatabaseServices(engine=self.db)
+        self.db_services = db_services.DatabaseServices()
 
         # load csv files for db reference tables
         tables_dir = './tests/db_tables'
@@ -163,7 +163,7 @@ class TestJoinedReferenceHelpers(unittest.TestCase):
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
         models.Base.metadata.create_all(self.db)
-        self.db_services = db_services.DatabaseServices(engine=self.db)
+        self.db_services = db_services.DatabaseServices()
 
         # load csv files for db reference tables
         tables_dir = './tests/db_tables'

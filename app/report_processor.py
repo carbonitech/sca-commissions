@@ -54,7 +54,7 @@ class ReportProcessor:
         """calculate sum of commissions (in cents, rounded to an integer) present in staged data and errors"""
         # key-value over-writes using row-index deduplicates commission values
         errors_commission_dict = {
-                error_obj.row_index: error_obj.row_data[error_obj.row_index]["comm_amt"]
+                error_obj.row_index: error_obj.get_row_data()[str(error_obj.row_index)]["comm_amt"]
                 for error_obj in self.process_errors
             }
         total_comm = sum(list(errors_commission_dict.values()))
@@ -64,7 +64,7 @@ class ReportProcessor:
 
     def total_sales(self) -> int:
         errors_sales_dict = {
-                error_obj.row_index: error_obj.row_data[error_obj.row_index]["inv_amt"]
+                error_obj.row_index: error_obj.get_row_data()[str(error_obj.row_index)]["inv_amt"]
                 for error_obj in self.process_errors
             }
         total_sales = sum(list(errors_sales_dict.values()))

@@ -88,12 +88,13 @@ class DatabaseServices:
     def get_final_data(self) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(COMMISSION_DATA_TABLE),self.engine)
 
-    def record_final_data(self, data: pd.DataFrame) -> bool:
-        rows_affected = data.to_sql(COMMISSION_DATA_TABLE.__table__.name, con=self.engine, if_exists="append", index=False)
-        if rows_affected and rows_affected > 0:
-            return True
-        else:
-            False
+    def record_final_data(self, data: pd.DataFrame) -> None:
+        data_records = data.to_dict(orient="records")
+        with Session(bind=self.engine) as session:
+            sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)
+            session.execute(sql, data_records) # for bulk insert per SQLAlchemy docs
+            session.commit()
+        return
 
 
     ## manufactuers tables

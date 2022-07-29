@@ -24,4 +24,6 @@ class Error:
         self.submission_id = value
 
     def get_row_data(self) -> dict:
-        return loads(self.row_data)
+        row_data: dict = loads(self.row_data)
+        row_data = {int(key): value for key,value in row_data.items()}
+        return row_data

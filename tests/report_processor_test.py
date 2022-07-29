@@ -3,7 +3,7 @@ import dotenv
 import os
 
 import pandas as pd
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from db import models, db_services

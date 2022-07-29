@@ -83,7 +83,7 @@ class ReportProcessor:
         
         # customer column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
-        no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]        
+        no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
         error_reason = "Customer name in the commission file is not mapped to a standard name"
         self.process_errors.extend(
             self.error_factory(no_match_table, left_on_name, error_reason, str)
@@ -178,7 +178,7 @@ class ReportProcessor:
             right_on=["customer_id","city_id","state_id"]
         )
 
-        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int)
+        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list() # must be a list or else .insert will join on the indecies
         self.staged_data.insert(0,new_column,new_col_values) # only way i've found to avoid SettingWithCopyWarning
         no_match_table = self.staged_data.loc[self.staged_data[new_column] == 0]
 
@@ -236,6 +236,9 @@ class ReportProcessor:
         self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
         return self
 
+    def register_commission_data(self) -> 'ReportProcessor':
+        self.database.record_final_data(self.staged_data)
+        return self
 
     def process_and_commit(self) -> None:
         """
@@ -257,5 +260,7 @@ class ReportProcessor:
             .drop_extra_columns()               \
             .filter_out_any_rows_unmapped()     \
             .register_all_errors()              \
-            .register_all_process_steps()       
+            .register_all_process_steps()       \
+            .register_commission_data()
+
         return

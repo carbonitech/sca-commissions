@@ -62,6 +62,9 @@ class ADPPreProcessor(PreProcessor):
         result.columns=[customer_name_col,city_name_col,state_name_col,"inv_amt","comm_amt"]
         ref_cols = result.columns.tolist()[:3]
 
+        for ref_col in ref_cols:
+            result[ref_col] = result.loc[:,ref_col].apply(str.upper)
+
         return PreProcessedData(result,process_steps,ref_cols,customer_name_col,city_name_col,state_name_col)
 
 

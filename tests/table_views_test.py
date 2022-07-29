@@ -102,7 +102,26 @@ class TestTableViews(unittest.TestCase):
                 result.loc[:,"Comm Amt"].sum(),
                 self.report_processor.staged_data.comm_amt.sum()/100
             )
+        self.assertAlmostEqual(
+                result.loc[:,"Inv Amt"].sum(),
+                self.report_processor.staged_data.inv_amt.sum()/100
+            )
         return
+
+
+    def test_rep_to_customer_map_with_all_names(self):
+        viewer = db_services.TableViews()
+        result = viewer.rep_to_customer_map_with_all_names()
+
+        self.assertFalse(result.empty)
+        for col in result.columns:
+            self.assertTrue(result[col].dtype=='object')
+
+        return
+
+    def test_mapping_errors_view(self):
+        pass
+
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

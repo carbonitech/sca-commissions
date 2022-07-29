@@ -253,6 +253,10 @@ class TableViews:
         return calendar.month_name[month_num]
 
     def commission_data_with_all_names(self) -> pd.DataFrame:
+        """runs sql query to produce the commission table format used by SCA
+        and converts month number to name and cents to dollars before return
+        
+        Returns: pd.DataFrame"""
         commission_data_raw = COMMISSION_DATA_TABLE
         submission_data = SUBMISSIONS_TABLE
         reports = MANUFACTURER_TABLES["manufacturers_reports"]
@@ -286,4 +290,38 @@ class TableViews:
         view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
         view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
         return view_table
+
+
+    def rep_to_customer_map_with_all_names(self) -> pd.DataFrame:
+        reps = REPS
+        map_reps_to_customers = MAPPING_TABLES["map_reps_customers"]
+        branches = CUSTOMERS["customer_branches"]
+        customers = CUSTOMERS["customers"]
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
+        sql = sqlalchemy.select(
+            reps.initials, customers.name,
+            cities.name, states.name
+            ).select_from(map_reps_to_customers) \
+            .join(reps)                          \
+            .join(branches)                      \
+            .join(customers)                     \
+            .join(cities)                        \
+            .join(states)
+        view_table = pd.read_sql(sql, con=self.engine)
+        view_table.columns = ["Salesman","Customer","City","State"]
+        return view_table
+
+    def mapping_errors_view(self) -> pd.DataFrame:
+        # TODO - consider redefining the errors table to store a custom error type that indicates
+        # which category of error it should be grouped with. Currently it's only discernible
+        # by looking at the error description and 
+        result = {
+            "customers": None,
+            "cities": None,
+            "states": None,
+            "branches": None,
+            "mapping_to_reps": None
+        }
+
 

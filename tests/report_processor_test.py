@@ -145,6 +145,12 @@ class TestSubmissionDataManagement(unittest.TestCase):
         database = db_services.DatabaseServices()
         process_steps = database.get_processing_steps(self.report_processor.submission_id)
         self.assertEqual(len(self.report_processor.process_steps), len(process_steps))
+        return
+
+    def test_register_commission_data(self):
+        database = db_services.DatabaseServices()
+        final_data_retrieved = database.get_final_data()
+        self.assertEqual(len(self.report_processor.staged_data),len(final_data_retrieved))
 
 
     def tearDown(self):

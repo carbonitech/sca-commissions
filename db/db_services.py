@@ -1,13 +1,14 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 from typing import Dict
 from os import getenv
+import calendar
+
 from dotenv import load_dotenv
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 
 from db import models
-
 from entities.error import Error
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
@@ -215,7 +216,7 @@ class DatabaseServices:
     def del_submission_file(self, id: int) -> bool: ...
 
 
-    ## table views
+    ## references
     def get_customers_branches(self) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
         result = pd.read_sql(sql, con=self.engine)
@@ -239,4 +240,50 @@ class DatabaseServices:
         return result
 
 
-    ### admin functions will be developed below here, but they are not needed for MVP ###
+class TableViews:
+
+    engine = sqlalchemy.create_engine(getenv("DATABASE_URL"))
+
+    @staticmethod
+    def convert_cents_to_dollars(cent_amt: float) -> float:
+        return round(cent_amt/100,2)
+
+    @staticmethod
+    def convert_month_from_number_to_name(month_num: int) -> str:
+        return calendar.month_name[month_num]
+
+    def commission_data_with_all_names(self) -> pd.DataFrame:
+        commission_data_raw = COMMISSION_DATA_TABLE
+        submission_data = SUBMISSIONS_TABLE
+        reports = MANUFACTURER_TABLES["manufacturers_reports"]
+        manufacturers = MANUFACTURER_TABLES["manufacturers"]
+        map_reps_to_customers = MAPPING_TABLES["map_reps_customers"]
+        reps = REPS
+        branches = CUSTOMERS["customer_branches"]
+        customers = CUSTOMERS["customers"]
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
+        sql = sqlalchemy.select(
+            submission_data.reporting_year, submission_data.reporting_month,
+            manufacturers.name, reps.initials, customers.name,
+            cities.name, states.name, commission_data_raw.inv_amt,
+            commission_data_raw.comm_amt
+            ).select_from(commission_data_raw) \
+            .join(submission_data)             \
+            .join(reports)                     \
+            .join(manufacturers)               \
+            .join(map_reps_to_customers)       \
+            .join(reps)                        \
+            .join(branches)                    \
+            .join(customers)                   \
+            .join(cities)                      \
+            .join(states)
+
+        view_table = pd.read_sql(sql, con=self.engine)
+        view_table.columns = ["Year","Month","Manufacturer","Salesman",
+                "Customer Name","City","State","Inv Amt","Comm Amt"]
+        view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
+        return view_table
+

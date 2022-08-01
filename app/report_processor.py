@@ -5,7 +5,7 @@ from db.db_services import DatabaseServices
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.submission import NewSubmission
-from entities.error import Error
+from entities.error import Error, ErrorType
 
 
 class ReportProcessor:
@@ -32,8 +32,8 @@ class ReportProcessor:
         return ProcessingStep(description=step_description)
 
     @staticmethod
-    def error_factory(data: pd.DataFrame, field: str, reason: str,
-            value_type, value_content: str = None) -> Error:
+    def error_factory(data: pd.DataFrame, field: str, reason: int,
+            value_type: type, value_content: str = None) -> Error:
 
         return_values = []
         for row_index, row_data in data.to_dict("index").items():
@@ -54,7 +54,7 @@ class ReportProcessor:
         """calculate sum of commissions (in cents, rounded to an integer) present in staged data and errors"""
         # key-value over-writes using row-index deduplicates commission values
         errors_commission_dict = {
-                error_obj.row_index: error_obj.get_row_data()[error_obj.row_index]["comm_amt"]
+                error_obj.row_index: error_obj.row_data[error_obj.row_index]["comm_amt"]
                 for error_obj in self.process_errors
             }
         total_comm = sum(list(errors_commission_dict.values()))
@@ -64,7 +64,7 @@ class ReportProcessor:
 
     def total_sales(self) -> int:
         errors_sales_dict = {
-                error_obj.row_index: error_obj.get_row_data()[error_obj.row_index]["inv_amt"]
+                error_obj.row_index: error_obj.row_data[error_obj.row_index]["inv_amt"]
                 for error_obj in self.process_errors
             }
         total_sales = sum(list(errors_sales_dict.values()))
@@ -84,7 +84,7 @@ class ReportProcessor:
         # customer column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
         no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        error_reason = "Customer name in the commission file is not mapped to a standard name"
+        error_reason = ErrorType(1)
         self.process_errors.extend(
             self.error_factory(no_match_table, left_on_name, error_reason, str)
         )
@@ -113,7 +113,7 @@ class ReportProcessor:
         # city column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
         no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        error_reason = "City name in the commission file is not mapped to a standard name"
+        error_reason = ErrorType(2)
         self.process_errors.extend(
             self.error_factory(no_match_table, left_on_name, error_reason, str)
         )
@@ -144,7 +144,7 @@ class ReportProcessor:
         # state column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
         no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        error_reason = "State name in the commission file is not mapped to a standard name"
+        error_reason = ErrorType(3)
         self.process_errors.extend(
             self.error_factory(no_match_table, left_on_name, error_reason, str)
         )
@@ -182,7 +182,7 @@ class ReportProcessor:
         self.staged_data.insert(0,new_column,new_col_values) # only way i've found to avoid SettingWithCopyWarning
         no_match_table = self.staged_data.loc[self.staged_data[new_column] == 0]
 
-        error_reason = "Customer does not have a branch association with the city and state listed"
+        error_reason = ErrorType(4)
         self.process_errors.extend(
             self.error_factory(no_match_table, new_column, error_reason, int, 0)
         )

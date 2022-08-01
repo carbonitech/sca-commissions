@@ -1,5 +1,15 @@
 from dataclasses import dataclass
-from json import dumps, loads
+from json import dumps
+from enum import Enum
+
+
+class ErrorType(Enum):
+    CustomerNotFound = 1
+    CityNotFound = 2
+    StateNotFound = 3
+    BranchNotFound = 4
+    RepNotAssigned = 5
+
 
 @dataclass
 class Error:
@@ -7,23 +17,22 @@ class Error:
     field: str
     value_type: type
     value_content: str
-    reason: str
+    reason: ErrorType
     row_data: dict
-
-    def __post_init__(self) -> None:
-        self.value_type: str = self.value_type.__name__
-        self.row_data: str = dumps(self.row_data)
 
     def keys(self):
         return list(self.__dict__.keys())
         
     def __getitem__(self,key):
-        return getattr(self,key)
+        attr_value = getattr(self,key)
+        if isinstance(attr_value,dict):
+            return dumps(attr_value)
+        elif isinstance(attr_value,type):
+            return attr_value.__name__
+        elif isinstance(attr_value,ErrorType):
+            return attr_value.value
+        else:
+            return attr_value
 
     def add_submission_id(self, value: int) -> None:
         self.submission_id = value
-
-    def get_row_data(self) -> dict:
-        row_data: dict = loads(self.row_data)
-        row_data = {int(key): value for key,value in row_data.items()}
-        return row_data

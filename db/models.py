@@ -121,7 +121,6 @@ class ProcessingStepDTO(Base):
     description = Column(String)
     
 
-
 class ErrorDTO(Base):
     __tablename__ = 'errors'
     id = Column(Integer,primary_key=True)
@@ -130,7 +129,7 @@ class ErrorDTO(Base):
     field = Column(String)
     value_type = Column(String)
     value_content = Column(String)
-    reason = Column(String)
+    reason = Column(Integer)
     row_data = Column(TEXT)
 
 

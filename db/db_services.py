@@ -9,7 +9,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 
 from db import models
-from entities.error import Error
+from entities.error import Error, ErrorType
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
 
@@ -313,15 +313,17 @@ class TableViews:
         return view_table
 
     def mapping_errors_view(self) -> pd.DataFrame:
-        # TODO - consider redefining the errors table to store a custom error type that indicates
-        # which category of error it should be grouped with. Currently it's only discernible
-        # by looking at the error description and 
+
         result = {
-            "customers": None,
-            "cities": None,
-            "states": None,
-            "branches": None,
-            "mapping_to_reps": None
+            ErrorType.CustomerNotFound,
+            ErrorType.CityNotFound,
+            ErrorType.StateNotFound,
+            ErrorType.BranchNotFound,
+            ErrorType.RepNotAssigned
         }
 
+        sql = sqlalchemy.select(ERRORS_TABLE)
+        view_table = pd.read_sql(sql, con=self.engine)
+        view_table.loc[:,"reason"] = view_table["reason"].apply(lambda enum_val: ErrorType(enum_val).name).astype(str)
+        return view_table
 

@@ -120,7 +120,10 @@ class TestTableViews(unittest.TestCase):
         return
 
     def test_mapping_errors_view(self):
-        pass
+        viewer = db_services.TableViews()
+        result = viewer.mapping_errors_view()
+        
+        return
 
 
     def tearDown(self):

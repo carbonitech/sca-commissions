@@ -11,6 +11,7 @@ from entities.manufacturers import adp
 from entities.commission_file import CommissionFile
 from entities.submission import NewSubmission
 from app.report_processor import ReportProcessor
+from app import process_step_listener, error_listener
 
 dotenv.load_dotenv()
 
@@ -66,6 +67,10 @@ class TestSubmissionDataManagement(unittest.TestCase):
                     session.add(DB_TABLES[table](**row)) 
             session.commit()
 
+        # initiate pub-sub
+        process_step_listener.setup_processing_step_handlers()
+        error_listener.setup_error_event_handlers()
+
         # get adp file data (as bytes)
         adp_file_loc: str = os.getenv("ADP_TEST_FILE")
         with open(adp_file_loc, 'rb') as file:
@@ -90,61 +95,6 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
         self.report_processor.process_and_commit()
 
-        return
-
-
-    def test_process_and_committ(self):
-        """
-        Tests:
-            - Processing steps are an ascending sequence of integers starting at 1
-            - Data staged for committing has the 4 columns expected, by name, and only those columns
-        """
-        report_processor = self.report_processor
-
-        self.assertListEqual(
-            [step.step_num for step in report_processor.process_steps],
-            list(range(1,len(report_processor.process_steps)+1))
-            )
-        self.assertListEqual(
-            report_processor.staged_data.columns.tolist(),
-            ["submission_id","map_rep_customer_id","inv_amt","comm_amt"]
-        )
-
-        return
-
-    def test_total_commissions(self):
-        report_processor = self.report_processor
-        total_commissions = report_processor.total_commissions()
-
-        exp_total_commissions = self.submission.file_df().dropna(subset="Customer").loc[:,"Rep1 Commission"]*100
-        exp_total_commissions = round(exp_total_commissions.sum())
-
-        self.assertEqual(total_commissions, exp_total_commissions)
-        return
-
-
-    def test_total_sales(self):
-        report_processor = self.report_processor
-        total_sales = report_processor.total_sales()
-
-        exp_total_sales = self.submission.file_df().dropna(subset="Customer").loc[:,"  Net Sales"]*100
-        exp_total_sales = round(exp_total_sales.sum())
-
-        self.assertEqual(total_sales, exp_total_sales)
-        return
-
-
-    def test_register_all_errors(self):
-        database = db_services.DatabaseServices()
-        errors = database.get_errors(self.report_processor.submission_id)
-        self.assertEqual(len(self.report_processor.process_errors), len(errors))
-        return
-
-
-    def test_register_all_process_steps(self):
-        database = db_services.DatabaseServices()
-        process_steps = database.get_processing_steps(self.report_processor.submission_id)
-        self.assertEqual(len(self.report_processor.process_steps), len(process_steps))
         return
 
     def test_register_commission_data(self):

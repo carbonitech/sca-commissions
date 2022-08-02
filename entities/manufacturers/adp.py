@@ -8,6 +8,7 @@ import numpy as np
 from entities.commission_data import PreProcessedData
 from entities.processing_step import ProcessingStep
 from entities.preprocessor import PreProcessor
+from app import event
 
 class ADPPreProcessor(PreProcessor):
     """
@@ -28,19 +29,19 @@ class ADPPreProcessor(PreProcessor):
     def _standard_report_preprocessing(self) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
 
-        process_steps: List[ProcessingStep] = []
-
         data = self.submission.file_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        process_steps.append(self.processing_step_factory("removed spaces from column names"))
-
-        data.dropna(subset=data.columns.tolist()[0], inplace=True)
-        process_steps.append(self.processing_step_factory("removed all rows that have no value in the first column"))
+        event.post_event("Formatting","removed spaces from column names")
 
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
         data.Rep1Commission = data.loc[:,"Rep1Commission"].apply(lambda amt: amt*100)
+
+        ref_col = data.columns.tolist()[0]
+        rows_null = data[data[ref_col].isna()]
+        data.dropna(subset=ref_col, inplace=True)
+        event.post_event("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}))
 
         # sum by account convert to a flat table
         piv_table_values = ["NetSales", "Rep1Commission"]
@@ -50,11 +51,12 @@ class ADPPreProcessor(PreProcessor):
             values=piv_table_values,
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
-        process_steps.append(self.processing_step_factory("grouped NetSales and Rep1Commission by sold-to, "
-                "ship-to, customer name, city, and state (pivot table)"))
+        
+        event.post_event("Formatting","grouped NetSales and Rep1Commission by sold-to, "
+                "ship-to, customer name, city, and state (pivot table)")
 
         result = result.drop(columns=["Customer","ShipTo"])
-        process_steps.append(self.processing_step_factory("dropped the ship-to and sold-to id columns"))
+        event.post_event("Formatting", "dropped the ship-to and sold-to id columns")
 
         customer_name_col = 'customer'
         city_name_col = 'city'
@@ -65,7 +67,7 @@ class ADPPreProcessor(PreProcessor):
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper)
 
-        return PreProcessedData(result,process_steps,ref_cols,customer_name_col,city_name_col,state_name_col)
+        return PreProcessedData(result,ref_cols,customer_name_col,city_name_col,state_name_col)
 
 
     def _coburn_report_preprocessing(self) -> PreProcessedData: ...

@@ -126,9 +126,6 @@ class ErrorDTO(Base):
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     row_index = Column(Integer)
-    field = Column(String)
-    value_type = Column(String)
-    value_content = Column(String)
     reason = Column(Integer)
     row_data = Column(TEXT)
 

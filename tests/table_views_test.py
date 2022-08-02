@@ -122,7 +122,7 @@ class TestTableViews(unittest.TestCase):
     def test_mapping_errors_view(self):
         viewer = db_services.TableViews()
         result = viewer.mapping_errors_view()
-        
+        # not sure what to test for exactly because I'm not sure how this will be used. Delete?
         return
 
 

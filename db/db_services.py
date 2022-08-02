@@ -314,14 +314,6 @@ class TableViews:
 
     def mapping_errors_view(self) -> pd.DataFrame:
 
-        result = {
-            ErrorType.CustomerNotFound,
-            ErrorType.CityNotFound,
-            ErrorType.StateNotFound,
-            ErrorType.BranchNotFound,
-            ErrorType.RepNotAssigned
-        }
-
         sql = sqlalchemy.select(ERRORS_TABLE)
         view_table = pd.read_sql(sql, con=self.engine)
         view_table.loc[:,"reason"] = view_table["reason"].apply(lambda enum_val: ErrorType(enum_val).name).astype(str)

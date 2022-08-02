@@ -48,14 +48,12 @@ class TestADP(unittest.TestCase):
         expected_sales = expected_df.loc[:,"  Net Sales"]
         expected_sales = expected_sales.apply(lambda amt: amt*100).sum()
 
-        sequence_processing_steps = [step_obj.step_num for step_obj in pp_data.process_steps]
         expected_data_cols = ["customer","city","state","inv_amt","comm_amt"]
 
         self.assertIsInstance(pp_data, PreProcessedData)
         self.assertListEqual(pp_data.data.columns.tolist(), expected_data_cols)
         self.assertEqual(pp_data.total_commission(), expected_comm)
         self.assertEqual(pp_data.total_sales(), expected_sales)
-        self.assertListEqual(sequence_processing_steps, list(range(1,len(sequence_processing_steps)+1)))
         return
 
     def test_coburn_report_preprocessing(self): ...

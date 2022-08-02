@@ -9,7 +9,6 @@ from entities.error import Error
 @dataclass
 class PreProcessedData:
     data: DataFrame
-    process_steps: List[ProcessingStep]
     map_rep_customer_ref_cols: List[str]
     customer_name_col: str
     city_name_col: str

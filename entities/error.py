@@ -13,10 +13,8 @@ class ErrorType(Enum):
 
 @dataclass
 class Error:
+    submission_id: int
     row_index: int
-    field: str
-    value_type: type
-    value_content: str
     reason: ErrorType
     row_data: dict
 
@@ -27,12 +25,7 @@ class Error:
         attr_value = getattr(self,key)
         if isinstance(attr_value,dict):
             return dumps(attr_value)
-        elif isinstance(attr_value,type):
-            return attr_value.__name__
         elif isinstance(attr_value,ErrorType):
             return attr_value.value
         else:
             return attr_value
-
-    def add_submission_id(self, value: int) -> None:
-        self.submission_id = value

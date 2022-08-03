@@ -49,6 +49,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
         # set up database
         db_url = os.getenv("DATABASE_URL")
         self.db = create_engine(db_url)
+        models.Base.metadata.drop_all(self.db)
         models.Base.metadata.create_all(self.db)
 
         # load csv files

@@ -13,6 +13,7 @@ class PreProcessedData:
     customer_name_col: str
     city_name_col: str
     state_name_col: str
+    events: List[tuple]
 
     def total_commission(self) -> int:
         return self.data.loc[:,"comm_amt"].sum()

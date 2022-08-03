@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import PreProcessor
-from app import event
 
 class ADPPreProcessor(PreProcessor):
     """
@@ -21,11 +20,11 @@ class ADPPreProcessor(PreProcessor):
 
     def _standard_report_preprocessing(self) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
-
+        events = []
         data = self.submission.file_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        event.post_event("Formatting","removed spaces from column names",self.submission_id)
+        events.append(("Formatting","removed spaces from column names",self.submission_id))
 
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
@@ -34,7 +33,7 @@ class ADPPreProcessor(PreProcessor):
         ref_col = data.columns.tolist()[0]
         rows_null = data[data[ref_col].isna()]
         data.dropna(subset=ref_col, inplace=True)
-        event.post_event("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}),self.submission_id)
+        events.append(("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}),self.submission_id))
 
         # sum by account convert to a flat table
         piv_table_values = ["NetSales", "Rep1Commission"]
@@ -45,11 +44,11 @@ class ADPPreProcessor(PreProcessor):
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
         
-        event.post_event("Formatting","grouped NetSales and Rep1Commission by sold-to, "
-                "ship-to, customer name, city, and state (pivot table)",self.submission_id)
+        events.append(("Formatting","grouped NetSales and Rep1Commission by sold-to, "
+                "ship-to, customer name, city, and state (pivot table)",self.submission_id))
 
         result = result.drop(columns=["Customer","ShipTo"])
-        event.post_event("Formatting", "dropped the ship-to and sold-to id columns",self.submission_id)
+        events.append(("Formatting", "dropped the ship-to and sold-to id columns",self.submission_id))
 
         customer_name_col = 'customer'
         city_name_col = 'city'
@@ -60,7 +59,7 @@ class ADPPreProcessor(PreProcessor):
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper)
 
-        return PreProcessedData(result,ref_cols,customer_name_col,city_name_col,state_name_col)
+        return PreProcessedData(result,ref_cols,customer_name_col,city_name_col,state_name_col,events)
 
 
     def _coburn_report_preprocessing(self) -> PreProcessedData: ...

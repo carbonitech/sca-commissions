@@ -3,6 +3,7 @@ import pandas as pd
 
 from app import event
 from db.db_services import DatabaseServices
+from entities.preprocessor import PreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
@@ -11,19 +12,17 @@ from entities.error import ErrorType
 class ReportProcessor:
     
     def __init__(
-            self, data: PreProcessedData, 
+            self, preprocessor: PreProcessor, 
             submission: NewSubmission, database: DatabaseServices
         ):
         self.database = database
+        self.submission = submission
+        self.preprocessor = preprocessor
         self.map_customer_name = database.get_mappings("map_customer_name")
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.customer_branches = database.get_customers_branches()
         self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
-        self.submission = submission
-        self.ppdata = data
-        self.staged_data = data.data.copy()
-        self.last_num_errors = 0
 
 
     def total_commissions(self) -> int:
@@ -111,15 +110,14 @@ class ReportProcessor:
         mask = self.staged_data.loc[:,~self.staged_data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
         data_dropped = self.staged_data[~mask]
         self.staged_data = self.staged_data[mask]
-        event.post_event("Rows Removed", data_dropped)
+        event.post_event("Rows Removed", data_dropped, self.submission_id)
         return self
 
 
-    def register_submission_and_add_id(self) -> 'ReportProcessor':
+    def register_submission(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
-        id_num = self.database.record_submission(self.submission)
-        self.submission_id = id_num
-        self.staged_data.insert(0,"submission_id",id_num)
+        self.submission_id = self.database.record_submission(self.submission)
+        # self.staged_data.insert(0,"submission_id",id_num)
         return self
 
     def drop_extra_columns(self) -> 'ReportProcessor':
@@ -128,6 +126,17 @@ class ReportProcessor:
 
     def register_commission_data(self) -> 'ReportProcessor':
         self.database.record_final_data(self.staged_data)
+        event.post_event("Data Recorded", self.staged_data, self.submission_id)
+        return self
+
+    def preprocess(self) -> 'ReportProcessor':
+        data: PreProcessedData = self.preprocessor(self.submission, self.submission_id).preprocess()
+        self.staged_data = data.data
+        self.ppdata = data
+        return self
+
+    def insert_submission_id(self) -> 'ReportProcessor':
+        self.staged_data.insert(0,"submission_id",self.submission_id)
         return self
 
     def process_and_commit(self) -> None:
@@ -140,7 +149,9 @@ class ReportProcessor:
                 to the database 
         """
 
-        self.register_submission_and_add_id()   \
+        self.register_submission()              \
+            .preprocess()                       \
+            .insert_submission_id()             \
             .fill_customer_ids()                \
             .fill_city_ids()                    \
             .fill_state_ids()                   \

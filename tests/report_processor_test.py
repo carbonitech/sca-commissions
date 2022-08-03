@@ -98,7 +98,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
 
         return
 
-    def test_register_commission_data(self):
+    def test_all_valid_commission_data_is_in_db(self):
         database = db_services.DatabaseServices()
         final_data_retrieved = database.get_final_data()
         self.assertEqual(len(self.report_processor.staged_data),len(final_data_retrieved))
@@ -109,6 +109,7 @@ class TestSubmissionDataManagement(unittest.TestCase):
         processing_steps = database.get_processing_steps(submission_id=submission_id)
         self.assertTrue((processing_steps["submission_id"] == submission_id).all())
         self.assertListEqual(processing_steps["step_num"].to_list(),list(range(1,len(processing_steps)+1)))
+        self.assertTrue((~processing_steps["description"].isnull()).all())
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

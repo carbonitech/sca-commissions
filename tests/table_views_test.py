@@ -5,6 +5,7 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from app import error_listener, process_step_listener
 
 from db import models, db_services
 from entities.manufacturers import adp
@@ -65,6 +66,10 @@ class TestTableViews(unittest.TestCase):
                     # col names in csv must match table schema
                     session.add(DB_TABLES[table](**row)) 
             session.commit()
+
+        # initiate pub-sub
+        process_step_listener.setup_processing_step_handlers()
+        error_listener.setup_error_event_handlers()
 
         # get adp file data (as bytes)
         adp_file_loc: str = os.getenv("ADP_TEST_FILE")

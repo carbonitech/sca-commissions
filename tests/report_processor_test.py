@@ -103,6 +103,12 @@ class TestSubmissionDataManagement(unittest.TestCase):
         final_data_retrieved = database.get_final_data()
         self.assertEqual(len(self.report_processor.staged_data),len(final_data_retrieved))
 
+    def test_processing_steps(self):
+        submission_id = self.report_processor.submission_id
+        database = db_services.DatabaseServices()
+        processing_steps = database.get_processing_steps(submission_id=submission_id)
+        self.assertTrue((processing_steps["submission_id"] == submission_id).all())
+        self.assertListEqual(processing_steps["step_num"].to_list(),list(range(1,len(processing_steps)+1)))
 
     def tearDown(self):
         models.Base.metadata.drop_all(self.db)

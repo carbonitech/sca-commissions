@@ -130,9 +130,12 @@ class ReportProcessor:
         return self
 
     def preprocess(self) -> 'ReportProcessor':
-        data: PreProcessedData = self.preprocessor(self.submission, self.submission_id).preprocess()
-        self.staged_data = data.data
-        self.ppdata = data
+        preprocessor_instance: PreProcessor = self.preprocessor(self.submission, self.submission_id)
+        ppdata = preprocessor_instance.preprocess()
+        # send events from preprocessing using the manufacturuer (domain obj)
+        for event_arg_tuple in ppdata.events: event.post_event(*event_arg_tuple)
+        self.staged_data = ppdata.data
+        self.ppdata = ppdata
         return self
 
     def insert_submission_id(self) -> 'ReportProcessor':

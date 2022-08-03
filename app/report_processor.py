@@ -1,10 +1,8 @@
-from typing import List
 import pandas as pd
 
 from app import event
 from db.db_services import DatabaseServices
 from entities.preprocessor import PreProcessor
-from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
 
@@ -24,6 +22,8 @@ class ReportProcessor:
         self.customer_branches = database.get_customers_branches()
         self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
 
+    def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:
+        return self.ppdata.data.iloc[indices]
 
     def total_commissions(self) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
@@ -46,8 +46,10 @@ class ReportProcessor:
         
         # customer column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
-        no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        event.post_event(ErrorType(1), no_match_table)
+
+        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
+        event.post_event(ErrorType(1), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
 
@@ -62,8 +64,10 @@ class ReportProcessor:
 
         # city column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
-        no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        event.post_event(ErrorType(2), no_match_table)
+
+        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
+        event.post_event(ErrorType(2), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
 
@@ -78,8 +82,10 @@ class ReportProcessor:
 
         # state column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
-        no_match_table = self.staged_data[self.staged_data[left_on_name] == 0]
-        event.post_event(ErrorType(3), no_match_table)
+        
+        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
+        event.post_event(ErrorType(3), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
 
@@ -100,9 +106,10 @@ class ReportProcessor:
 
         new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list() # must be a list or else .insert will join on the indecies
         self.staged_data.insert(0,new_column,new_col_values) # only way i've found to avoid SettingWithCopyWarning
-        no_match_table = self.staged_data.loc[self.staged_data[new_column] == 0]
+        no_match_indices = self.staged_data.loc[self.staged_data[new_column] == 0].index.to_list()
+        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
 
-        event.post_event(ErrorType(4), no_match_table)
+        event.post_event(ErrorType(4), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
 
@@ -117,7 +124,6 @@ class ReportProcessor:
     def register_submission(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
         self.submission_id = self.database.record_submission(self.submission)
-        # self.staged_data.insert(0,"submission_id",id_num)
         return self
 
     def drop_extra_columns(self) -> 'ReportProcessor':
@@ -130,11 +136,15 @@ class ReportProcessor:
         return self
 
     def preprocess(self) -> 'ReportProcessor':
-        preprocessor_instance: PreProcessor = self.preprocessor(self.submission, self.submission_id)
-        ppdata = preprocessor_instance.preprocess()
+        r_id = self.submission.report_id
+        sub_id = self.submission_id
+        file = self.submission.file
+        preprocessor: PreProcessor = self.preprocessor(r_id, sub_id, file)
+        ppdata = preprocessor.preprocess()
         # send events from preprocessing using the manufacturuer (domain obj)
-        for event_arg_tuple in ppdata.events: event.post_event(*event_arg_tuple)
-        self.staged_data = ppdata.data
+        for event_arg_tuple in ppdata.events: 
+            event.post_event(*event_arg_tuple)
+        self.staged_data = ppdata.data.copy()
         self.ppdata = ppdata
         return self
 

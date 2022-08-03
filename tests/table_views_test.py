@@ -85,10 +85,10 @@ class TestTableViews(unittest.TestCase):
         )
 
         # process report using the Manufacturer's process
-        self.adp_preprocessed_data = adp.ADPPreProcessor(self.submission).preprocess()
+        self.adp_preprocessed_data = adp.ADPPreProcessor
 
         self.report_processor = ReportProcessor(
-            data=self.adp_preprocessed_data,
+            preprocessor=adp.ADPPreProcessor,
             submission=self.submission,
             database=db_services.DatabaseServices()
         )

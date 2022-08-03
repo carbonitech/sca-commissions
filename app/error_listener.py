@@ -25,7 +25,8 @@ def no_customer_error(data_affected: DataFrame) -> None:
     db = db_services.DatabaseServices()
     for error in errors:
         db.record_error(error)
-    event.post_event("Errors Recorded", errors)
+    sub_id = errors[0].row_data["submission_id"]
+    event.post_event("Errors Recorded", errors, sub_id)
 
 
 def no_city_error(data_affected: DataFrame) -> None:
@@ -34,7 +35,8 @@ def no_city_error(data_affected: DataFrame) -> None:
     db = db_services.DatabaseServices()
     for error in errors:
         db.record_error(error)
-    event.post_event("Errors Recorded", errors)
+    sub_id = errors[0].row_data["submission_id"]
+    event.post_event("Errors Recorded", errors, sub_id)
 
 def no_state_error(data_affected: DataFrame) -> None:
     if data_affected.empty: return
@@ -42,7 +44,8 @@ def no_state_error(data_affected: DataFrame) -> None:
     db = db_services.DatabaseServices()
     for error in errors:
         db.record_error(error)
-    event.post_event("Errors Recorded", errors)
+    sub_id = errors[0].row_data["submission_id"]
+    event.post_event("Errors Recorded", errors, sub_id)
 
 def no_branch_error(data_affected: DataFrame) -> None:
     if data_affected.empty: return
@@ -50,7 +53,8 @@ def no_branch_error(data_affected: DataFrame) -> None:
     db = db_services.DatabaseServices()
     for error in errors:
         db.record_error(error)
-    event.post_event("Errors Recorded", errors)
+    sub_id = errors[0].row_data["submission_id"]
+    event.post_event("Errors Recorded", errors, sub_id)
 
 def no_rep_assigned_error(data_affected: DataFrame) -> None:
     if data_affected.empty: return
@@ -58,7 +62,8 @@ def no_rep_assigned_error(data_affected: DataFrame) -> None:
     db = db_services.DatabaseServices()
     for error in errors:
         db.record_error(error)
-    event.post_event("Errors Recorded", errors)
+    sub_id = errors[0].row_data["submission_id"]
+    event.post_event("Errors Recorded", errors, sub_id)
 
 
 def setup_error_event_handlers():

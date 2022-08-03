@@ -2,11 +2,9 @@
 Manufacturer report preprocessing definition
 for Advanced Distributor Products (ADP)
 """
-from typing import List
 import pandas as pd
 import numpy as np
 from entities.commission_data import PreProcessedData
-from entities.processing_step import ProcessingStep
 from entities.preprocessor import PreProcessor
 from app import event
 
@@ -21,18 +19,13 @@ class ADPPreProcessor(PreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    @staticmethod
-    def processing_step_factory(step_description: str) -> ProcessingStep:
-        return ProcessingStep(description=step_description)
-
-
     def _standard_report_preprocessing(self) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
 
         data = self.submission.file_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        event.post_event("Formatting","removed spaces from column names")
+        event.post_event("Formatting","removed spaces from column names",self.submission_id)
 
         # convert dollars to cents to avoid demical precision weirdness
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
@@ -41,7 +34,7 @@ class ADPPreProcessor(PreProcessor):
         ref_col = data.columns.tolist()[0]
         rows_null = data[data[ref_col].isna()]
         data.dropna(subset=ref_col, inplace=True)
-        event.post_event("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}))
+        event.post_event("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}),self.submission_id)
 
         # sum by account convert to a flat table
         piv_table_values = ["NetSales", "Rep1Commission"]
@@ -53,10 +46,10 @@ class ADPPreProcessor(PreProcessor):
             aggfunc=np.sum).reset_index()
         
         event.post_event("Formatting","grouped NetSales and Rep1Commission by sold-to, "
-                "ship-to, customer name, city, and state (pivot table)")
+                "ship-to, customer name, city, and state (pivot table)",self.submission_id)
 
         result = result.drop(columns=["Customer","ShipTo"])
-        event.post_event("Formatting", "dropped the ship-to and sold-to id columns")
+        event.post_event("Formatting", "dropped the ship-to and sold-to id columns",self.submission_id)
 
         customer_name_col = 'customer'
         city_name_col = 'city'

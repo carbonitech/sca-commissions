@@ -2,6 +2,7 @@ import unittest
 import os
 
 import pandas as pd
+from app import error_listener, process_step_listener
 
 import entities.manufacturers as manufacturers
 from entities.submission import NewSubmission
@@ -17,6 +18,10 @@ class TestADP(unittest.TestCase):
         with open(adp_file_loc, 'rb') as file:
             self.adp_data: bytes = file.read()
         
+        # initiate pub-sub
+        process_step_listener.setup_processing_step_handlers()
+        error_listener.setup_error_event_handlers()
+
         return
 
     def test_standard_report_preprocessing(self):

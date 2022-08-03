@@ -21,7 +21,7 @@ class ADPPreProcessor(PreProcessor):
     def _standard_report_preprocessing(self) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
         events = []
-        data = self.submission.file_df()
+        data = self.file.to_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         events.append(("Formatting","removed spaces from column names",self.submission_id))
@@ -73,7 +73,7 @@ class ADPPreProcessor(PreProcessor):
             3: self._lennox_report_preprocessing,
             4: self._re_michel_report_preprocessing
         }
-        preprocess_method = method_by_id.get(self.submission.report_id, None)
+        preprocess_method = method_by_id.get(self.report_id, None)
         if preprocess_method:
             return preprocess_method()
         else:

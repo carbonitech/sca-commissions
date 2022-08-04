@@ -9,6 +9,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 
 from db import models
+from entities import manufacturers
 from entities.error import Error, ErrorType
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
@@ -216,12 +217,48 @@ class DatabaseServices:
     def del_submission_file(self, id: int) -> bool: ...
 
 
-    ## references
-    def get_customers_branches(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
+    ## api gets
+    def get_customers(self) -> pd.DataFrame:
+        sql = sqlalchemy.select(CUSTOMERS["customers"])
         result = pd.read_sql(sql, con=self.engine)
         return result
 
+    def get_customer(self,cust_id) -> pd.DataFrame:
+        sql = sqlalchemy.select(CUSTOMERS["customers"]) \
+                .where(CUSTOMERS["customers"].id == cust_id)
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+    def get_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
+        branches = CUSTOMERS["customer_branches"]
+        customers = CUSTOMERS["customers"]
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
+        rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        reps = REPS
+        sql = sqlalchemy \
+            .select(branches.id,customers.name,cities.name,states.name,reps.initials) \
+            .select_from(branches).join(customers).join(cities).join(states).join(rep_mapping).join(reps) \
+            .where(customers.id == customer_id)
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+    def get_all_manufacturers(self) -> pd.DataFrame:
+        sql = sqlalchemy.select(MANUFACTURER_TABLES["manufacturers"])
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+    def get_manufacturer_by_id(self, manuf_id: int) -> pd.DataFrame:
+        manufs = MANUFACTURER_TABLES["manufacturers"]
+        reports = MANUFACTURER_TABLES["manufacturers_reports"]
+        sql = sqlalchemy \
+                .select(manufs,reports).select_from(manufs) \
+                .join(reports).where(manufs.id == manuf_id)
+        result = pd.read_sql(sql, con=self.engine)
+        return result
+
+
+    ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
         """generates a reference for matching the map_rep_customer id to
         an array of customer, city, and state ids"""
@@ -231,7 +268,7 @@ class DatabaseServices:
             .select(rep_mapping.id, branches.customer_id,
                 branches.city_id, branches.state_id) \
             .select_from(rep_mapping) \
-            .join(branches) \
+            .join(branches) 
 
         result = pd.read_sql(sql, con=self.engine)
         result.columns = ["map_rep_customer_id", "customer_id", "city_id", 

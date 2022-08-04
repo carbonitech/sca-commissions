@@ -19,7 +19,6 @@ class ReportProcessor:
         self.map_customer_name = database.get_mappings("map_customer_name")
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
-        self.customer_branches = database.get_customers_branches()
         self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
 
     def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:

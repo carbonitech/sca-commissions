@@ -1,9 +1,12 @@
 from fastapi import FastAPI, File
+from starlette.responses import RedirectResponse
+
 import json
 from app import error_listener, process_step_listener, report_processor
 from db.db_services import DatabaseServices
 from db.models import Base
 from entities import submission
+from entities import manufacturers
 from entities.manufacturers import adp
 from entities.commission_file import CommissionFile
 
@@ -13,6 +16,64 @@ from db import models
 from sqlalchemy.orm import Session
 
 app = FastAPI()
+db = DatabaseServices()
+
+error_listener.setup_error_event_handlers()
+process_step_listener.setup_processing_step_handlers()
+
+@app.get("/")
+async def home():
+    return RedirectResponse("http://127.0.0.1:8000/docs")
+
+@app.get("/customers")
+async def all_customers():
+    """Get all customers"""
+    customers = db.get_customers().to_json(orient="records")
+    return({"customers": json.loads(customers)})
+
+@app.get("/customers/{customer_id}")
+async def customer_by_id(customer_id):
+    """Get customer by id"""
+    customer = db.get_customer(customer_id).to_json(orient="records")
+    return({"customer": json.loads(customer)})
+
+@app.get("/customers/{customer_id}/branches")
+async def customer_branches_by_id(customer_id):
+    """Get all branches for a customer by customer id"""
+    branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
+    return({"branches": json.loads(branches)})
+
+@app.post("/customers")
+async def new_customer():
+    """create a new customer"""
+    pass
+
+@app.get("/manufacturers")
+async def all_manufacturers():
+    manufacturers_ = db.get_all_manufacturers().to_json(orient="records")
+    return({"manufacturers": json.loads(manufacturers_)})
+
+
+@app.get("/manufacturers/{manuf_id}")
+async def manufacturer_by_id(manuf_id: int):
+    manufacturer_reports = db.get_manufacturer_by_id(manuf_id).to_json(orient="records")
+    return({"manufacturer_details": json.loads(manufacturer_reports)})
+
+
+@app.post("/commdata")
+async def process_data(file: bytes = File()):
+    file_obj = CommissionFile(file,"Detail")
+    new_sub = submission.NewSubmission(file=file_obj,reporting_month=5,reporting_year=2022,report_id=1,manufacturer_id=1)
+    mfg_preprocessor = adp.ADPPreProcessor
+    db = DatabaseServices()
+    mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
+    mfg_report_processor.process_and_commit()
+    return {"sub_id": mfg_report_processor.submission_id,
+        "steps":json.loads(db.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
+        "errors":json.loads(db.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
+
+
+
 
 @app.get("/deldb")
 async def delete_db():
@@ -55,20 +116,3 @@ async def create_db():
                 session.add(DB_TABLES[table](**row)) 
         session.commit()
     return {"message": "tables created"}
-
-error_listener.setup_error_event_handlers()
-process_step_listener.setup_processing_step_handlers()
-
-@app.get("/")
-async def test():
-    return({"message": "test successful"})
-
-@app.post("/")
-async def process_data(file: bytes = File()):
-    file_obj = CommissionFile(file,"Detail")
-    new_sub = submission.NewSubmission(file=file_obj,reporting_month=5,reporting_year=2022,report_id=1,manufacturer_id=1)
-    mfg_preprocessor = adp.ADPPreProcessor
-    db = DatabaseServices()
-    mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
-    mfg_report_processor.process_and_commit()
-    return {"sub_id": mfg_report_processor.submission_id,"steps":json.loads(db.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records"))}

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, HTTPException
+from fastapi import FastAPI, File, HTTPException, Form
 from pydantic import BaseModel
 from starlette.responses import RedirectResponse
 
@@ -28,6 +28,14 @@ class Branch(BaseModel):
     city: str
     state: str
 
+class CommissionDataForm(BaseModel):
+    reporting_month: int
+    reporting_year: int
+    report_id: int
+    manufacturer_id: int
+    sheet_name: str
+
+
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
 
@@ -51,13 +59,13 @@ async def customer_branches_by_id(customer_id):
     return({"branches": json.loads(branches)})
 
 @app.post("/customers")
-async def new_customer(customer: Customer):
-    customer.name = customer.name.upper()
+async def new_customer(customer_name: str = Form()):
+    customer_name = customer_name.upper()
     current_customers = db.get_customers()
-    matches = current_customers.loc[current_customers.name == customer.name]
+    matches = current_customers.loc[current_customers.name == customer_name]
     if not matches.empty:
         raise HTTPException(status_code=400, detail="Customer already exists")
-    return {"customer_id": db.new_customer(customer_fastapi=customer)}
+    return {"customer_id": db.new_customer(customer_fastapi=customer_name)}
 
 @app.get("/manufacturers")
 async def all_manufacturers():
@@ -80,13 +88,13 @@ async def get_commission_data():
     return {"data": json.loads(db_views.commission_data_with_all_names().to_json(orient="records"))}
 
 @app.post("/commdata")
-async def process_data(file: bytes = File()):
+async def process_data(file: bytes = File(), reporting_month: int = Form(),
+        reporting_year: int = Form(), report_id: int=Form(), manufacturer_id: int = Form()):
     file_obj = CommissionFile(file,"Detail")
-    new_sub = submission.NewSubmission(file=file_obj,reporting_month=5,reporting_year=2022,report_id=1,manufacturer_id=1)
+    new_sub = submission.NewSubmission(file_obj,reporting_month,reporting_year,report_id,manufacturer_id)
     mfg_preprocessor = adp.ADPPreProcessor
-    db = DatabaseServices()
     mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
-    mfg_report_processor.process_and_commit()
+    await mfg_report_processor.process_and_commit()
     return {"sub_id": mfg_report_processor.submission_id,
         "steps":json.loads(db.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
         "errors":json.loads(db.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}

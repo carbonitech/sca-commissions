@@ -1,5 +1,6 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
-from typing import Dict
+import json
+from typing import Dict, Tuple
 from os import getenv
 import calendar
 
@@ -53,9 +54,7 @@ class DatabaseServices:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),self.engine)
 
     def set_mapping(self, table: str, data: pd.DataFrame) -> bool:
-
         col_list = data.columns.tolist()
-
         # make sure all text is capitalized
         for column in col_list:
             if data[column].dtype != 'object':
@@ -70,7 +69,6 @@ class DatabaseServices:
         # execute if there's still data to commit and return a bool based on what happens
         if len(uniques) > 0:
             rows_affected = uniques.to_sql(table, con=self.engine, if_exists="append", index=False)
-
             if rows_affected:
                 return True
             else:
@@ -84,6 +82,11 @@ class DatabaseServices:
             session.delete(row)
             session.commit()
         return True
+
+
+    def get_branches(self) -> pd.DataFrame:
+        sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
+        return pd.read_sql(sql,con=self.engine)
 
 
     ## final commission data
@@ -193,6 +196,7 @@ class DatabaseServices:
         """get all report processing errors for a commission report submission"""
         sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
         result = pd.read_sql(sql, con=self.engine)
+        result.row_data = result.row_data.apply(lambda json_str: json.loads(json_str))
         return result
 
     def record_error(self, error_obj: Error) -> None:
@@ -217,11 +221,20 @@ class DatabaseServices:
     def del_submission_file(self, id: int) -> bool: ...
 
 
-    ## api gets
+    ## api
     def get_customers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS["customers"])
         result = pd.read_sql(sql, con=self.engine)
         return result
+
+    def new_customer(self, customer_fastapi) -> int:
+        with Session(bind=self.engine) as session:
+            sql = sqlalchemy.insert(CUSTOMERS["customers"]).values(name=customer_fastapi.name) \
+                .returning(CUSTOMERS["customers"].id)
+            new_id = session.execute(sql).fetchone()[0]
+            session.commit()
+        return new_id
+
 
     def get_customer(self,cust_id) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS["customers"]) \
@@ -241,6 +254,7 @@ class DatabaseServices:
             .select_from(branches).join(customers).join(cities).join(states).join(rep_mapping).join(reps) \
             .where(customers.id == customer_id)
         result = pd.read_sql(sql, con=self.engine)
+        result.columns = ["id", "Customer Name", "City", "State", "Salesman"]
         return result
 
     def get_all_manufacturers(self) -> pd.DataFrame:
@@ -248,14 +262,13 @@ class DatabaseServices:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def get_manufacturer_by_id(self, manuf_id: int) -> pd.DataFrame:
+    def get_manufacturer_by_id(self, manuf_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         manufs = MANUFACTURER_TABLES["manufacturers"]
-        reports = MANUFACTURER_TABLES["manufacturers_reports"]
-        sql = sqlalchemy \
-                .select(manufs,reports).select_from(manufs) \
-                .join(reports).where(manufs.id == manuf_id)
-        result = pd.read_sql(sql, con=self.engine)
-        return result
+        sql = sqlalchemy.select(manufs).where(manufs.id == manuf_id)
+        submissions = self.get_submissions(manuf_id)
+        reports = self.get_manufacturers_reports(manuf_id).drop(columns="manufacturer_id")
+        manuf = pd.read_sql(sql, con=self.engine)
+        return manuf, reports, submissions
 
 
     ## references

@@ -67,6 +67,7 @@ async def new_customer(customer_name: str = Form()):
         raise HTTPException(status_code=400, detail="Customer already exists")
     return {"customer_id": db.new_customer(customer_fastapi=customer_name)}
 
+
 @app.get("/manufacturers")
 async def all_manufacturers():
     manufacturers_ = db.get_all_manufacturers().to_json(orient="records")
@@ -82,6 +83,17 @@ async def manufacturer_by_id(manuf_id: int):
     return({"manufacturer_details": manufacturer_json,
             "reports": reports_json,
             "submissions": submissions_json})
+
+
+@app.get("/reps")
+async def get_all_reps():
+    all_reps = db.get_all_reps().to_json(orient="records", date_format="iso")
+    return {"data": json.loads(all_reps)}
+
+@app.get("/reps/{rep_id}")
+async def get_rep_by_id(rep_id: int):
+    rep_and_branches = db.get_rep_and_branches(rep_id).to_json(orient="records")
+    return {"data": json.loads(rep_and_branches)}
 
 @app.get("/commdata")
 async def get_commission_data():
@@ -102,12 +114,10 @@ async def process_data(file: bytes = File(), reporting_month: int = Form(),
 
 
 
-@app.get("/deldb")
 async def delete_db():
     Base.metadata.drop_all(DatabaseServices.engine)
     return {"message": "tables deleted"}
 
-@app.get("/makedb")
 async def create_db():
     Base.metadata.create_all(DatabaseServices.engine)
     DB_TABLES = {
@@ -143,3 +153,9 @@ async def create_db():
                 session.add(DB_TABLES[table](**row)) 
         session.commit()
     return {"message": "tables created"}
+
+@app.get("/resetdb")
+async def reset_database():
+    result_del = await delete_db()
+    result_make = await create_db()
+    return [result_del, result_make]

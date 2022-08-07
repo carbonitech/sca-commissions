@@ -35,7 +35,7 @@ class ReportProcessor:
         return round(total_sales)
 
 
-    def fill_customer_ids(self) -> 'ReportProcessor':
+    async def fill_customer_ids(self) -> 'ReportProcessor':
         """converts customer column customer id #s using the map_customer_name reference table"""
         left_on_name = self.ppdata.customer_name_col
             
@@ -53,7 +53,7 @@ class ReportProcessor:
         return self
 
 
-    def fill_city_ids(self) -> 'ReportProcessor':
+    async def fill_city_ids(self) -> 'ReportProcessor':
         """converts city column city id #s using the map_city_names reference table"""
         left_on_name = self.ppdata.city_name_col
             
@@ -71,7 +71,7 @@ class ReportProcessor:
         return self
 
 
-    def fill_state_ids(self) -> 'ReportProcessor':
+    async def fill_state_ids(self) -> 'ReportProcessor':
         """converts column supplied in the args to id #s using the map_state_names reference table"""
         left_on_name = self.ppdata.state_name_col
 
@@ -89,7 +89,7 @@ class ReportProcessor:
         return self
 
 
-    def add_branch_id(self) -> 'ReportProcessor':
+    async def add_branch_id(self) -> 'ReportProcessor':
         """
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows will get kicked to errors and removed
@@ -111,7 +111,7 @@ class ReportProcessor:
         return self
 
 
-    def add_rep_customer_ids(self) -> 'ReportProcessor':
+    async def add_rep_customer_ids(self) -> 'ReportProcessor':
         """
         adds a map_rep_customer id column by comparing the customer, city,
         and state columns named in ref_columns to respective columns in a derived
@@ -136,7 +136,7 @@ class ReportProcessor:
         return self
 
 
-    def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
+    async def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
         mask = self.staged_data.loc[:,~self.staged_data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
         data_dropped = self.staged_data[~mask]
         self.staged_data = self.staged_data[mask]
@@ -144,21 +144,21 @@ class ReportProcessor:
         return self
 
 
-    def register_submission(self) -> 'ReportProcessor':
+    async def register_submission(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
         self.submission_id = self.database.record_submission(self.submission)
         return self
 
-    def drop_extra_columns(self) -> 'ReportProcessor':
+    async def drop_extra_columns(self) -> 'ReportProcessor':
         self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
         return self
 
-    def register_commission_data(self) -> 'ReportProcessor':
+    async def register_commission_data(self) -> 'ReportProcessor':
         self.database.record_final_data(self.staged_data)
         event.post_event("Data Recorded", self.staged_data, self.submission_id)
         return self
 
-    def preprocess(self) -> 'ReportProcessor':
+    async def preprocess(self) -> 'ReportProcessor':
         r_id = self.submission.report_id
         sub_id = self.submission_id
         file = self.submission.file
@@ -171,11 +171,11 @@ class ReportProcessor:
         self.ppdata = ppdata
         return self
 
-    def insert_submission_id(self) -> 'ReportProcessor':
+    async def insert_submission_id(self) -> 'ReportProcessor':
         self.staged_data.insert(0,"submission_id",self.submission_id)
         return self
 
-    def process_and_commit(self) -> None:
+    async def process_and_commit(self) -> None:
         """
         Taking preprocessed data, use reference tables from the database
         to map customer names, city names, state names, and reps
@@ -185,17 +185,17 @@ class ReportProcessor:
                 to the database 
         """
 
-        self.register_submission()              \
-            .preprocess()                       \
-            .insert_submission_id()             \
-            .fill_customer_ids()                \
-            .fill_city_ids()                    \
-            .fill_state_ids()                   \
-            .filter_out_any_rows_unmapped()     \
-            .add_rep_customer_ids()             \
-            .filter_out_any_rows_unmapped()     \
-            .drop_extra_columns()               \
-            .filter_out_any_rows_unmapped()     \
-            .register_commission_data()
+        await self.register_submission()
+        await self.preprocess()
+        await self.insert_submission_id()
+        await self.fill_customer_ids()
+        await self.fill_city_ids()
+        await self.fill_state_ids()
+        await self.filter_out_any_rows_unmapped()
+        await self.add_rep_customer_ids()
+        await self.filter_out_any_rows_unmapped()
+        await self.drop_extra_columns()
+        await self.filter_out_any_rows_unmapped()
+        await self.register_commission_data()
 
         return

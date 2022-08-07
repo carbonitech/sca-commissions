@@ -227,9 +227,9 @@ class DatabaseServices:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def new_customer(self, customer_fastapi) -> int:
+    def new_customer(self, customer_fastapi: str) -> int:
         with Session(bind=self.engine) as session:
-            sql = sqlalchemy.insert(CUSTOMERS["customers"]).values(name=customer_fastapi.name) \
+            sql = sqlalchemy.insert(CUSTOMERS["customers"]).values(name=customer_fastapi) \
                 .returning(CUSTOMERS["customers"].id)
             new_id = session.execute(sql).fetchone()[0]
             session.commit()

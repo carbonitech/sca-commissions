@@ -19,6 +19,7 @@ class ReportProcessor:
         self.map_customer_name = database.get_mappings("map_customer_name")
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
+        self.branches = database.get_branches()
         self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
 
     def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:
@@ -88,11 +89,34 @@ class ReportProcessor:
         return self
 
 
+    def add_branch_id(self) -> 'ReportProcessor':
+        """
+        Adds the customer's branch id, if the assignment exists.
+        Un-matched rows will get kicked to errors and removed
+        """
+        new_column: str = "branch_id"
+        left_on_list = self.ppdata.map_rep_customer_ref_cols
+
+        merged_with_branches = pd.merge(
+                self.staged_data, self.branches,
+                how="left", left_on=left_on_list,
+                right_on=["customer_id","city_id","state_id"]
+        ) 
+
+        new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+        self.staged_data[new_column] = new_col_values
+        no_match_indices = self.staged_data.loc[self.staged_data[new_column]==0].index.to_list()
+        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
+        event.post_event(ErrorType(4), unmapped_no_match_table,submission_id=self.submission_id)
+        return self
+
+
     def add_rep_customer_ids(self) -> 'ReportProcessor':
         """
         adds a map_rep_customer id column by comparing the customer, city,
         and state columns named in ref_columns to respective columns in a derived
         reps-to-customer reference table
+        # TODO : CHANGE REFERENCE USED FOR MERGE TO USE JUST THE MAP-REP-CUSTOMERS TABLE AS-IS
         """
         new_column: str = "map_rep_customer_id"
         left_on_list = self.ppdata.map_rep_customer_ref_cols
@@ -103,12 +127,12 @@ class ReportProcessor:
             right_on=["customer_id","city_id","state_id"]
         )
 
-        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list() # must be a list or else .insert will join on the indecies
+        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list()
         self.staged_data.insert(0,new_column,new_col_values) # only way i've found to avoid SettingWithCopyWarning
         no_match_indices = self.staged_data.loc[self.staged_data[new_column] == 0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
 
-        event.post_event(ErrorType(4), unmapped_no_match_table, submission_id=self.submission_id)
+        event.post_event(ErrorType(5), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
 

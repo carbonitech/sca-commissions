@@ -1,12 +1,12 @@
-from fastapi import FastAPI, File
+from fastapi import FastAPI, File, HTTPException
+from pydantic import BaseModel
 from starlette.responses import RedirectResponse
 
 import json
 from app import error_listener, process_step_listener, report_processor
-from db.db_services import DatabaseServices
+from db.db_services import DatabaseServices, TableViews
 from db.models import Base
 from entities import submission
-from entities import manufacturers
 from entities.manufacturers import adp
 from entities.commission_file import CommissionFile
 
@@ -17,6 +17,16 @@ from sqlalchemy.orm import Session
 
 app = FastAPI()
 db = DatabaseServices()
+db_views = TableViews()
+
+
+class Customer(BaseModel):
+    name: str
+
+class Branch(BaseModel):
+    customer: str
+    city: str
+    state: str
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
@@ -27,26 +37,27 @@ async def home():
 
 @app.get("/customers")
 async def all_customers():
-    """Get all customers"""
     customers = db.get_customers().to_json(orient="records")
     return({"customers": json.loads(customers)})
 
 @app.get("/customers/{customer_id}")
 async def customer_by_id(customer_id):
-    """Get customer by id"""
     customer = db.get_customer(customer_id).to_json(orient="records")
     return({"customer": json.loads(customer)})
 
 @app.get("/customers/{customer_id}/branches")
 async def customer_branches_by_id(customer_id):
-    """Get all branches for a customer by customer id"""
     branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
     return({"branches": json.loads(branches)})
 
 @app.post("/customers")
-async def new_customer():
-    """create a new customer"""
-    pass
+async def new_customer(customer: Customer):
+    customer.name = customer.name.upper()
+    current_customers = db.get_customers()
+    matches = current_customers.loc[current_customers.name == customer.name]
+    if not matches.empty:
+        raise HTTPException(status_code=400, detail="Customer already exists")
+    return {"customer_id": db.new_customer(customer_fastapi=customer)}
 
 @app.get("/manufacturers")
 async def all_manufacturers():
@@ -56,9 +67,17 @@ async def all_manufacturers():
 
 @app.get("/manufacturers/{manuf_id}")
 async def manufacturer_by_id(manuf_id: int):
-    manufacturer_reports = db.get_manufacturer_by_id(manuf_id).to_json(orient="records")
-    return({"manufacturer_details": json.loads(manufacturer_reports)})
+    manufacturer, reports, submissions = db.get_manufacturer_by_id(manuf_id)
+    manufacturer_json = json.loads(manufacturer.to_json(orient="records"))
+    reports_json = json.loads(reports.to_json(orient="records"))
+    submissions_json = json.loads(submissions.to_json(orient="records", date_format="iso"))
+    return({"manufacturer_details": manufacturer_json,
+            "reports": reports_json,
+            "submissions": submissions_json})
 
+@app.get("/commdata")
+async def get_commission_data():
+    return {"data": json.loads(db_views.commission_data_with_all_names().to_json(orient="records"))}
 
 @app.post("/commdata")
 async def process_data(file: bytes = File()):

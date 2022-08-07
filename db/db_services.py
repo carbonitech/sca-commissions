@@ -235,7 +235,6 @@ class DatabaseServices:
             session.commit()
         return new_id
 
-
     def get_customer(self,cust_id) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS["customers"]) \
                 .where(CUSTOMERS["customers"].id == cust_id)
@@ -269,6 +268,25 @@ class DatabaseServices:
         reports = self.get_manufacturers_reports(manuf_id).drop(columns="manufacturer_id")
         manuf = pd.read_sql(sql, con=self.engine)
         return manuf, reports, submissions
+
+
+    def get_all_reps(self) -> pd.DataFrame:
+        sql = sqlalchemy.select(REPS)
+        return pd.read_sql(sql, con=self.engine)
+
+    def get_rep_and_branches(self, rep_id: int) -> pd.DataFrame:
+        reps = REPS
+        customers = CUSTOMERS["customers"]
+        branches = CUSTOMERS["customer_branches"]
+        cities = LOCATIONS["cities"]
+        states = LOCATIONS["states"]
+        map_rep_to_customers = MAPPING_TABLES["map_reps_customers"]
+        sql = sqlalchemy.select(map_rep_to_customers.id,customers.name,cities.name,states.name) \
+                .select_from(map_rep_to_customers).join(reps).join(branches).join(customers) \
+                .join(cities).join(states).where(map_rep_to_customers.rep_id == rep_id)
+        result = pd.read_sql(sql, con=self.engine)
+        result.columns = ["id", "Customer", "City", "State"]
+        return result
 
 
     ## references

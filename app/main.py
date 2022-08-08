@@ -120,14 +120,21 @@ async def process_data(file: bytes = File(), reporting_month: int = Form(),
 @app.get("/mappings/customers")
 async def get_all_mappings_related_to_customers(): ...
 
-@app.get("/mappings/locations")
+@app.get("/mappings/cities")
+async def get_all_mappings_for_location_names(): ...
+
+@app.get("/mappings/states")
 async def get_all_mappings_for_location_names(): ...
 
 @app.post("/mappings/customers")
 async def create_new_mapping_for_a_customer(): ...
 
-@app.post("/mappings/locations")
+@app.post("/mappings/cities")
 async def create_new_mapping_for_a_location(): ...
+
+@app.post("/mappings/states")
+async def create_new_mapping_for_a_location(): ...
+
 
 ### SUBMISSIONS ###
 @app.get("/submissions")

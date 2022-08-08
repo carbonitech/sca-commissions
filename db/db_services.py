@@ -1,6 +1,6 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
 import json
-from typing import Dict, Tuple
+from typing import Tuple
 from os import getenv
 import calendar
 
@@ -14,29 +14,27 @@ from entities.error import Error, ErrorType
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
 
-CUSTOMERS = {
-    'customers': models.Customer,
-    'customer_branches': models.CustomerBranch
-}
-LOCATIONS = {
-    'cities': models.City,
-    'states': models.State
-}
+CUSTOMERS = models.Customer
+BRANCHES = models.CustomerBranch
+CITIES = models.City
+STATES = models.State
 REPS = models.Representative
+CUSTOMER_NAME_MAP = models.MapCustomerName
+CITY_NAME_MAP = models.MapCityName
+STATE_NAME_MAP = models.MapStateName
+REPS_CUSTOMERS_MAP = models.MapRepToCustomer
+MANUFACTURERS = models.ManufacturerDTO
+REPORTS = models.ManufacturersReport
+COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
+SUBMISSIONS_TABLE = models.SubmissionDTO
+PROCESS_STEPS_LOG = models.ProcessingStepDTO
+ERRORS_TABLE = models.ErrorDTO
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
     "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
-MANUFACTURER_TABLES = {
-    "manufacturers": models.ManufacturerDTO,
-    "manufacturers_reports": models.ManufacturersReport
-}
-COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
-SUBMISSIONS_TABLE = models.SubmissionDTO
-PROCESS_STEPS_LOG = models.ProcessingStepDTO
-ERRORS_TABLE = models.ErrorDTO
 
 load_dotenv()
 
@@ -84,7 +82,7 @@ class DatabaseServices:
 
 
     def get_branches(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS["customer_branches"])
+        sql = sqlalchemy.select(BRANCHES)
         return pd.read_sql(sql,con=self.engine)
 
 
@@ -103,29 +101,23 @@ class DatabaseServices:
 
     ## manufactuers tables
     def get_manufacturer_id(self, name: str) -> int:
-        table = 'manufacturers'
-        table_obj = MANUFACTURER_TABLES[table]
-        sql = sqlalchemy.select(table_obj).where(table_obj.name==name)
+        sql = sqlalchemy.select(MANUFACTURERS).where(MANUFACTURERS.name==name)
         with Session(bind=self.engine) as session:
             manf_id = session.execute(sql).fetchone()[0].id # returns a list of model instances with attrs - id accessed
         return manf_id
 
     def get_manufacturers_reports(self, manufacturer_id: int) -> pd.DataFrame:
-        table = "manufacturers_reports"
-        table_obj = MANUFACTURER_TABLES[table]
         result = pd.read_sql(
-                    sqlalchemy.select(table_obj).where(table_obj.manufacturer_id==manufacturer_id),
+                    sqlalchemy.select(REPORTS).where(REPORTS.manufacturer_id==manufacturer_id),
                     con=self.engine
                 )
         return result
 
     def get_report_id(self, manufacturer_id: int, report_name: str) -> int:
-        table = "manufacturers_reports"
-        table_obj = MANUFACTURER_TABLES[table]
-        sql = sqlalchemy.select(table_obj.id) \
+        sql = sqlalchemy.select(REPORTS.id) \
                         .where(sqlalchemy.and_(
-                            table_obj.manufacturer_id == manufacturer_id,
-                            table_obj.report_name == report_name
+                            REPORTS.manufacturer_id == manufacturer_id,
+                            REPORTS.report_name == report_name
                         ))
         with Session(bind=self.engine) as session:
             report_id = session.execute(sql).fetchone()[0]
@@ -217,30 +209,30 @@ class DatabaseServices:
 
     ## api
     def get_customers(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS["customers"])
+        sql = sqlalchemy.select(CUSTOMERS)
         result = pd.read_sql(sql, con=self.engine)
         return result
 
     def new_customer(self, customer_fastapi: str) -> int:
         with Session(bind=self.engine) as session:
-            sql = sqlalchemy.insert(CUSTOMERS["customers"]).values(name=customer_fastapi) \
-                .returning(CUSTOMERS["customers"].id)
+            sql = sqlalchemy.insert(CUSTOMERS).values(name=customer_fastapi) \
+                .returning(CUSTOMERS.id)
             new_id = session.execute(sql).fetchone()[0]
             session.commit()
         return new_id
 
     def get_customer(self,cust_id) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS["customers"]) \
-                .where(CUSTOMERS["customers"].id == cust_id)
+        sql = sqlalchemy.select(CUSTOMERS) \
+                .where(CUSTOMERS.id == cust_id)
         result = pd.read_sql(sql, con=self.engine)
         return result
 
     def get_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
-        branches = CUSTOMERS["customer_branches"]
-        customers = CUSTOMERS["customers"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
-        rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        branches = BRANCHES
+        customers = CUSTOMERS
+        cities = CITIES
+        states = STATES
+        rep_mapping = REPS_CUSTOMERS_MAP
         reps = REPS
         sql = sqlalchemy \
             .select(branches.id,customers.name,cities.name,states.name,reps.initials) \
@@ -251,12 +243,12 @@ class DatabaseServices:
         return result
 
     def get_all_manufacturers(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(MANUFACTURER_TABLES["manufacturers"])
+        sql = sqlalchemy.select(MANUFACTURERS)
         result = pd.read_sql(sql, con=self.engine)
         return result
 
     def get_manufacturer_by_id(self, manuf_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        manufs = MANUFACTURER_TABLES["manufacturers"]
+        manufs = MANUFACTURERS
         sql = sqlalchemy.select(manufs).where(manufs.id == manuf_id)
         submissions = self.get_submissions(manuf_id)
         reports = self.get_manufacturers_reports(manuf_id).drop(columns="manufacturer_id")
@@ -269,11 +261,11 @@ class DatabaseServices:
 
     def get_rep_and_branches(self, rep_id: int) -> pd.DataFrame:
         reps = REPS
-        customers = CUSTOMERS["customers"]
-        branches = CUSTOMERS["customer_branches"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
-        map_rep_to_customers = MAPPING_TABLES["map_reps_customers"]
+        customers = CUSTOMERS
+        branches = BRANCHES
+        cities = CITIES
+        states = STATES
+        map_rep_to_customers = REPS_CUSTOMERS_MAP
         sql = sqlalchemy.select(map_rep_to_customers.id,customers.name,cities.name,states.name) \
                 .select_from(map_rep_to_customers).join(reps).join(branches).join(customers) \
                 .join(cities).join(states).where(map_rep_to_customers.rep_id == rep_id)
@@ -283,8 +275,8 @@ class DatabaseServices:
 
     def get_all_submissions(self) -> pd.DataFrame:
         subs = SUBMISSIONS_TABLE
-        reports = MANUFACTURER_TABLES["manufacturers_reports"]
-        manufs = MANUFACTURER_TABLES["manufacturers"]
+        reports = REPORTS
+        manufs = MANUFACTURERS
         sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
                 reports.report_name,reports.yearly_frequency, reports.POS_report,
                 manufs.name).select_from(subs).join(reports).join(manufs)
@@ -292,8 +284,8 @@ class DatabaseServices:
 
     def get_submission_by_id(self, submission_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         subs = SUBMISSIONS_TABLE
-        reports = MANUFACTURER_TABLES["manufacturers_reports"]
-        manufs = MANUFACTURER_TABLES["manufacturers"]
+        reports = REPORTS
+        manufs = MANUFACTURERS
         steps = PROCESS_STEPS_LOG
         submission_sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
                 reports.report_name,reports.yearly_frequency, reports.POS_report,
@@ -302,15 +294,15 @@ class DatabaseServices:
         submission_data = pd.read_sql(submission_sql, con=self.engine)
         process_steps = pd.read_sql(process_steps_sql, con=self.engine)
         current_errors = self.get_errors(submission_id)
-        
+
         return submission_data, process_steps, current_errors
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
         """generates a reference for matching the map_rep_customer id to
         an array of customer, city, and state ids"""
-        branches = CUSTOMERS["customer_branches"]
-        rep_mapping = MAPPING_TABLES["map_reps_customers"]
+        branches = BRANCHES
+        rep_mapping = REPS_CUSTOMERS_MAP
         sql = sqlalchemy \
             .select(rep_mapping.id, branches.customer_id,
                 branches.city_id, branches.state_id) \
@@ -343,15 +335,15 @@ class TableViews:
         Returns: pd.DataFrame"""
         commission_data_raw = COMMISSION_DATA_TABLE
         submission_data = SUBMISSIONS_TABLE
-        reports = MANUFACTURER_TABLES["manufacturers_reports"]
-        manufacturers = MANUFACTURER_TABLES["manufacturers"]
-        map_reps_to_customers = MAPPING_TABLES["map_reps_customers"]
+        reports = REPORTS
+        manufacturers = MANUFACTURERS
+        map_reps_to_customers = REPS_CUSTOMERS_MAP
         reps = REPS
-        branches = CUSTOMERS["customer_branches"]
-        customers = CUSTOMERS["customers"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
-        sql = sqlalchemy.select(
+        branches = BRANCHES
+        customers = CUSTOMERS
+        cities = CITIES
+        states = STATES
+        sql = sqlalchemy.select(commission_data_raw.row_id,
             submission_data.reporting_year, submission_data.reporting_month,
             manufacturers.name, reps.initials, customers.name,
             cities.name, states.name, commission_data_raw.inv_amt,
@@ -368,7 +360,7 @@ class TableViews:
             .join(states)
 
         view_table = pd.read_sql(sql, con=self.engine)
-        view_table.columns = ["Year","Month","Manufacturer","Salesman",
+        view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
                 "Customer Name","City","State","Inv Amt","Comm Amt"]
         view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
         view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
@@ -378,11 +370,11 @@ class TableViews:
 
     def rep_to_customer_map_with_all_names(self) -> pd.DataFrame:
         reps = REPS
-        map_reps_to_customers = MAPPING_TABLES["map_reps_customers"]
-        branches = CUSTOMERS["customer_branches"]
-        customers = CUSTOMERS["customers"]
-        cities = LOCATIONS["cities"]
-        states = LOCATIONS["states"]
+        map_reps_to_customers = REPS_CUSTOMERS_MAP
+        branches = BRANCHES
+        customers = CUSTOMERS
+        cities = CITIES
+        states = STATES
         sql = sqlalchemy.select(
             reps.initials, customers.name,
             cities.name, states.name

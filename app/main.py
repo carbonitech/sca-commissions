@@ -99,11 +99,11 @@ async def get_rep_by_id(rep_id: int):
 
 
 ### COMMISSIONS ###
-@app.get("/commdata")
+@app.get("/commissions")
 async def get_commission_data():
     return {"data": json.loads(db_views.commission_data_with_all_names().to_json(orient="records"))}
 
-@app.post("/commdata")
+@app.post("/commissions")
 async def process_data(file: bytes = File(), reporting_month: int = Form(),
         reporting_year: int = Form(), report_id: int=Form(), manufacturer_id: int = Form()):
     file_obj = CommissionFile(file,"Detail")

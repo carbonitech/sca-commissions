@@ -3,10 +3,6 @@
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
-from entities.submission import NewSubmission
-from entities.error import Error
-from entities.processing_step import ProcessingStep
-
 Base = declarative_base()
 
 ## Model-only Tables
@@ -107,10 +103,6 @@ class SubmissionDTO(Base):
     commission_data = relationship("FinalCommissionDataDTO")
     errors = relationship("ErrorDTO")
     steps = relationship("ProcessingStepDTO")
-
-    @staticmethod
-    def submission_dto(submission: NewSubmission) -> 'SubmissionDTO':
-        return SubmissionDTO(**submission)
 
 
 class ProcessingStepDTO(Base):

@@ -10,7 +10,6 @@ import sqlalchemy
 from sqlalchemy.orm import Session
 
 from db import models
-from entities import manufacturers
 from entities.error import Error, ErrorType
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep

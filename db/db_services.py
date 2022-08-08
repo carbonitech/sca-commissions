@@ -214,11 +214,6 @@ class DatabaseServices:
             session.commit()
         return True
 
-    # original submission files
-    def get_submission_files(self, manufacturer_id: int) -> Dict[int,str]: ...
-    def record_submission_file(self, manufactuer_id: int, file: bytes) -> bool: ...
-    def del_submission_file(self, id: int) -> bool: ...
-
 
     ## api
     def get_customers(self) -> pd.DataFrame:
@@ -268,7 +263,6 @@ class DatabaseServices:
         manuf = pd.read_sql(sql, con=self.engine)
         return manuf, reports, submissions
 
-
     def get_all_reps(self) -> pd.DataFrame:
         sql = sqlalchemy.select(REPS)
         return pd.read_sql(sql, con=self.engine)
@@ -287,6 +281,29 @@ class DatabaseServices:
         result.columns = ["id", "Customer", "City", "State"]
         return result
 
+    def get_all_submissions(self) -> pd.DataFrame:
+        subs = SUBMISSIONS_TABLE
+        reports = MANUFACTURER_TABLES["manufacturers_reports"]
+        manufs = MANUFACTURER_TABLES["manufacturers"]
+        sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
+                reports.report_name,reports.yearly_frequency, reports.POS_report,
+                manufs.name).select_from(subs).join(reports).join(manufs)
+        return pd.read_sql(sql, con=self.engine)
+
+    def get_submission_by_id(self, submission_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        subs = SUBMISSIONS_TABLE
+        reports = MANUFACTURER_TABLES["manufacturers_reports"]
+        manufs = MANUFACTURER_TABLES["manufacturers"]
+        steps = PROCESS_STEPS_LOG
+        submission_sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
+                reports.report_name,reports.yearly_frequency, reports.POS_report,
+                manufs.name).select_from(subs).join(reports).join(manufs).where(subs.id == submission_id)
+        process_steps_sql = sqlalchemy.select(steps).where(steps.submission_id == submission_id)
+        submission_data = pd.read_sql(submission_sql, con=self.engine)
+        process_steps = pd.read_sql(process_steps_sql, con=self.engine)
+        current_errors = self.get_errors(submission_id)
+        
+        return submission_data, process_steps, current_errors
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

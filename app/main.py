@@ -39,10 +39,12 @@ class CommissionDataForm(BaseModel):
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
 
+### HOME ###
 @app.get("/")
 async def home():
     return RedirectResponse("http://127.0.0.1:8000/docs")
 
+### CUSTOMERS ###
 @app.get("/customers")
 async def all_customers():
     customers = db.get_customers().to_json(orient="records")
@@ -67,7 +69,7 @@ async def new_customer(customer_name: str = Form()):
         raise HTTPException(status_code=400, detail="Customer already exists")
     return {"customer_id": db.new_customer(customer_fastapi=customer_name)}
 
-
+### MANUFACTURERS ###
 @app.get("/manufacturers")
 async def all_manufacturers():
     manufacturers_ = db.get_all_manufacturers().to_json(orient="records")
@@ -84,7 +86,7 @@ async def manufacturer_by_id(manuf_id: int):
             "reports": reports_json,
             "submissions": submissions_json})
 
-
+### REPS ###
 @app.get("/reps")
 async def get_all_reps():
     all_reps = db.get_all_reps().to_json(orient="records", date_format="iso")
@@ -95,6 +97,8 @@ async def get_rep_by_id(rep_id: int):
     rep_and_branches = db.get_rep_and_branches(rep_id).to_json(orient="records")
     return {"data": json.loads(rep_and_branches)}
 
+
+### COMMISSIONS ###
 @app.get("/commdata")
 async def get_commission_data():
     return {"data": json.loads(db_views.commission_data_with_all_names().to_json(orient="records"))}
@@ -112,6 +116,33 @@ async def process_data(file: bytes = File(), reporting_month: int = Form(),
         "errors":json.loads(db.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
 
 
+### MAPPINGS ###
+@app.get("/mappings/customers")
+async def get_all_mappings_related_to_customers(): ...
+
+@app.get("/mappings/locations")
+async def get_all_mappings_for_location_names(): ...
+
+@app.post("/mappings/customers")
+async def create_new_mapping_for_a_customer(): ...
+
+@app.post("/mappings/locations")
+async def create_new_mapping_for_a_location(): ...
+
+### SUBMISSIONS ###
+@app.get("/submissions")
+async def get_all_submissions():
+    all_subs = db.get_all_submissions().to_json(orient="records", date_format="iso")
+    return {"data": json.loads(all_subs)}
+
+@app.get("/submissions/{submission_id}")
+async def get_submission_by_id(submission_id: int):
+    sub_data, process_steps, current_errors = db.get_submission_by_id(submission_id)
+    return {
+        "submission": json.loads(sub_data.to_json(orient="records", date_format="iso"))[0],
+        "processing_steps": json.loads(process_steps.to_json(orient="records", date_format="iso")),
+        "current_errors": json.loads(current_errors.to_json(orient="records", date_format="iso"))
+    }
 
 
 async def delete_db():

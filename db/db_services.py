@@ -221,11 +221,25 @@ class DatabaseServices:
             session.commit()
         return new_id
 
-    def get_customer(self,cust_id) -> pd.DataFrame:
+    def get_customer(self,cust_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS) \
                 .where(CUSTOMERS.id == cust_id)
         result = pd.read_sql(sql, con=self.engine)
         return result
+
+    def check_customer_exists_by_name(self, name: str) -> bool:
+        sql = sqlalchemy.select(CUSTOMERS).where(CUSTOMERS.name == name)
+        with Session(bind=self.engine) as session:
+            result = session.execute(sql).fetchone()
+        return True if result else False
+
+
+    def modify_customer(self, customer_id: int, *args, **kwargs) -> None:
+        sql = sqlalchemy.update(CUSTOMERS).values(**kwargs).where(CUSTOMERS.id == customer_id)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        return
 
     def get_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
         branches = BRANCHES
@@ -321,11 +335,11 @@ class DatabaseServices:
         sql = sqlalchemy.select(BRANCHES).where(BRANCHES.customer_id == customer_id)
         return pd.read_sql(sql, con=self.engine)
     
-    def set_new_customer_branch_raw(self, customer: int, city: int, state: int):
+    def set_new_customer_branch_raw(self, customer_id: int, city_id: int, state_id: int):
         sql = sqlalchemy.insert(BRANCHES) \
-            .values(customer_id=customer,
-                    city_id=city,
-                    state_id=state)
+            .values(customer_id=customer_id,
+                    city_id=city_id,
+                    state_id=state_id)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()

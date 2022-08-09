@@ -24,9 +24,9 @@ class Customer(BaseModel):
     name: str
 
 class Branch(BaseModel):
-    customer: int
-    city: int
-    state: int
+    customer_id: int
+    city_id: int
+    state_id: int
 
 class CommissionDataForm(BaseModel):
     reporting_month: int
@@ -50,41 +50,6 @@ async def all_customers():
     customers = db.get_customers().to_json(orient="records")
     return({"customers": json.loads(customers)})
 
-@app.get("/customers/{customer_id}")
-async def customer_by_id(customer_id: int):
-    customer = db.get_customer(customer_id).to_json(orient="records")
-    return({"customer": json.loads(customer)})
-
-@app.get("/customers/{customer_id}/branches")
-async def customer_branches_by_id(customer_id: int):
-    branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
-    return({"branches": json.loads(branches)})
-
-@app.post("/branches")
-async def new_branch_by_customer_id(new_branch: Branch):
-    existing_branches = db.get_customer_branches_raw(new_branch.customer)
-    new_branch_customer = new_branch.customer
-    new_branch_city = new_branch.city
-    new_branch_state = new_branch.state
-    exist_check = existing_branches[
-        (existing_branches["customer_id"] == new_branch_customer)
-        & (existing_branches["city_id"] == new_branch_city)
-        & (existing_branches["state_id"] == new_branch_state)
-    ].empty
-    if exist_check:
-        db.set_new_customer_branch_raw(
-            customer = new_branch_customer,
-            city = new_branch_city,
-            state = new_branch_state
-        )
-    else:
-        raise HTTPException(status_code=400, detail="Customer Branch already exists")
-
-@app.delete("/branches")
-async def delete_branch_by_id(branch_id: int):
-    # setting a function argument
-    db.delete_a_branch_by_id(branch_id=branch_id)
-
 @app.post("/customers")
 async def new_customer(customer_name: str = Form()):
     customer_name = customer_name.upper()
@@ -93,6 +58,46 @@ async def new_customer(customer_name: str = Form()):
     if not matches.empty:
         raise HTTPException(status_code=400, detail="Customer already exists")
     return {"customer_id": db.new_customer(customer_fastapi=customer_name)}
+
+@app.get("/customers/{customer_id}")
+async def customer_by_id(customer_id: int):
+    customer = db.get_customer(customer_id).to_json(orient="records")
+    return({"customer": json.loads(customer)})
+
+@app.put("/customers/{customer_id}")
+async def modify_customer(customer_id: int, new_data: Customer):
+    new_data.name = new_data.name.strip().upper()
+    current_customer = db.check_customer_exists_by_name(**new_data.dict())
+    if current_customer:
+        raise HTTPException(status_code=400, detail="New Customer Name already exists")
+    
+    return db.modify_customer(customer_id, **new_data.dict())
+
+
+@app.get("/customers/{customer_id}/branches")
+async def customer_branches_by_id(customer_id: int):
+    branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
+    return({"branches": json.loads(branches)})
+
+
+### BRANCHES ###
+@app.post("/branches")
+async def new_branch_by_customer_id(new_branch: Branch):
+    existing_branches = db.get_customer_branches_raw(new_branch.customer)
+    exist_check = existing_branches[
+        (existing_branches["customer_id"] == new_branch.customer_id)
+        & (existing_branches["city_id"] == new_branch.city_id)
+        & (existing_branches["state_id"] == new_branch.state_id)
+    ].empty
+    if exist_check:
+        return db.set_new_customer_branch_raw(**new_branch.dict())
+    else:
+        raise HTTPException(status_code=400, detail="Customer Branch already exists")
+
+@app.delete("/branches")
+async def delete_branch_by_id(branch_id: int):
+    return db.delete_a_branch_by_id(branch_id=branch_id)
+
 
 ### MANUFACTURERS ###
 @app.get("/manufacturers")

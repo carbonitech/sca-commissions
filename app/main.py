@@ -60,9 +60,9 @@ async def customer_branches_by_id(customer_id: int):
     branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
     return({"branches": json.loads(branches)})
 
-@app.post("/customers/{customer_id}/branches")
-async def new_branch_by_customer_id(customer_id: int, new_branch: Branch):
-    existing_branches = db.get_customer_branches_raw(customer_id)
+@app.post("/branches")
+async def new_branch_by_customer_id(new_branch: Branch):
+    existing_branches = db.get_customer_branches_raw(new_branch.customer)
     new_branch_customer = new_branch.customer
     new_branch_city = new_branch.city
     new_branch_state = new_branch.state
@@ -80,8 +80,9 @@ async def new_branch_by_customer_id(customer_id: int, new_branch: Branch):
     else:
         raise HTTPException(status_code=400, detail="Customer Branch already exists")
 
-@app.delete("/customers/{customer_id}/branches")
+@app.delete("/branches")
 async def delete_branch_by_id(branch_id: int):
+    # setting a function argument
     db.delete_a_branch_by_id(branch_id=branch_id)
 
 @app.post("/customers")

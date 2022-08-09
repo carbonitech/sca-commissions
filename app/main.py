@@ -15,13 +15,13 @@ import pandas as pd
 from db import models
 from sqlalchemy.orm import Session
 
+from app.resources import customers
+
 app = FastAPI()
 db = DatabaseServices()
 db_views = TableViews()
 
-
-class Customer(BaseModel):
-    name: str
+app.include_router(customers.router)
 
 class Branch(BaseModel):
     customer_id: int
@@ -43,41 +43,6 @@ process_step_listener.setup_processing_step_handlers()
 @app.get("/")
 async def home():
     return RedirectResponse("http://127.0.0.1:8000/docs")
-
-### CUSTOMERS ###
-@app.get("/customers")
-async def all_customers():
-    customers = db.get_customers().to_json(orient="records")
-    return({"customers": json.loads(customers)})
-
-@app.post("/customers")
-async def new_customer(customer_name: str = Form()):
-    customer_name = customer_name.upper()
-    current_customers = db.get_customers()
-    matches = current_customers.loc[current_customers.name == customer_name]
-    if not matches.empty:
-        raise HTTPException(status_code=400, detail="Customer already exists")
-    return {"customer_id": db.new_customer(customer_fastapi=customer_name)}
-
-@app.get("/customers/{customer_id}")
-async def customer_by_id(customer_id: int):
-    customer = db.get_customer(customer_id).to_json(orient="records")
-    return({"customer": json.loads(customer)})
-
-@app.put("/customers/{customer_id}")
-async def modify_customer(customer_id: int, new_data: Customer):
-    new_data.name = new_data.name.strip().upper()
-    current_customer = db.check_customer_exists_by_name(**new_data.dict())
-    if current_customer:
-        raise HTTPException(status_code=400, detail="New Customer Name already exists")
-    
-    return db.modify_customer(customer_id, **new_data.dict())
-
-
-@app.get("/customers/{customer_id}/branches")
-async def customer_branches_by_id(customer_id: int):
-    branches = db.get_branches_by_customer(customer_id).to_json(orient="records")
-    return({"branches": json.loads(branches)})
 
 
 ### BRANCHES ###

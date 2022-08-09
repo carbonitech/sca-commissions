@@ -15,13 +15,14 @@ import pandas as pd
 from db import models
 from sqlalchemy.orm import Session
 
-from app.resources import customers
+from app.resources import customers, mappings
 
 app = FastAPI()
 db = DatabaseServices()
 db_views = TableViews()
 
 app.include_router(customers.router)
+app.include_router(mappings.router)
 
 class Branch(BaseModel):
     customer_id: int
@@ -109,29 +110,6 @@ async def process_data(file: bytes = File(), reporting_month: int = Form(),
     return {"sub_id": mfg_report_processor.submission_id,
         "steps":json.loads(db.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
         "errors":json.loads(db.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
-
-
-### MAPPINGS ###
-@app.get("/mappings/customers")
-async def get_all_mappings_related_to_customers(): ...
-
-@app.get("/mappings/customers/{customer_id}")
-async def get_all_mappings_related_to_a_specific_customer(): ...
-
-@app.get("/mappings/cities")
-async def get_all_mappings_for_location_names(): ...
-
-@app.get("/mappings/states")
-async def get_all_mappings_for_location_names(): ...
-
-@app.post("/mappings/customers")
-async def create_new_mapping_for_a_customer(): ...
-
-@app.post("/mappings/cities")
-async def create_new_mapping_for_a_location(): ...
-
-@app.post("/mappings/states")
-async def create_new_mapping_for_a_location(): ...
 
 
 ### SUBMISSIONS ###

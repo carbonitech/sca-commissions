@@ -238,9 +238,29 @@ class DatabaseServices:
             .select(branches.id,customers.name,cities.name,states.name,reps.initials) \
             .select_from(branches).join(customers).join(cities).join(states).join(rep_mapping).join(reps) \
             .where(customers.id == customer_id)
+        # filters for branches with rep mappings per inner joins
         result = pd.read_sql(sql, con=self.engine)
         result.columns = ["id", "Customer Name", "City", "State", "Salesman"]
+        # append branches for this customer that don't have a rep assigned and return
+        unmapped_branches = self.get_unmapped_branches_by_customer(customer_id=customer_id)
+        return pd.concat([result,unmapped_branches])
+
+
+    def get_unmapped_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(BRANCHES.id, CUSTOMERS.name, CITIES.name, STATES.name) \
+            .join(CUSTOMERS).join(CITIES).join(STATES).join(REPS_CUSTOMERS_MAP, isouter=True) \
+            .where(sqlalchemy.and_(REPS_CUSTOMERS_MAP.id == None, BRANCHES.customer_id==customer_id))
+        result = pd.read_sql(sql, con=self.engine)
+        result.columns = ["id", "Customer Name", "City", "State"]
+        result["Salesman"] = None
         return result
+
+    def delete_a_branch_by_id(self, branch_id: int):
+        sql = sqlalchemy.delete(BRANCHES).where(BRANCHES.id == branch_id)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        return
 
     def get_all_manufacturers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(MANUFACTURERS)
@@ -296,6 +316,20 @@ class DatabaseServices:
         current_errors = self.get_errors(submission_id)
 
         return submission_data, process_steps, current_errors
+
+    def get_customer_branches_raw(self, customer_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(BRANCHES).where(BRANCHES.customer_id == customer_id)
+        return pd.read_sql(sql, con=self.engine)
+    
+    def set_new_customer_branch_raw(self, customer: int, city: int, state: int):
+        sql = sqlalchemy.insert(BRANCHES) \
+            .values(customer_id=customer,
+                    city_id=city,
+                    state_id=state)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        return
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

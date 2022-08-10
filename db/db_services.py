@@ -345,6 +345,36 @@ class DatabaseServices:
             session.commit()
         return
 
+    def get_all_customer_name_mappings(self, customer_id: int=0) -> pd.DataFrame:
+        sql = sqlalchemy.select(CUSTOMERS,CUSTOMER_NAME_MAP)\
+                .select_from(CUSTOMERS).join(CUSTOMER_NAME_MAP)
+        if customer_id:
+            sql = sql.where(CUSTOMERS.id == customer_id)
+
+        table = pd.read_sql(sql, con=self.engine)
+        table.columns = ["Customer ID", "Customer Name", "Name Mapping ID", "Alias", "_"] 
+        return table.iloc[:,:4]
+
+    def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
+        sql = sqlalchemy.select(CITIES,CITY_NAME_MAP)\
+                .select_from(CITIES).join(CITY_NAME_MAP)
+        if city_id:
+            sql = sql.where(CITIES.id == city_id)
+
+        table = pd.read_sql(sql, con=self.engine)
+        table.columns = ["City ID", "City Name", "Name Mapping ID", "Alias", "_"] 
+        return table.iloc[:,:4]
+
+    def get_all_state_name_mappings(self, state_id: int=0) -> pd.DataFrame:
+        sql = sqlalchemy.select(STATES,STATE_NAME_MAP)\
+                .select_from(STATES).join(STATE_NAME_MAP)
+        if state_id:
+            sql = sql.where(STATES.id == state_id)
+
+        table = pd.read_sql(sql, con=self.engine)
+        table.columns = ["State ID", "State Name", "Name Mapping ID", "Alias", "_"] 
+        return table.iloc[:,:4]
+
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
         """generates a reference for matching the map_rep_customer id to

@@ -9,6 +9,7 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 
+from app import event
 from db import models
 from entities.error import Error, ErrorType
 from entities.submission import NewSubmission
@@ -374,6 +375,61 @@ class DatabaseServices:
         table = pd.read_sql(sql, con=self.engine)
         table.columns = ["State ID", "State Name", "Name Mapping ID", "Alias", "_"] 
         return table.iloc[:,:4]
+
+    def get_cities(self,city_id: int=0) -> pd.DataFrame:
+        sql = sqlalchemy.select(CITIES)
+        if city_id:
+            sql = sql.where(CITIES.id==city_id)
+        return pd.read_sql(sql, con=self.engine)
+
+    def get_states(self,state_id: int=0) -> pd.DataFrame:
+        sql = sqlalchemy.select(CITIES)
+        if state_id:
+            sql = sql.where(CITIES.id==state_id)
+        return pd.read_sql(sql, con=self.engine)
+
+    def get_rep_to_customer_full(self, customer_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(
+            REPS_CUSTOMERS_MAP.id,
+            BRANCHES.id,
+            CUSTOMERS.id, CUSTOMERS.name,
+            CITIES.id, CITIES.name,
+            STATES.id,STATES.name,
+            REPS.id, REPS.initials)\
+            .select_from(REPS_CUSTOMERS_MAP).join(BRANCHES).join(CUSTOMERS).join(CITIES)\
+            .join(STATES).join(REPS).where(CUSTOMERS.id == customer_id)
+        table = pd.read_sql(sql, con=self.engine)
+        table.columns = ["Rep to Customer ID", "Branch ID", "Customer ID", "Customer",
+                "City ID", "City", "State ID", "State", "Rep ID", "Rep"]
+        return table
+        
+    def set_customer_name_mapping(self, **kwargs):
+        sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        event.post_event("New Mapping Created",{CUSTOMER_NAME_MAP.__table__:kwargs})
+
+    def set_city_name_mapping(self, **kwargs):
+        sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        event.post_event("New Mapping Created",{CITY_NAME_MAP.__table__:kwargs})
+ 
+    def set_state_name_mapping(self, **kwargs):
+        sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        event.post_event("New Mapping Created",{STATE_NAME_MAP.__table__:kwargs})
+
+    def set_rep_to_customer_mapping(self, **kwargs):
+        sql = sqlalchemy.insert(REPS_CUSTOMERS_MAP).values(**kwargs)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        event.post_event("New Mapping Created",{REPS_CUSTOMERS_MAP.__table__:kwargs})
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

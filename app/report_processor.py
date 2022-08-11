@@ -192,6 +192,8 @@ class ReportProcessor:
         await self.fill_city_ids()
         await self.fill_state_ids()
         await self.filter_out_any_rows_unmapped()
+        await self.add_branch_id()
+        await self.filter_out_any_rows_unmapped()
         await self.add_rep_customer_ids()
         await self.filter_out_any_rows_unmapped()
         await self.drop_extra_columns()

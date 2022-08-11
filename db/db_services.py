@@ -81,7 +81,6 @@ class DatabaseServices:
             session.commit()
         return True
 
-
     def get_branches(self) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES)
         return pd.read_sql(sql,con=self.engine)
@@ -435,7 +434,6 @@ class DatabaseServices:
             session.execute(sql)
             session.commit()
         event.post_event("Rep Mapping updated",{REPS_CUSTOMERS_MAP.__table__:kwargs})       
-
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

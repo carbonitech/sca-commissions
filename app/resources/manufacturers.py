@@ -6,13 +6,13 @@ from db import db_services
 db = db_services.DatabaseServices()
 router = APIRouter(prefix="/manufacturers")
 
-@router.get("/")
+@router.get("/", tags=["manufacturers"])
 async def all_manufacturers():
     manufacturers_ = db.get_all_manufacturers().to_json(orient="records")
     return({"manufacturers": json.loads(manufacturers_)})
 
 
-@router.get("/{manuf_id}")
+@router.get("/{manuf_id}", tags=["manufacturers"])
 async def manufacturer_by_id(manuf_id: int):
     manufacturer, reports, submissions = db.get_manufacturer_by_id(manuf_id)
     manufacturer_json = json.loads(manufacturer.to_json(orient="records"))

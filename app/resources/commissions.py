@@ -11,11 +11,11 @@ db = db_services.DatabaseServices()
 db_views = db_services.TableViews()
 router = APIRouter(prefix="/commissions")
 
-@router.get("/")
+@router.get("/", tags=['commissions'])
 async def get_commission_data():
     return {"data": json.loads(db_views.commission_data_with_all_names().to_json(orient="records"))}
 
-@router.post("/")
+@router.post("/", tags=['commissions'])
 async def process_data(file: bytes = File(), reporting_month: int = Form(),
         reporting_year: int = Form(), report_id: int=Form(), manufacturer_id: int = Form()):
     file_obj = CommissionFile(file,"Detail")

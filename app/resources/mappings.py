@@ -22,27 +22,27 @@ class RepCustomerMapping(BaseModel, extra=Extra.allow):
     customer_branch_id: int
 
 
-@router.get("/customers")
+@router.get("/customers", tags=["customers"])
 async def get_all_mappings_related_to_customers():
     return json.loads(db.get_all_customer_name_mappings().to_json(orient="records"))
 
-@router.get("/customers/{customer_id}")
+@router.get("/customers/{customer_id}", tags=["customers"])
 async def get_all_mappings_related_to_a_specific_customer(customer_id: int):
     rep_mappings = json.loads(db.get_rep_to_customer_full(customer_id).to_json(orient="records"))
     name_mappings = json.loads(db.get_all_customer_name_mappings(customer_id).to_json(orient="records"))
     return {"names": name_mappings, "reps_by_branch": rep_mappings}
 
-@router.get("/customers/{customer_id}/names")
+@router.get("/customers/{customer_id}/names", tags=["customers"])
 async def get_all_mappings_related_to_a_specific_customer(customer_id: int):
     name_mappings = json.loads(db.get_all_customer_name_mappings(customer_id).to_json(orient="records"))
     return {"names": name_mappings}
 
-@router.get("/customers/{customer_id}/reps")
+@router.get("/customers/{customer_id}/reps", tags=["customers"])
 async def get_all_mappings_related_to_a_specific_customer(customer_id: int):
     rep_mappings = json.loads(db.get_rep_to_customer_full(customer_id).to_json(orient="records"))
     return {"reps_by_branch": rep_mappings}
 
-@router.post("/customers/{customer_id}/names")
+@router.post("/customers/{customer_id}/names", tags=["customers"])
 async def create_new_name_mapping(customer_id: int, new_mapping: CustomerNameMapping):
     current_customer = not db.get_customer(customer_id).empty
     if not current_customer:
@@ -50,7 +50,7 @@ async def create_new_name_mapping(customer_id: int, new_mapping: CustomerNameMap
     new_mapping.customer_id = customer_id
     db.set_customer_name_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.post("/customers/{customer_id}/reps")
+@router.post("/customers/{customer_id}/reps", tags=["customers"])
 async def create_new_rep_mapping(customer_id: int, new_mapping: RepCustomerMapping):
     customer_branches = db.get_customer_branches_raw(customer_id)
     if customer_branches.loc[customer_branches["id"] == new_mapping.customer_branch_id].empty:
@@ -62,7 +62,7 @@ async def create_new_rep_mapping(customer_id: int, new_mapping: RepCustomerMappi
         raise HTTPException(400, detail=f"Branch is already assigned to {branch_mapping.values[0]}")
     db.set_rep_to_customer_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.put("/customers/{customer_id}/reps/{mapping_id}")
+@router.put("/customers/{customer_id}/reps/{mapping_id}", tags=["customers"])
 async def modify_customer_rep_mapping(customer_id: int, mapping_id: int, new_mapping: RepCustomerMapping):
     if db.get_customer(customer_id).empty:
         raise HTTPException(400, detail="Customer does not exist")
@@ -76,42 +76,42 @@ async def modify_customer_rep_mapping(customer_id: int, mapping_id: int, new_map
         raise HTTPException(400, detail="Rep does not exist")
     db.update_rep_to_customer_mapping(mapping_id, **new_mapping.dict(exclude_none=True))
 
-@router.delete("/customers/{customer_id}/names")
+@router.delete("/customers/{customer_id}/names", tags=["customers"])
 async def delete_customer_name_mapping(customer_id: int, mapping_id: int):
     pass
 
-@router.get("/cities")
+@router.get("/cities", tags=["cities"])
 async def get_all_mappings_for_city_names():
     return json.loads(db.get_all_city_name_mappings().to_json(orient="records"))
 
-@router.get("/cities/{city_id}")
+@router.get("/cities/{city_id}", tags=["cities"])
 async def get_all_mappings_a_city(city_id: int):
     return json.loads(db.get_all_city_name_mappings(city_id).to_json(orient="records"))
 
-@router.post("/cities")
+@router.post("/cities", tags=["cities"])
 async def create_new_mapping_for_a_city(new_mapping: CityNameMapping):
     current_city = not db.get_cities(new_mapping.city_id).empty
     if not current_city:
         raise HTTPException(400, detail="City name does not exist")
     db.set_city_name_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.put("/cities/{city_id}")
+@router.put("/cities/{city_id}", tags=["cities"])
 async def modify_mapping_for_a_city(city_id: int): ...
 
-@router.get("/states")
+@router.get("/states", tags=["states"])
 async def get_all_mappings_for_state_names():
     return json.loads(db.get_all_state_name_mappings().to_json(orient="records"))
 
-@router.get("/states/{state_id}")
+@router.get("/states/{state_id}", tags=["states"])
 async def get_all_mappings_a_city(state_id: int):
     return json.loads(db.get_all_state_name_mappings(state_id).to_json(orient="records"))
 
-@router.post("/states")
+@router.post("/states", tags=["states"])
 async def create_new_mapping_for_a_state(new_mapping: StateNameMapping):
     current_state = not db.get_states(new_mapping.state_id).empty
     if not current_state:
         raise HTTPException(400, detail="State does not exist")
     db.set_state_name_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.put("/states/{state_id}")
+@router.put("/states/{state_id}", tags=["states"])
 async def modify_mapping_for_a_state(state_id: int): ...

@@ -10,7 +10,7 @@ class Branch(BaseModel):
     city_id: int
     state_id: int
 
-@router.post("/")
+@router.post("/", tags=['branches'])
 async def new_branch_by_customer_id(new_branch: Branch):
     existing_branches = db.get_customer_branches_raw(new_branch.customer)
     exist_check = existing_branches[
@@ -23,6 +23,6 @@ async def new_branch_by_customer_id(new_branch: Branch):
     else:
         raise HTTPException(status_code=400, detail="Customer Branch already exists")
 
-@router.delete("/")
+@router.delete("/", tags=['branches'])
 async def delete_branch_by_id(branch_id: int):
     return db.delete_a_branch_by_id(branch_id=branch_id)

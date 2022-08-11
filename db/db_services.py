@@ -234,7 +234,6 @@ class DatabaseServices:
             result = session.execute(sql).fetchone()
         return True if result else False
 
-
     def modify_customer(self, customer_id: int, *args, **kwargs) -> None:
         sql = sqlalchemy.update(CUSTOMERS).values(**kwargs).where(CUSTOMERS.id == customer_id)
         with Session(bind=self.engine) as session:
@@ -259,7 +258,6 @@ class DatabaseServices:
         # append branches for this customer that don't have a rep assigned and return
         unmapped_branches = self.get_unmapped_branches_by_customer(customer_id=customer_id)
         return pd.concat([result,unmapped_branches])
-
 
     def get_unmapped_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES.id, CUSTOMERS.name, CITIES.name, STATES.name) \
@@ -430,6 +428,14 @@ class DatabaseServices:
             session.execute(sql)
             session.commit()
         event.post_event("New Mapping Created",{REPS_CUSTOMERS_MAP.__table__:kwargs})
+
+    def update_rep_to_customer_mapping(self, map_id: int, **kwargs):
+        sql = sqlalchemy.update(REPS_CUSTOMERS_MAP).values(**kwargs).where(REPS_CUSTOMERS_MAP.id == map_id)
+        with Session(bind=self.engine) as session:
+            session.execute(sql)
+            session.commit()
+        event.post_event("Rep Mapping updated",{REPS_CUSTOMERS_MAP.__table__:kwargs})       
+
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

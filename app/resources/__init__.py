@@ -5,3 +5,5 @@ from app.resources.manufacturers import router as manufacturers
 from app.resources.mappings import router as mappings
 from app.resources.reps import router as reps
 from app.resources.submissions import router as submissions
+from app.resources.cities import router as cities
+from app.resources.states import router as states

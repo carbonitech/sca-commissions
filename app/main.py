@@ -23,6 +23,8 @@ app.include_router(resources.manufacturers)
 app.include_router(resources.reps)
 app.include_router(resources.commissions)
 app.include_router(resources.submissions)
+app.include_router(resources.cities)
+app.include_router(resources.states)
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()

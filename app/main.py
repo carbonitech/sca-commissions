@@ -3,6 +3,7 @@ from starlette.responses import RedirectResponse
 
 import os
 import pandas as pd
+from numpy import nan
 from sqlalchemy.orm import Session
 
 from app import error_listener, process_step_listener, resources
@@ -65,6 +66,7 @@ async def create_db():
     # populate database with csv data
     with Session(DatabaseServices.engine) as session:
         for table, data in tables.items():
+            data = data.replace({nan: None})
             for row in data.to_dict("records"):
                 # col names in csv must match table schema
                 session.add(DB_TABLES[table](**row)) 

@@ -350,8 +350,8 @@ class DatabaseServices:
             sql = sql.where(CUSTOMERS.id == customer_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["Customer ID", "Customer Name", "Name Mapping ID", "Alias", "_"] 
-        return table.iloc[:,:4]
+        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CITIES,CITY_NAME_MAP)\
@@ -360,8 +360,8 @@ class DatabaseServices:
             sql = sql.where(CITIES.id == city_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["City ID", "City Name", "Name Mapping ID", "Alias", "_"] 
-        return table.iloc[:,:4]
+        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_state_name_mappings(self, state_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(STATES,STATE_NAME_MAP)\
@@ -370,8 +370,8 @@ class DatabaseServices:
             sql = sql.where(STATES.id == state_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["State ID", "State Name", "Name Mapping ID", "Alias", "_"] 
-        return table.iloc[:,:4]
+        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        return table.loc[:,~table.columns.isin(["_"])]
 
     def get_cities(self,city_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CITIES)

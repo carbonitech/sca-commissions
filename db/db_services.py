@@ -405,35 +405,35 @@ class DatabaseServices:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{CUSTOMER_NAME_MAP.__table__:kwargs})
+        event.post_event("New Mapping Created",{CUSTOMER_NAME_MAP:kwargs})
 
     def set_city_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{CITY_NAME_MAP.__table__:kwargs})
+        event.post_event("New Mapping Created",{CITY_NAME_MAP:kwargs})
  
     def set_state_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{STATE_NAME_MAP.__table__:kwargs})
+        event.post_event("New Mapping Created",{STATE_NAME_MAP:kwargs})
 
     def set_rep_to_customer_mapping(self, **kwargs):
         sql = sqlalchemy.insert(REPS_CUSTOMERS_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{REPS_CUSTOMERS_MAP.__table__:kwargs})
+        event.post_event("New Mapping Created",{REPS_CUSTOMERS_MAP:kwargs})
 
     def update_rep_to_customer_mapping(self, map_id: int, **kwargs):
         sql = sqlalchemy.update(REPS_CUSTOMERS_MAP).values(**kwargs).where(REPS_CUSTOMERS_MAP.id == map_id)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("Rep Mapping updated",{REPS_CUSTOMERS_MAP.__table__:kwargs})       
+        event.post_event("Rep Mapping updated",{REPS_CUSTOMERS_MAP:kwargs}) 
 
     ## references
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:

@@ -23,6 +23,6 @@ async def new_branch_by_customer_id(new_branch: Branch):
     else:
         raise HTTPException(status_code=400, detail="Customer Branch already exists")
 
-@router.delete("/", tags=['branches'])
+@router.delete("/{branch_id}", tags=['branches'])
 async def delete_branch_by_id(branch_id: int):
     return db.delete_a_branch_by_id(branch_id=branch_id)

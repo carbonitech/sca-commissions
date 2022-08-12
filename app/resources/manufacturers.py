@@ -22,6 +22,12 @@ async def manufacturer_by_id(manuf_id: int):
             "reports": reports_json,
             "submissions": submissions_json})
 
+@router.post("/", tags=["manufacturers"])
+async def add_a_manufacturer(manuf_name: str):
+    manuf_name = manuf_name.strip().upper()
+    pass
+
+
 @router.delete("/{manuf_id}", tags=["manufacturers"])
 async def delete_manufacturer_by_id(manuf_id: int):
     # TODO make delete a "soft delete"

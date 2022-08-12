@@ -9,7 +9,8 @@ Base = declarative_base()
 class City(Base):
     __tablename__ = 'cities'
     id = Column(Integer,primary_key=True)
-    name = Column(String)    
+    name = Column(String)
+    deleted = Column(DateTime)
     branch_cities = relationship("CustomerBranch")
     map_names = relationship("MapCityName")
 
@@ -18,6 +19,7 @@ class State(Base):
     __tablename__ = 'states'
     id = Column(Integer,primary_key=True)
     name = Column(String)
+    deleted = Column(DateTime)
     branch_states = relationship("CustomerBranch")
     map_names = relationship("MapStateName")
 
@@ -26,6 +28,7 @@ class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
+    deleted = Column(DateTime)
     branches = relationship("CustomerBranch")
     map_names = relationship("MapCustomerName")
 
@@ -36,6 +39,7 @@ class CustomerBranch(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"))
     city_id = Column(Integer, ForeignKey("cities.id"))
     state_id = Column(Integer, ForeignKey("states.id"))
+    deleted = Column(DateTime)
     rep = relationship("MapRepToCustomer")
 
 
@@ -46,6 +50,7 @@ class ManufacturersReport(Base):
     report_name = Column(String)
     yearly_frequency = Column(Integer)
     POS_report = Column(Boolean)
+    deleted = Column(DateTime)
 
 
 class Representative(Base):
@@ -55,6 +60,7 @@ class Representative(Base):
     last_name = Column(String)
     initials = Column(String)
     date_joined = Column(DateTime)
+    deleted = Column(DateTime)
     branches = relationship("MapRepToCustomer")
 
 class MapCustomerName(Base):
@@ -83,6 +89,7 @@ class MapRepToCustomer(Base):
     id = Column(Integer,primary_key=True)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
+    orphaned = Column(DateTime)
     commission_data = relationship("FinalCommissionDataDTO")
 
 ## Entity DTOs
@@ -90,6 +97,7 @@ class ManufacturerDTO(Base):
     __tablename__ = 'manufacturers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
+    deleted = Column(DateTime)
     manuf_reports = relationship("ManufacturersReport")
 
 

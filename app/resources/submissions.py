@@ -19,3 +19,7 @@ async def get_submission_by_id(submission_id: int):
         "processing_steps": json.loads(process_steps.to_json(orient="records", date_format="iso")),
         "current_errors": json.loads(current_errors.to_json(orient="records", date_format="iso"))
     }
+
+@router.delete("/{submission_id}", tags=["submissions"])
+async def delete_submission_by_id(submission_id: int):
+    pass

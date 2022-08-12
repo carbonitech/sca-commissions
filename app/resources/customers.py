@@ -34,8 +34,11 @@ async def modify_customer(customer_id: int, new_data: Customer):
     current_customer = db.check_customer_exists_by_name(**new_data.dict())
     if current_customer:
         raise HTTPException(status_code=400, detail="New Customer Name already exists")
-    
     return db.modify_customer(customer_id, **new_data.dict())
+
+@router.delete("/{customer_id}", tags=["customers"])
+async def delete_customer(customer_id: int):
+    pass
 
 @router.get("/{customer_id}/branches", tags=["customers"])
 async def customer_branches_by_id(customer_id: int):

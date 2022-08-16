@@ -383,3 +383,16 @@ class ApiAdapter:
         view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
         view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
         return view_table
+
+    def get_commission_data_by_row(self, row_id: int) -> COMMISSION_DATA_TABLE:
+        sql = sqlalchemy.select(COMMISSION_DATA_TABLE) \
+            .where(COMMISSION_DATA_TABLE.row_id == row_id)
+        with self.engine.begin() as conn:
+            return conn.execute(sql).fetchone()
+
+    def modify_commission_data_row(self, row_id: int, **kwargs):
+        sql = sqlalchemy.update(COMMISSION_DATA_TABLE) \
+                .values(**kwargs).where(COMMISSION_DATA_TABLE.row_id == row_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return

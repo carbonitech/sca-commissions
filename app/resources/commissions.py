@@ -60,7 +60,10 @@ async def add_custom_entry_to_commission_data(submission_id: int, data: CustomCo
 
 @router.put("/{row_id}", tags=['commissions'])
 async def modify_an_entry_in_commission_data(row_id: int, data: CustomCommissionData):
-    raise NotImplementedError
+    row_exists = api.get_commission_data_by_row(row_id)
+    if not row_exists:
+        raise HTTPException(400, detail="row does not exist")
+    api.modify_commission_data_row(row_id, **data.dict())
 
 @router.delete("/{row_id}", tags=['commissions'])
 async def remove_a_line_in_commission_data(row_id: int):

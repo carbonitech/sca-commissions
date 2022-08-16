@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Tuple
 from dotenv import load_dotenv
 from os import getenv
@@ -224,6 +225,12 @@ class ApiAdapter:
             session.execute(sql)
             session.commit()
         event.post_event("City Modified", {CITIES:kwargs})
+
+    def delete_city_by_id(self, city_id: int):
+        sql = sqlalchemy.update(CITIES).values(deleted=datetime.now().isoformat())\
+            .where(CITIES.id == city_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
 
     def get_states(self,state_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CITIES)

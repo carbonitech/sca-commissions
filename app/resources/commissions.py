@@ -1,3 +1,4 @@
+from multiprocessing.spawn import import_main_path
 from fastapi import APIRouter, HTTPException, Form, File
 from pydantic import BaseModel
 import json
@@ -7,9 +8,11 @@ from app import report_processor
 from entities import submission
 from entities.manufacturers import adp
 from entities.commission_file import CommissionFile
+from services.api_adapter import ApiAdapter
 
 db = db_services.DatabaseServices()
 db_views = db_services.TableViews()
+api = ApiAdapter()
 router = APIRouter(prefix="/commissions")
 
 class CustomCommissionData(BaseModel):
@@ -31,17 +34,17 @@ async def process_data_from_a_file(file: bytes = File(), reporting_month: int = 
     mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
     await mfg_report_processor.process_and_commit()
     return {"sub_id": mfg_report_processor.submission_id,
-        "steps":json.loads(db.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
-        "errors":json.loads(db.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
+        "steps":json.loads(api.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
+        "errors":json.loads(api.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
 
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(submission_id: int, data: CustomCommissionData):
-    pass
+    raise NotImplementedError
 
 @router.put("/{row_id}", tags=['commissions'])
 async def modify_an_entry_in_commission_data(row_id: int, data: CustomCommissionData):
-    pass
+    raise NotImplementedError
 
 @router.delete("/{row_id}", tags=['commissions'])
 async def remove_a_line_in_commission_data(row_id: int):
-    pass
+    raise NotImplementedError

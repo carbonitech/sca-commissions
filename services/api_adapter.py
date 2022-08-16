@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Tuple
+import calendar
 from dotenv import load_dotenv
 from os import getenv
 import json
@@ -99,7 +100,9 @@ class ApiAdapter:
         return result
 
     def delete_a_branch_by_id(self, branch_id: int):
-        sql = sqlalchemy.delete(BRANCHES).where(BRANCHES.id == branch_id)
+        sql = sqlalchemy.update(BRANCHES) \
+            .values(deleted = datetime.now()) \
+            .where(BRANCHES.id == branch_id)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
@@ -110,13 +113,13 @@ class ApiAdapter:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def get_manufacturer_by_id(self, manuf_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        manufs = MANUFACTURERS
-        sql = sqlalchemy.select(manufs).where(manufs.id == manuf_id)
-        submissions = self.get_submissions(manuf_id)
-        reports = self.get_manufacturers_reports(manuf_id).drop(columns="manufacturer_id")
-        manuf = pd.read_sql(sql, con=self.engine)
-        return manuf, reports, submissions
+    def get_manufacturer_by_id(self, manuf_id: int):
+        manuf_sql = sqlalchemy.select(MANUFACTURERS).where(MANUFACTURERS.id == manuf_id)
+        submissions_sql = sqlalchemy.select(SUBMISSIONS_TABLE)\
+            .join(REPORTS).where(REPORTS.manufacturer_id == manuf_id)
+        manuf = pd.read_sql(manuf_sql, con=self.engine)
+        submissions = pd.read_sql(submissions_sql, con=self.engine)
+        return manuf, submissions
 
     def get_all_reps(self) -> pd.DataFrame:
         sql = sqlalchemy.select(REPS)
@@ -159,6 +162,12 @@ class ApiAdapter:
         current_errors = self.get_errors(submission_id)
 
         return submission_data, process_steps, current_errors
+
+    def submission_exists(self, submission_id: int) -> bool:
+        sql = sqlalchemy.select(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
+        with self.engine.begin() as conn:
+            result = conn.execute(sql).fetchone()
+        return True if result else False
 
     def get_customer_branches_raw(self, customer_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES).where(BRANCHES.customer_id == customer_id)
@@ -308,5 +317,69 @@ class ApiAdapter:
         """get all report processing errors for a commission report submission"""
         sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
         result = pd.read_sql(sql, con=self.engine)
-        result.loc['row_data'] = result.loc['row_data'].apply(lambda json_str: json.loads(json_str))
+        if result.empty:
+            return result
+        result.loc[:,'row_data'] = result.loc[:,'row_data'].apply(lambda json_str: json.loads(json_str))
         return result
+
+    def rep_customer_id_exists(self, id_: int) -> bool:
+        sql = sqlalchemy.select(REPS_CUSTOMERS_MAP).where(REPS_CUSTOMERS_MAP.id == id_)
+        with self.engine.begin() as conn:
+            result = conn.execute(sql)
+        return True if result else False
+
+    def set_new_commission_data_entry(self, **kwargs) -> int:
+        sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)\
+            .values(**kwargs).returning(COMMISSION_DATA_TABLE.row_id)
+        with self.engine.begin() as conn:
+            result = conn.execute(sql).one()[0]
+        return result
+
+    @staticmethod
+    def convert_cents_to_dollars(cent_amt: float) -> float:
+        return round(cent_amt/100,2)
+
+    @staticmethod
+    def convert_month_from_number_to_name(month_num: int) -> str:
+        return calendar.month_name[month_num]
+
+    def commission_data_with_all_names(self, submission_id:int = 0) -> pd.DataFrame:
+        """runs sql query to produce the commission table format used by SCA
+        and converts month number to name and cents to dollars before return
+        
+        Returns: pd.DataFrame"""
+        commission_data_raw = COMMISSION_DATA_TABLE
+        submission_data = SUBMISSIONS_TABLE
+        reports = REPORTS
+        manufacturers = MANUFACTURERS
+        map_reps_to_customers = REPS_CUSTOMERS_MAP
+        reps = REPS
+        branches = BRANCHES
+        customers = CUSTOMERS
+        cities = CITIES
+        states = STATES
+        sql = sqlalchemy.select(commission_data_raw.row_id,
+            submission_data.reporting_year, submission_data.reporting_month,
+            manufacturers.name, reps.initials, customers.name,
+            cities.name, states.name, commission_data_raw.inv_amt,
+            commission_data_raw.comm_amt
+            ).select_from(commission_data_raw) \
+            .join(submission_data)             \
+            .join(reports)                     \
+            .join(manufacturers)               \
+            .join(map_reps_to_customers)       \
+            .join(reps)                        \
+            .join(branches)                    \
+            .join(customers)                   \
+            .join(cities)                      \
+            .join(states)
+
+        if submission_id:
+            sql = sql.where(commission_data_raw.submission_id == submission_id)
+        view_table = pd.read_sql(sql, con=self.engine)
+        view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
+                "Customer Name","City","State","Inv Amt","Comm Amt"]
+        view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
+        return view_table

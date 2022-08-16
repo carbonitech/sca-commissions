@@ -1,7 +1,4 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
-import json
-import calendar
-from typing import Tuple
 from dotenv import load_dotenv
 from os import getenv
 
@@ -9,9 +6,8 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session
 
-from app import event
 from db import models
-from entities.error import Error, ErrorType
+from entities.error import Error
 from entities.submission import NewSubmission
 from entities.processing_step import ProcessingStep
 

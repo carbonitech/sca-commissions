@@ -14,22 +14,10 @@ class PreProcessedData:
     city_name_col: str
     state_name_col: str
     events: List[tuple]
-
-    def total_commission(self) -> int:
-        return self.data.loc[:,"comm_amt"].sum()
-
-    def total_sales(self) -> int:
-        return self.data.loc[:,"inv_amt"].sum()
-
+    
 
 @dataclass
 class PostProcessedData:
     data: DataFrame
     process_steps: List[ProcessingStep]
     errors: List[Error]
-
-    def total_commissions(self):
-        return round(self.data.loc[:,"comm_amt"].sum())/100
-
-    def total_sales(self):
-        return round(self.data.loc[:,"inv_amt"].sum())/100

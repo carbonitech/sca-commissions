@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import error_listener, process_step_listener, resources
 from db import models
-from db.db_services import DatabaseServices, TableViews
+from db.db_services import DatabaseServices
 from db.models import Base
 
 
@@ -17,7 +17,6 @@ app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 db = DatabaseServices()
-db_views = TableViews()
 
 app.include_router(resources.customers)
 app.include_router(resources.mappings)

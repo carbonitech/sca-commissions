@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlite3 import Row
 from typing import Tuple
 import calendar
 from dotenv import load_dotenv
@@ -393,6 +394,13 @@ class ApiAdapter:
     def modify_commission_data_row(self, row_id: int, **kwargs):
         sql = sqlalchemy.update(COMMISSION_DATA_TABLE) \
                 .values(**kwargs).where(COMMISSION_DATA_TABLE.row_id == row_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return
+
+    def delete_commission_data_line(self, row_id: int):
+        sql = sqlalchemy.delete(COMMISSION_DATA_TABLE)\
+            .where(COMMISSION_DATA_TABLE.row_id == row_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
         return

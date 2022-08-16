@@ -67,4 +67,5 @@ async def modify_an_entry_in_commission_data(row_id: int, data: CustomCommission
 
 @router.delete("/{row_id}", tags=['commissions'])
 async def remove_a_line_in_commission_data(row_id: int):
-    raise NotImplementedError
+    # hard delete
+    api.delete_commission_data_line(row_id)

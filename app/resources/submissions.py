@@ -13,11 +13,15 @@ async def get_all_submissions():
 
 @router.get("/{submission_id}", tags=["submissions"])
 async def get_submission_by_id(submission_id: int):
+    if not api.submission_exists(submission_id):
+        raise HTTPException(400, detail="submission does not exist")
     sub_data, process_steps, current_errors = api.get_submission_by_id(submission_id)
+    comm_data = api.commission_data_with_all_names(submission_id)
     return {
         "submission": json.loads(sub_data.to_json(orient="records", date_format="iso"))[0],
         "processing_steps": json.loads(process_steps.to_json(orient="records", date_format="iso")),
-        "current_errors": json.loads(current_errors.to_json(orient="records", date_format="iso"))
+        "current_errors": json.loads(current_errors.to_json(orient="records", date_format="iso")),
+        "data": json.loads(comm_data.to_json(orient="records", date_format="iso"))
     }
 
 @router.put("/{submission_id}", tags=["submissions"])

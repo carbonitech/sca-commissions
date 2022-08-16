@@ -14,12 +14,12 @@ async def all_manufacturers():
 
 @router.get("/{manuf_id}", tags=["manufacturers"])
 async def manufacturer_by_id(manuf_id: int):
-    manufacturer, reports, submissions = api.get_manufacturer_by_id(manuf_id)
+    manufacturer, submissions = api.get_manufacturer_by_id(manuf_id)
     manufacturer_json = json.loads(manufacturer.to_json(orient="records"))
-    reports_json = json.loads(reports.to_json(orient="records"))
+    # reports_json = json.loads(reports.to_json(orient="records"))
     submissions_json = json.loads(submissions.to_json(orient="records", date_format="iso"))
     return({"manufacturer_details": manufacturer_json,
-            "reports": reports_json,
+            # "reports": reports_json,
             "submissions": submissions_json})
 
 @router.post("/", tags=["manufacturers"])

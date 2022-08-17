@@ -1,6 +1,5 @@
-from multiprocessing.spawn import import_main_path
 from fastapi import APIRouter, HTTPException, Form, File
-from pydantic import BaseModel, validator, Extra
+from pydantic import BaseModel, validator
 import json
 
 from db import db_services

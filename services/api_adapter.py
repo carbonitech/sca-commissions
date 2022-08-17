@@ -125,6 +125,10 @@ class ApiAdapter:
         sql = sqlalchemy.select(REPS)
         return pd.read_sql(sql, con=self.engine)
 
+    def get_a_rep(self, rep_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(REPS).where(REPS.id == rep_id)
+        return pd.read_sql(sql, con=self.engine)
+
     def get_rep_and_branches(self, rep_id: int) -> pd.DataFrame:
         reps = REPS
         customers = CUSTOMERS

@@ -411,3 +411,18 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
         return
+
+    def delete_manufacturer(self, manufacturer_id: int):
+        sql = sqlalchemy.update(MANUFACTURERS)\
+            .values(deleted = datetime.now())\
+            .where(MANUFACTURERS.id==manufacturer_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return
+
+    def set_new_manufacturer(self, **kwargs) -> int:  
+        sql = sqlalchemy.insert(MANUFACTURERS).values(**kwargs)\
+            .returning(MANUFACTURERS.id)
+        with self.engine.begin() as conn:
+            new_id = conn.execute(sql).one()[0]
+        return new_id

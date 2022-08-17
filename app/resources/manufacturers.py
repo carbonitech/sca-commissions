@@ -1,10 +1,18 @@
 from fastapi import APIRouter, HTTPException, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 import json
 from services.api_adapter import ApiAdapter
 
 api = ApiAdapter()
 router = APIRouter(prefix="/manufacturers")
+
+class Manufacturer(BaseModel):
+    name: str
+
+    @validator('name')
+    def name_uppercase(cls, value: str):
+        return value.strip().upper()
+
 
 @router.get("/", tags=["manufacturers"])
 async def all_manufacturers():
@@ -23,11 +31,14 @@ async def manufacturer_by_id(manuf_id: int):
             "submissions": submissions_json})
 
 @router.post("/", tags=["manufacturers"])
-async def add_a_manufacturer(manuf_name: str):
-    manuf_name = manuf_name.strip().upper()
-    raise NotImplementedError
+async def add_a_manufacturer(manuf_name: Manufacturer):
+    current_manufacturers = api.get_all_manufacturers()
+    if not current_manufacturers.loc[current_manufacturers.name == manuf_name].empty:
+        raise HTTPException(400, detail="manufacturer with that name already exists")
+    return {"new id": api.set_new_manufacturer(**manuf_name.dict())}
+    
 
 
 @router.delete("/{manuf_id}", tags=["manufacturers"])
 async def delete_manufacturer_by_id(manuf_id: int):
-    raise NotImplementedError
+    api.delete_manufacturer(manuf_id)

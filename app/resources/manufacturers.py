@@ -19,7 +19,6 @@ async def all_manufacturers():
     manufacturers_ = api.get_all_manufacturers().to_json(orient="records")
     return({"manufacturers": json.loads(manufacturers_)})
 
-
 @router.get("/{manuf_id}", tags=["manufacturers"])
 async def manufacturer_by_id(manuf_id: int):
     manufacturer, submissions = api.get_manufacturer_by_id(manuf_id)
@@ -36,8 +35,6 @@ async def add_a_manufacturer(manuf_name: Manufacturer):
     if not current_manufacturers.loc[current_manufacturers.name == manuf_name].empty:
         raise HTTPException(400, detail="manufacturer with that name already exists")
     return {"new id": api.set_new_manufacturer(**manuf_name.dict())}
-    
-
 
 @router.delete("/{manuf_id}", tags=["manufacturers"])
 async def delete_manufacturer_by_id(manuf_id: int):

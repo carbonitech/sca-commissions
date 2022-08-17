@@ -79,6 +79,7 @@ async def modify_customer_rep_mapping(customer_id: int, mapping_id: int, new_map
 
 @router.delete("/customers/{customer_id}/names", tags=["customers"])
 async def delete_customer_name_mapping(customer_id: int, mapping_id: int):
+    # TODO hard delete or soft delete???
     raise NotImplementedError
 
 @router.get("/cities", tags=["cities"])

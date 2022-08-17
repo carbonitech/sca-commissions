@@ -426,3 +426,25 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             new_id = conn.execute(sql).one()[0]
         return new_id
+
+    def delete_rep(self, rep_id:int):
+        sql = sqlalchemy.update(REPS)\
+            .values(deleted = datetime.now())\
+            .where(REPS.id==rep_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return
+
+    def modify_rep(self, rep_id:int, **kwargs):
+        sql = sqlalchemy.update(REPS) \
+                .values(**kwargs).where(REPS.id == rep_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return
+
+    def set_new_rep(self, **kwargs) -> int:
+        sql = sqlalchemy.insert(REPS).values(**kwargs)\
+            .returning(REPS.id)
+        with self.engine.begin() as conn:
+            new_id = conn.execute(sql).one()[0]
+        return new_id

@@ -27,13 +27,18 @@ async def get_city_by_id(city_id: int):
 async def add_a_city(city: City):
     existing_cities = api.get_cities()
     if not existing_cities.loc[existing_cities.name == city.name].empty:
-        raise HTTPException(400, detail="City already in table")
+        existing_id = existing_cities.loc[existing_cities.name == city.name,"id"].squeeze()
+        raise HTTPException(400, detail=f"City exists with id {existing_id}")
     api.new_city(**city.dict())
 
 @router.put("/{city_id}", tags=["cities"])
 async def modify_a_city(city_id: int, updated_city: City):
+    existing_city = api.get_cities(city_id)
+    if existing_city.empty:
+        raise HTTPException(400, detail=f"City with id {city_id} does not exist")
     api.modify_city(city_id, **updated_city.dict())
 
 @router.delete("/{city_id}", tags=["cities"])
 async def delete_a_city(city_id: int):
+    # soft delete
     api.delete_city_by_id(city_id)

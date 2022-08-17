@@ -11,7 +11,7 @@ class Customer(BaseModel):
 
 @router.get("/", tags=["customers"])
 async def all_customers():
-    customers = api.get_customers().to_json(orient="records")
+    customers = api.get_customers().to_json(orient="records", date_format="iso")
     return({"customers": json.loads(customers)})
 
 @router.post("/", tags=["customers"])
@@ -25,7 +25,7 @@ async def new_customer(customer_name: str = Form()):
 
 @router.get("/{customer_id}", tags=["customers"])
 async def customer_by_id(customer_id: int):
-    customer = api.get_customer(customer_id).to_json(orient="records")
+    customer = api.get_customer(customer_id).to_json(orient="records", date_format="iso")
     return({"customer": json.loads(customer)})
 
 @router.put("/{customer_id}", tags=["customers"])
@@ -38,9 +38,9 @@ async def modify_customer(customer_id: int, new_data: Customer):
 
 @router.delete("/{customer_id}", tags=["customers"])
 async def delete_customer(customer_id: int):
-    raise NotImplementedError
+    api.delete_customer(customer_id)
 
 @router.get("/{customer_id}/branches", tags=["customers"])
 async def customer_branches_by_id(customer_id: int):
-    branches = api.get_branches_by_customer(customer_id).to_json(orient="records")
+    branches = api.get_branches_by_customer(customer_id).to_json(orient="records", date_format="iso")
     return({"branches": json.loads(branches)})

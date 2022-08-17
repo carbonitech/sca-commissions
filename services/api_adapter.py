@@ -242,9 +242,9 @@ class ApiAdapter:
             conn.execute(sql)
 
     def get_states(self,state_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(CITIES)
+        sql = sqlalchemy.select(STATES)
         if state_id:
-            sql = sql.where(CITIES.id==state_id)
+            sql = sql.where(STATES.id==state_id)
         return pd.read_sql(sql, con=self.engine)
 
     def new_state(self,**kwargs):
@@ -448,3 +448,25 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             new_id = conn.execute(sql).one()[0]
         return new_id
+
+    def set_new_state(self, **kwargs) -> int:
+        sql = sqlalchemy.insert(STATES).values(**kwargs)\
+            .returning(STATES.id)
+        with self.engine.begin() as conn:
+            new_id = conn.execute(sql).one()[0]
+        return new_id
+
+    def modify_state(self, state_id:int, **kwargs):
+        sql = sqlalchemy.update(STATES) \
+                .values(**kwargs).where(STATES.id == state_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return
+
+    def delete_state(self, state_id:int):
+        sql = sqlalchemy.update(STATES)\
+            .values(deleted = datetime.now())\
+            .where(STATES.id==state_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return

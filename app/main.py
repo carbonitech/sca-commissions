@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security.api_key import APIKeyHeader, APIKeyBase
 from starlette.responses import RedirectResponse
 
 import os
@@ -14,7 +14,7 @@ from db.models import Base
 
 
 app = FastAPI()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+api_key_header = APIKeyHeader(name="access_token", auto_error=False)
 
 db = DatabaseServices()
 
@@ -32,12 +32,12 @@ error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
 
 
-@app.post("/token")
-async def authenticate_requestoor(some_data: OAuth2PasswordRequestForm = Depends()):
-    if some_data.username == "example":
-        if some_data.password == "password":
-            return {'access_token': f"{some_data.username}+token", 'token_type': "bearer"}
-    raise HTTPException(status_code=401, detail="Incorrect Credentials")
+test_api_keys = ['testkey123']
+
+async def authenticate_requestoor(api_key: str = Security(api_key_header)):
+    if api_key in test_api_keys:
+        return api_key
+    raise HTTPException(status_code=403, detail="Invalid Key")
 
 ### HOME ###
 @app.get("/")
@@ -86,7 +86,7 @@ async def create_db():
     return {"message": "tables created"}
 
 @app.get("/resetdb")
-async def reset_database(token: str = Depends(oauth2_scheme)):
+async def reset_database(api_key: str = Depends(authenticate_requestoor)):
     result_del = await delete_db()
     result_make = await create_db()
     return [result_del, result_make]

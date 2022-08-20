@@ -474,3 +474,9 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
         return
+
+    def delete_customer_name_mapping(self, mapping_id: int):
+        sql = sqlalchemy.delete(CUSTOMER_NAME_MAP).where(CUSTOMER_NAME_MAP.id == mapping_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return

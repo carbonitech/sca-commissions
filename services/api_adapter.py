@@ -480,3 +480,12 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
         return
+
+
+    def delete_customer_rep_mapping(self, mapping_id: int):
+        sql = sqlalchemy.update(REPS_CUSTOMERS_MAP)\
+            .values(orphaned = datetime.now())\
+            .where(REPS_CUSTOMERS_MAP.id == mapping_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        return

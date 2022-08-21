@@ -80,13 +80,23 @@ async def modify_customer_rep_mapping(customer_id: int, mapping_id: int, new_map
 @router.delete("/customers/{customer_id}/names", tags=["customers"])
 async def delete_customer_name_mapping(customer_id: int, mapping_id: int):
     # hard delete
-    # TODO use customer id to validate that mapping_id applys to intended customer
+    customer = api.get_customer(customer_id)
+    if customer.empty:
+        raise HTTPException(400, detail="Customer does not exist")
+    mapping_ids = api.get_all_customer_name_mappings(customer_id).loc[:,"mapping_id"]
+    if not mapping_id in mapping_ids.values:
+        raise HTTPException(400, detail=f"this mapping does not exist for customer {customer.name.squeeze()}")
     api.delete_customer_name_mapping(mapping_id)
 
 @router.delete("/customers/{customer_id}/reps", tags=["customers"])
 async def delete_customer_rep_mapping(customer_id: int, mapping_id: int):
     # soft delete
-    # TODO use customer id to validate that mapping_id applys to intended customer
+    customer = api.get_customer(customer_id)
+    if customer.empty:
+        raise HTTPException(400, detail="Customer does not exist")
+    mapping_ids = api.get_rep_to_customer_full(customer_id).loc[:,"rep_customer_id"]
+    if not mapping_id in mapping_ids.values:
+        raise HTTPException(400, detail=f"this mapping does not exist for customer {customer.name.squeeze()}")
     api.delete_customer_rep_mapping(mapping_id)
 
 @router.get("/cities", tags=["cities"])

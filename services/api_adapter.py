@@ -489,3 +489,13 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
         return
+
+    def modify_city_name_mapping(self, mapping_id: int, **kwargs):
+        sql = sqlalchemy.update(CITY_NAME_MAP).values(**kwargs).where(CITY_NAME_MAP.id == mapping_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)
+        
+    def modify_state_name_mapping(self, mapping_id: int, **kwargs):
+        sql = sqlalchemy.update(STATE_NAME_MAP).values(**kwargs).where(STATE_NAME_MAP.id == mapping_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)

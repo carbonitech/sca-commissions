@@ -11,11 +11,9 @@ class CustomerNameMapping(BaseModel, extra=Extra.allow):
     recorded_name: str
 
 class CityNameMapping(BaseModel, extra=Extra.allow):
-    city_id: int
     recorded_name: str
 
 class StateNameMapping(BaseModel, extra=Extra.allow):
-    state_id: int
     recorded_name: str
 
 class RepCustomerMapping(BaseModel, extra=Extra.allow):
@@ -84,7 +82,7 @@ async def delete_customer_name_mapping(customer_id: int, mapping_id: int):
     if customer.empty:
         raise HTTPException(400, detail="Customer does not exist")
     mapping_ids = api.get_all_customer_name_mappings(customer_id).loc[:,"mapping_id"]
-    if not mapping_id in mapping_ids.values:
+    if mapping_id not in mapping_ids.values:
         raise HTTPException(400, detail=f"this mapping does not exist for customer {customer.name.squeeze()}")
     api.delete_customer_name_mapping(mapping_id)
 
@@ -95,7 +93,7 @@ async def delete_customer_rep_mapping(customer_id: int, mapping_id: int):
     if customer.empty:
         raise HTTPException(400, detail="Customer does not exist")
     mapping_ids = api.get_rep_to_customer_full(customer_id).loc[:,"rep_customer_id"]
-    if not mapping_id in mapping_ids.values:
+    if mapping_id not in mapping_ids.values:
         raise HTTPException(400, detail=f"this mapping does not exist for customer {customer.name.squeeze()}")
     api.delete_customer_rep_mapping(mapping_id)
 
@@ -109,14 +107,23 @@ async def get_all_mappings_for_a_city(city_id: int):
 
 @router.post("/cities", tags=["cities"])
 async def create_new_mapping_for_a_city(new_mapping: CityNameMapping):
-    current_city = not api.get_cities(new_mapping.city_id).empty
-    if not current_city:
+    current_city = api.get_cities(new_mapping.city_id)
+    if current_city.empty:
         raise HTTPException(400, detail="City name does not exist")
     api.set_city_name_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.put("/cities/{city_id}", tags=["cities"])
-async def modify_mapping_for_a_city(city_id: int):
-    raise NotImplementedError
+@router.put("/cities/{city_id}/{mapping_id}", tags=["cities"])
+async def modify_mapping_for_a_city(city_id: int, mapping_id: int, modified_mapping: CityNameMapping):
+    city = api.get_cities(city_id)
+    if city.empty:
+        raise HTTPException(400, detail=f"City with id {city_id} does not exist")
+    all_mappings = api.get_all_city_name_mappings(city_id)
+    mapping_ids = all_mappings.loc[:,"mapping_id"]
+    if mapping_id not in mapping_ids.values:
+        raise HTTPException(400, detail=f"this mapping does not exist for city name {city.name.squeeze()}")
+    modified_mapping.city_id = city_id
+    api.modify_city_name_mapping(mapping_id,**modified_mapping.dict())
+    
 
 @router.get("/states", tags=["states"])
 async def get_all_mappings_for_state_names():
@@ -133,6 +140,14 @@ async def create_new_mapping_for_a_state(new_mapping: StateNameMapping):
         raise HTTPException(400, detail="State does not exist")
     api.set_state_name_mapping(**new_mapping.dict(exclude_none=True))
 
-@router.put("/states/{state_id}", tags=["states"])
-async def modify_mapping_for_a_state(state_id: int):
-    raise NotImplementedError
+@router.put("/states/{state_id}/{mapping_id}", tags=["states"])
+async def modify_mapping_for_a_state(state_id: int, mapping_id: int, modified_mapping: StateNameMapping):
+    state = api.get_states(state_id)
+    if state.empty:
+        raise HTTPException(400, detail=f"state with id {state_id} does not exist")
+    all_mappings = api.get_all_state_name_mappings(state_id)
+    mapping_ids = all_mappings.loc[:,"mapping_id"]
+    if mapping_id not in mapping_ids.values:
+        raise HTTPException(400, detail=f"this mapping does not exist for state name {state.name.squeeze()}")
+    modified_mapping.state_id = state_id
+    api.modify_state_name_mapping(mapping_id,**modified_mapping.dict())

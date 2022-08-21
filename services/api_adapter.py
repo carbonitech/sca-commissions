@@ -194,7 +194,7 @@ class ApiAdapter:
             sql = sql.where(CUSTOMERS.id == customer_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        table.columns = ["customer_id", "customer", "_", "mapping_id", "alias", "_"] # deleted, customer_id
         return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
@@ -204,7 +204,7 @@ class ApiAdapter:
             sql = sql.where(CITIES.id == city_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        table.columns = ["city_id", "city", "_", "mapping_id", "alias", "_"] # deleted, customer_id
         return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_state_name_mappings(self, state_id: int=0) -> pd.DataFrame:
@@ -214,7 +214,7 @@ class ApiAdapter:
             sql = sql.where(STATES.id == state_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["Customer ID", "Customer Name", "_", "Name Mapping ID", "Alias", "_"] # deleted, customer_id
+        table.columns = ["state_id", "state", "_", "mapping_id", "alias", "_"] # deleted, customer_id
         return table.loc[:,~table.columns.isin(["_"])]
 
     def get_cities(self,city_id: int=0) -> pd.DataFrame:
@@ -270,8 +270,8 @@ class ApiAdapter:
             .select_from(REPS_CUSTOMERS_MAP).join(BRANCHES).join(CUSTOMERS).join(CITIES)\
             .join(STATES).join(REPS).where(CUSTOMERS.id == customer_id)
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["Rep to Customer ID", "Branch ID", "Customer ID", "Customer",
-                "City ID", "City", "State ID", "State", "Rep ID", "Rep"]
+        table.columns = ["rep_customer_id", "branc_id", "customer_id", "customer",
+                "city_id", "city", "state_id", "state", "rep_id", "rep"]
         return table
         
     def set_customer_name_mapping(self, **kwargs):

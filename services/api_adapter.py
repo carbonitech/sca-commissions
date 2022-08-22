@@ -499,3 +499,19 @@ class ApiAdapter:
         sql = sqlalchemy.update(STATE_NAME_MAP).values(**kwargs).where(STATE_NAME_MAP.id == mapping_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+
+    def delete_submission(self, submission_id: int):
+        sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
+        sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
+        sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.submission_id == submission_id)
+        sql_processing_steps = sqlalchemy.delete(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql_commission)
+            conn.execute(sql_processing_steps)
+            conn.execute(sql_errors)
+            conn.execute(sql_submission)
+        
+    def modify_submission_metadata(self, submission_id:int, **kwargs):
+        sql = sqlalchemy.update(SUBMISSIONS_TABLE).values(**kwargs).where(SUBMISSIONS_TABLE.id == submission_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)  

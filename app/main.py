@@ -4,6 +4,7 @@ from starlette.responses import RedirectResponse
 
 import os
 import pandas as pd
+from numpy import nan
 from sqlalchemy.orm import Session
 from passlib.hash import bcrypt_sha256
 

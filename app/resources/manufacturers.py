@@ -39,3 +39,18 @@ async def add_a_manufacturer(manuf_name: Manufacturer):
 @router.delete("/{manuf_id}", tags=["manufacturers"])
 async def delete_manufacturer_by_id(manuf_id: int):
     api.delete_manufacturer(manuf_id)
+
+
+@router.get("/{manuf_id}/reports")
+async def get_all_reports_by_manufacturer_id(manuf_id: int):
+    ...
+@router.post("/{manuf_id}/reports")
+async def create_new_report(manuf_id: int):
+    ...
+@router.put("/{manuf_id}/reports/{report_id}")
+async def modify_report_details(manuf_id: int, report_id: int, **kwargs):
+    ...
+@router.delete("/{manuf_id}/reports/{report_id}")
+async def delete_report(manuf_id: int, report_id: int):
+    # soft delete
+    ...

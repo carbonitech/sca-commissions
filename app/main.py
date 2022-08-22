@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Security
-from fastapi.security.api_key import APIKeyHeader, APIKeyBase
+from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi.security.api_key import APIKeyHeader
 from starlette.responses import RedirectResponse
 
 import os
 import pandas as pd
-from numpy import nan
 from sqlalchemy.orm import Session
+from passlib.hash import bcrypt_sha256
 
 from app import error_listener, process_step_listener, resources
 from db import models
@@ -14,32 +14,38 @@ from db.models import Base
 
 
 app = FastAPI()
-api_key_header = APIKeyHeader(name="access_token", auto_error=False)
-
 db = DatabaseServices()
+api_key_header = APIKeyHeader(name="access_token", auto_error=True)
 
-app.include_router(resources.customers)
-app.include_router(resources.mappings)
-app.include_router(resources.branches)
-app.include_router(resources.manufacturers)
-app.include_router(resources.reps)
-app.include_router(resources.commissions)
-app.include_router(resources.submissions)
-app.include_router(resources.cities)
-app.include_router(resources.states)
+API_KEY_HASH = os.getenv('API_KEY_HASH')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', ['127.0.0.1'])
+
+def verify_api_key(provided_key, hashed_key):
+    return bcrypt_sha256.verify(provided_key, hashed_key)
+
+def get_key_hash(api_key):
+    return bcrypt_sha256.hash(api_key)
+
+async def authenticate_header_and_host(request: Request, api_key: str = Security(api_key_header)):
+    if verify_api_key(api_key, API_KEY_HASH) and request.client.host in ALLOWED_HOSTS:
+        return True
+    raise HTTPException(status_code=401, detail="Unauthorized")
+
+PROTECTED = [Depends(authenticate_header_and_host)]
+
+app.include_router(resources.customers, dependencies=PROTECTED)
+app.include_router(resources.mappings, dependencies=PROTECTED)
+app.include_router(resources.branches, dependencies=PROTECTED)
+app.include_router(resources.manufacturers, dependencies=PROTECTED)
+app.include_router(resources.reps, dependencies=PROTECTED)
+app.include_router(resources.commissions, dependencies=PROTECTED)
+app.include_router(resources.submissions, dependencies=PROTECTED)
+app.include_router(resources.cities, dependencies=PROTECTED)
+app.include_router(resources.states, dependencies=PROTECTED)
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
 
-
-test_api_keys = ['testkey123']
-
-async def authenticate_requestoor(api_key: str = Security(api_key_header)):
-    if api_key in test_api_keys:
-        return api_key
-    raise HTTPException(status_code=403, detail="Invalid Key")
-
-### HOME ###
 @app.get("/")
 async def home():
     return RedirectResponse("http://127.0.0.1:8000/docs")
@@ -86,7 +92,7 @@ async def create_db():
     return {"message": "tables created"}
 
 @app.get("/resetdb")
-async def reset_database(api_key: str = Depends(authenticate_requestoor)):
+async def reset_database():
     result_del = await delete_db()
     result_make = await create_db()
     return [result_del, result_make]

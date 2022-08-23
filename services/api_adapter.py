@@ -241,7 +241,8 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("Record Updated", CITIES, city_id, **kwargs)
+        kwargs.update({"id": city_id})
+        event.post_event("Record Updated", CITIES, **kwargs)
 
     def delete_city_by_id(self, city_id: int):
         sql = sqlalchemy.update(CITIES).values(deleted=datetime.now().isoformat())\

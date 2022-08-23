@@ -9,20 +9,22 @@ import pandas as pd
 from numpy import nan
 from sqlalchemy.orm import Session
 
-from app import error_listener, process_step_listener, resources
+from app import error_listener, process_step_listener, resources, api_adapter_listener
 from db import models
 from db.db_services import DatabaseServices
 from db.models import Base
 
 
 app = FastAPI()
-db = DatabaseServices()
 token_auth_scheme = HTTPBearer()
+AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
+ALGORITHMS = os.getenv('ALGORITHMS')
+AUDIENCE = os.getenv('AUDIENCE')
 
 def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
     error = None
     token_cred = token.credentials
-    jwks = requests.get(os.getenv('AUTH0_DOMAIN')+"/.well-known/jwks.json").json()
+    jwks = requests.get(AUTH0_DOMAIN+"/.well-known/jwks.json").json()
     try:
         unverified_header = get_unverified_header(token_cred)
     except Exception as err:
@@ -43,8 +45,8 @@ def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
                 payload = decode(
                     token_cred,
                     rsa_key,
-                    algorithms=os.getenv('ALGORITHMS'),
-                    audience=os.getenv('AUDIENCE')
+                    algorithms=ALGORITHMS,
+                    audience=AUDIENCE
                 )
             except Exception as err:
                 error = err
@@ -58,22 +60,24 @@ def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
 
 PROTECTED = [Depends(authenticate_auth0_token)]
 
-app.include_router(resources.customers, dependencies=PROTECTED)
-app.include_router(resources.mappings, dependencies=PROTECTED)
-app.include_router(resources.branches, dependencies=PROTECTED)
-app.include_router(resources.manufacturers, dependencies=PROTECTED)
 app.include_router(resources.reps, dependencies=PROTECTED)
-app.include_router(resources.commissions, dependencies=PROTECTED)
-app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.cities, dependencies=PROTECTED)
 app.include_router(resources.states, dependencies=PROTECTED)
+app.include_router(resources.mappings, dependencies=PROTECTED)
+app.include_router(resources.branches, dependencies=PROTECTED)
+app.include_router(resources.customers, dependencies=PROTECTED)
+app.include_router(resources.submissions, dependencies=PROTECTED)
+app.include_router(resources.commissions, dependencies=PROTECTED)
+app.include_router(resources.manufacturers, dependencies=PROTECTED)
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
+api_adapter_listener.setup_api_event_handlers()
+
 
 @app.get("/")
 async def home():
-    return RedirectResponse("http://127.0.0.1:8000/docs")
+    return RedirectResponse("/docs")
 
 async def delete_db():
     Base.metadata.drop_all(DatabaseServices.engine)

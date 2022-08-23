@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
-from fastapi.security.api_key import APIKeyHeader
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBearer
 from starlette.responses import RedirectResponse
+from jose.jwt import get_unverified_header, decode
 
 import os
+import requests
 import pandas as pd
 from numpy import nan
 from sqlalchemy.orm import Session
-from passlib.hash import bcrypt_sha256
 
 from app import error_listener, process_step_listener, resources
 from db import models
@@ -16,23 +17,46 @@ from db.models import Base
 
 app = FastAPI()
 db = DatabaseServices()
-api_key_header = APIKeyHeader(name="access_token", auto_error=True)
+token_auth_scheme = HTTPBearer()
 
-API_KEY_HASH = os.getenv('API_KEY_HASH')
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', ['127.0.0.1'])
+def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
+    error = None
+    token_cred = token.credentials
+    jwks = requests.get(os.getenv('AUTH0_DOMAIN')+"/.well-known/jwks.json").json()
+    try:
+        unverified_header = get_unverified_header(token_cred)
+    except Exception as err:
+        error = err
+    else:
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == unverified_header.get("kid"):
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"]             
+                }
+        if rsa_key:
+            try:
+                payload = decode(
+                    token_cred,
+                    rsa_key,
+                    algorithms=os.getenv('ALGORITHMS'),
+                    audience=os.getenv('AUDIENCE')
+                )
+            except Exception as err:
+                error = err
+            else:
+                return payload
+        else:
+            error = "No RSA key found in JWT Header"
+    raise HTTPException(status_code=401, detail=str(error))
 
-def verify_api_key(provided_key, hashed_key):
-    return bcrypt_sha256.verify(provided_key, hashed_key)
+        
 
-def get_key_hash(api_key):
-    return bcrypt_sha256.hash(api_key)
-
-async def authenticate_header_and_host(request: Request, api_key: str = Security(api_key_header)):
-    if verify_api_key(api_key, API_KEY_HASH) and request.client.host in ALLOWED_HOSTS:
-        return True
-    raise HTTPException(status_code=401, detail="Unauthorized")
-
-PROTECTED = [Depends(authenticate_header_and_host)]
+PROTECTED = [Depends(authenticate_auth0_token)]
 
 app.include_router(resources.customers, dependencies=PROTECTED)
 app.include_router(resources.mappings, dependencies=PROTECTED)

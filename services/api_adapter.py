@@ -51,6 +51,8 @@ class ApiAdapter:
                 .returning(CUSTOMERS.id)
             new_id = session.execute(sql).fetchone()[0]
             session.commit()
+        kwargs = {"id": new_id, "name": customer_fastapi}
+        event.post_event("New Record", CUSTOMERS, **kwargs)
         return new_id
 
     def get_customer(self,cust_id: int) -> pd.DataFrame:
@@ -70,6 +72,7 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
+        event.post_event("Record Updated", CUSTOMERS, customer_id, **kwargs)
         return
 
     def get_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
@@ -225,11 +228,12 @@ class ApiAdapter:
 
     def new_city(self,**kwargs):
         sql = sqlalchemy.insert(CITIES) \
-            .values(**kwargs)
+            .values(**kwargs).returning(CITIES.id)
         with Session(bind=self.engine) as session:
-            session.execute(sql)
+            new_id = session.execute(sql).one()[0]
             session.commit()
-        event.post_event("New City Created", {CITIES:kwargs})
+        kwargs.update({"id": new_id})
+        event.post_event("New Record", CITIES, **kwargs)
 
     def modify_city(self, city_id:int, **kwargs):
         sql = sqlalchemy.update(CITIES).values(**kwargs) \
@@ -237,7 +241,7 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("City Modified", {CITIES:kwargs})
+        event.post_event("Record Updated", CITIES, city_id, **kwargs)
 
     def delete_city_by_id(self, city_id: int):
         sql = sqlalchemy.update(CITIES).values(deleted=datetime.now().isoformat())\
@@ -250,14 +254,6 @@ class ApiAdapter:
         if state_id:
             sql = sql.where(STATES.id==state_id)
         return pd.read_sql(sql, con=self.engine)
-
-    def new_state(self,**kwargs):
-        sql = sqlalchemy.insert(STATES) \
-            .values(**kwargs)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New City Created", {STATES:kwargs})
 
     def get_rep_to_customer_full(self, customer_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(
@@ -279,35 +275,35 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{CUSTOMER_NAME_MAP:kwargs})
+        event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
 
     def set_city_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{CITY_NAME_MAP:kwargs})
+        event.post_event("New Record", CITY_NAME_MAP, **kwargs)
  
     def set_state_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{STATE_NAME_MAP:kwargs})
+        event.post_event("New Record", STATE_NAME_MAP, **kwargs)
 
     def set_rep_to_customer_mapping(self, **kwargs):
         sql = sqlalchemy.insert(REPS_CUSTOMERS_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Mapping Created",{REPS_CUSTOMERS_MAP:kwargs})
+        event.post_event("New Record", REPS_CUSTOMERS_MAP, **kwargs)
 
     def update_rep_to_customer_mapping(self, map_id: int, **kwargs):
         sql = sqlalchemy.update(REPS_CUSTOMERS_MAP).values(**kwargs).where(REPS_CUSTOMERS_MAP.id == map_id)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("Rep Mapping updated",{REPS_CUSTOMERS_MAP:kwargs})
+        event.post_event("Record Updated", REPS_CUSTOMERS_MAP, **kwargs)
 
     def get_processing_steps(self, submission_id: int) -> pd.DataFrame:
         """get all report processing steps for a commission report submission"""
@@ -458,6 +454,8 @@ class ApiAdapter:
             .returning(STATES.id)
         with self.engine.begin() as conn:
             new_id = conn.execute(sql).one()[0]
+        kwargs.update({"id": new_id})
+        event.post_event("New Record", STATES, **kwargs)
         return new_id
 
     def modify_state(self, state_id:int, **kwargs):
@@ -465,6 +463,7 @@ class ApiAdapter:
                 .values(**kwargs).where(STATES.id == state_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+        event.post_event("Record Updated", STATES, state_id, **kwargs)
         return
 
     def delete_state(self, state_id:int):
@@ -494,11 +493,13 @@ class ApiAdapter:
         sql = sqlalchemy.update(CITY_NAME_MAP).values(**kwargs).where(CITY_NAME_MAP.id == mapping_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+        event.post_event("Record Updated", CITY_NAME_MAP, **kwargs)
         
     def modify_state_name_mapping(self, mapping_id: int, **kwargs):
         sql = sqlalchemy.update(STATE_NAME_MAP).values(**kwargs).where(STATE_NAME_MAP.id == mapping_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+        event.post_event("Record Updated", STATE_NAME_MAP, **kwargs)
 
     def delete_submission(self, submission_id: int):
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)

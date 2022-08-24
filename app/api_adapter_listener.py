@@ -19,12 +19,6 @@ def new_entity_default_name_mapping(table: model.Base, *args, **kwargs):
         api.set_state_name_mapping(**data)
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
-    """
-    Conditions under which this should trigger:
-        1. any name mapping created for an existing customer, city, or state
-        2. any new mapping created for a customer branch
-        3. any new mapping created between a rep and a customer branch
-    """
     error_type = None
     if table == model.MapRepToCustomer:
         error_type = error.ErrorType(5)
@@ -47,9 +41,4 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
 def setup_api_event_handlers():
     event.subscribe("New Record", new_entity_default_name_mapping)
     event.subscribe("New Record", trigger_reprocessing_of_errors)
-    # event.subscribe("New Record")
-    # event.subscribe("New Record")
-    # event.subscribe("Record Updated")
-    # event.subscribe("Record Updated")
-    # event.subscribe("Record Updated")
-    # event.subscribe("Record Updated")
+    event.subscribe("Record Updated", trigger_reprocessing_of_errors)

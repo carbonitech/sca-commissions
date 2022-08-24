@@ -1,4 +1,5 @@
 """Collection of domain-level functions to be used by web workers to process API calls in the background"""
+from typing import Union
 from dotenv import load_dotenv
 from os import getenv
 
@@ -71,6 +72,13 @@ class DatabaseServices:
             session.commit()
         return True
 
+    def last_step_num(self, submission_id: int) -> int:
+        sql = sqlalchemy.select(sqlalchemy.func.max(PROCESS_STEPS_LOG.step_num))\
+            .where(PROCESS_STEPS_LOG.submission_id == submission_id)
+        with self.engine.begin() as conn:
+            result, = conn.execute(sql).one()
+        return result
+
 
     def record_error(self, error_obj: Error) -> None:
         """record errors into the current_errors table"""
@@ -79,6 +87,16 @@ class DatabaseServices:
             session.execute(sql)
             session.commit()
         return
+
+    def delete_errors(self, record_ids: Union[int,list]):
+        if isinstance(record_ids, int):
+            record_ids = [record_ids]
+        with self.engine.begin() as conn:
+            for record_id in record_ids:
+                record_id = int(record_id)
+                sql = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.id == record_id)
+                conn.execute(sql)
+
         
     def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
         """generates a reference for matching the map_rep_customer id to

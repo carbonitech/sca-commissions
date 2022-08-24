@@ -50,16 +50,13 @@ class ADPPreProcessor(PreProcessor):
         result = result.drop(columns=["Customer","ShipTo"])
         events.append(("Formatting", "dropped the ship-to and sold-to id columns",self.submission_id))
 
-        customer_name_col = 'customer'
-        city_name_col = 'city'
-        state_name_col = 'state'
-        result.columns=[customer_name_col,city_name_col,state_name_col,"inv_amt","comm_amt"]
+        result.columns = self.result_columns
         ref_cols = result.columns.tolist()[:3]
 
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper)
 
-        return PreProcessedData(result,ref_cols,customer_name_col,city_name_col,state_name_col,events)
+        return PreProcessedData(result,ref_cols,*ref_cols,events)
 
 
     def _coburn_report_preprocessing(self) -> PreProcessedData: ...

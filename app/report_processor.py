@@ -105,6 +105,7 @@ class ReportProcessor:
 
         new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
         self.staged_data[new_column] = new_col_values
+
         no_match_indices = self.staged_data.loc[self.staged_data[new_column]==0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
         event.post_event(ErrorType(4), unmapped_no_match_table,submission_id=self.submission_id)
@@ -128,10 +129,10 @@ class ReportProcessor:
         )
 
         new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list()
-        self.staged_data.insert(0,new_column,new_col_values) # only way i've found to avoid SettingWithCopyWarning
+        self.staged_data.insert(0,new_column,new_col_values)
+
         no_match_indices = self.staged_data.loc[self.staged_data[new_column] == 0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-
         event.post_event(ErrorType(5), unmapped_no_match_table, submission_id=self.submission_id)
         return self
 
@@ -189,7 +190,9 @@ class ReportProcessor:
         await self.preprocess()
         await self.insert_submission_id()
         await self.fill_customer_ids()
+        await self.filter_out_any_rows_unmapped()
         await self.fill_city_ids()
+        await self.filter_out_any_rows_unmapped()
         await self.fill_state_ids()
         await self.filter_out_any_rows_unmapped()
         await self.add_branch_id()
@@ -199,5 +202,5 @@ class ReportProcessor:
         await self.drop_extra_columns()
         await self.filter_out_any_rows_unmapped()
         await self.register_commission_data()
-
+        
         return

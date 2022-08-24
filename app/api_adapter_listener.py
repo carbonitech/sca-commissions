@@ -1,4 +1,4 @@
-from app import event
+from app import event, error_reintegration
 from entities import error
 import db.models as model
 from db.db_services import DatabaseServices
@@ -22,11 +22,27 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     """
     Conditions under which this should trigger:
         1. any name mapping created for an existing customer, city, or state
+        2. any new mapping created for a customer branch
+        3. any new mapping created between a rep and a customer branch
     """
+    error_type = None
     if table == model.MapRepToCustomer:
-        print("default mapping creation has triggered this event!")
-        print(args," ",kwargs)
-
+        error_type = error.ErrorType(5)
+    elif table == model.MapCustomerName:
+        error_type = error.ErrorType(1)
+    elif table == model.MapCityName:
+        error_type = error.ErrorType(2)
+    elif table == model.MapStateName:
+        error_type = error.ErrorType(3)
+    elif table == model.CustomerBranch:
+        error_type = error.ErrorType(4)
+    
+    if error_type:
+        errors = api.get_errors()
+        db = DatabaseServices()
+        reintegrator = error_reintegration.Reintegrator(error_type, errors, db)
+        reintegrator.process_and_commmit()
+    return
 
 def setup_api_event_handlers():
     event.subscribe("New Record", new_entity_default_name_mapping)

@@ -314,9 +314,11 @@ class ApiAdapter:
         )
         return result
 
-    def get_errors(self, submission_id: int) -> pd.DataFrame:
+    def get_errors(self, submission_id: int=0) -> pd.DataFrame:
         """get all report processing errors for a commission report submission"""
-        sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
+        sql = sqlalchemy.select(ERRORS_TABLE)
+        if submission_id:
+            sql = sql.where(ERRORS_TABLE.submission_id == submission_id)
         result = pd.read_sql(sql, con=self.engine)
         if result.empty:
             return result

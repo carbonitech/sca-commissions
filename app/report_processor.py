@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 
 from app import event
@@ -45,7 +46,7 @@ class ReportProcessor:
             )
         
         # customer column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
+        self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
 
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
@@ -63,8 +64,7 @@ class ReportProcessor:
         )
 
         # city column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
-
+        self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
         event.post_event(ErrorType(2), unmapped_no_match_table, submission_id=self.submission_id)
@@ -81,7 +81,7 @@ class ReportProcessor:
             )
 
         # state column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
+        self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
         
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
@@ -155,6 +155,12 @@ class ReportProcessor:
         return self
 
     async def register_commission_data(self) -> 'ReportProcessor':
+        if self.staged_data.empty:
+            # my method for removing rows checks for existing rows with falsy values.
+            # Avoid writing a blank row in the database from an empty dataframe
+            return self
+        else:
+            self.staged_data = self.staged_data.dropna() # just in case
         self.database.record_final_data(self.staged_data)
         event.post_event("Data Recorded", self.staged_data, self.submission_id)
         return self
@@ -174,6 +180,10 @@ class ReportProcessor:
 
     async def insert_submission_id(self) -> 'ReportProcessor':
         self.staged_data.insert(0,"submission_id",self.submission_id)
+        return self
+
+    async def insert_recorded_at_column(self) -> 'ReportProcessor':
+        self.staged_data["recorded_at"] = datetime.now()
         return self
 
     async def process_and_commit(self) -> None:
@@ -201,6 +211,7 @@ class ReportProcessor:
         await self.filter_out_any_rows_unmapped()
         await self.drop_extra_columns()
         await self.filter_out_any_rows_unmapped()
+        await self.insert_recorded_at_column()
         await self.register_commission_data()
         
         return

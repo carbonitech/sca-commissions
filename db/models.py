@@ -133,6 +133,7 @@ class ErrorDTO(Base):
 class FinalCommissionDataDTO(Base):
     __tablename__ = 'final_commission_data'
     row_id = Column(Integer,primary_key=True)
+    recorded_at = Column(DateTime)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))
     inv_amt = Column(Float)

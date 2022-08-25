@@ -522,3 +522,8 @@ class ApiAdapter:
         sql = sqlalchemy.update(SUBMISSIONS_TABLE).values(**kwargs).where(SUBMISSIONS_TABLE.id == submission_id)
         with self.engine.begin() as conn:
             conn.execute(sql)  
+
+    def reactivate_branch(self, branch_id: int):
+        sql = sqlalchemy.update(BRANCHES).values(deleted=None).where(BRANCHES.id == branch_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)

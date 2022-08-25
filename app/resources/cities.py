@@ -25,11 +25,17 @@ async def get_city_by_id(city_id: int):
 
 @router.post("/", tags=["cities"])
 async def add_a_city(city: City):
-    existing_cities = api.get_cities()
-    if not existing_cities.loc[existing_cities.name == city.name].empty:
-        existing_id = existing_cities.loc[existing_cities.name == city.name,"id"].squeeze()
-        raise HTTPException(400, detail=f"City exists with id {existing_id}")
-    api.new_city(**city.dict())
+    all_cities = api.get_cities()
+    existing_city = all_cities.loc[all_cities.name == city.name]
+
+    if existing_city.empty:
+        return api.new_city(**city.dict())
+    elif existing_city["deleted"].squeeze():
+        existing_id = int(existing_city["id"].squeeze())
+        return api.reactivate_city(existing_id)
+    
+    existing_id = int(existing_city["id"].squeeze())
+    raise HTTPException(400, detail=f"City exists with id {existing_id}")
 
 @router.put("/{city_id}", tags=["cities"])
 async def modify_a_city(city_id: int, updated_city: City):

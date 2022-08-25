@@ -527,3 +527,8 @@ class ApiAdapter:
         sql = sqlalchemy.update(BRANCHES).values(deleted=None).where(BRANCHES.id == branch_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+
+    def reactivate_city(self, city_id: int):
+        sql = sqlalchemy.update(CITIES).values(deleted=None).where(CITIES.id == city_id)
+        with self.engine.begin() as conn:
+            conn.execute(sql)

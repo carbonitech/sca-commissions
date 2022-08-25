@@ -181,13 +181,16 @@ class ApiAdapter:
         return pd.read_sql(sql, con=self.engine)
     
     def set_new_customer_branch_raw(self, customer_id: int, city_id: int, state_id: int):
-        sql = sqlalchemy.insert(BRANCHES) \
-            .values(customer_id=customer_id,
-                    city_id=city_id,
-                    state_id=state_id)
+        values = {
+            "customer_id": customer_id,
+            "city_id": city_id,
+            "state_id": state_id
+        }
+        sql = sqlalchemy.insert(BRANCHES).values(**values)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
+        event.post_event("New Record", BRANCHES, **values)
         return
 
     def get_all_customer_name_mappings(self, customer_id: int=0) -> pd.DataFrame:
@@ -267,7 +270,7 @@ class ApiAdapter:
             .select_from(REPS_CUSTOMERS_MAP).join(BRANCHES).join(CUSTOMERS).join(CITIES)\
             .join(STATES).join(REPS).where(CUSTOMERS.id == customer_id)
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["rep_customer_id", "branc_id", "customer_id", "customer",
+        table.columns = ["rep_customer_id", "branch_id", "customer_id", "customer",
                 "city_id", "city", "state_id", "state", "rep_id", "rep"]
         return table
         

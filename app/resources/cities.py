@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Form
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, validator
 import json
 from services.api_adapter import ApiAdapter
+from app.resources.pydantic_form import as_form
 
 api = ApiAdapter()
 router = APIRouter(prefix="/cities")
 
+@as_form
 class City(BaseModel):
     name: str
 
@@ -24,7 +26,7 @@ async def get_city_by_id(city_id: int):
     return json.loads(result)
 
 @router.post("/", tags=["cities"])
-async def add_a_city(city: City):
+async def add_a_city(city:City = Depends(City.as_form)):
     all_cities = api.get_cities()
     existing_city = all_cities.loc[all_cities.name == city.name]
 

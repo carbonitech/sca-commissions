@@ -1,7 +1,7 @@
 from io import BytesIO
 import typing
 import json
-from fastapi import APIRouter, HTTPException, Form, File
+from fastapi import APIRouter, HTTPException, Form, File, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, validator
@@ -13,22 +13,17 @@ from entities import submission
 from entities.manufacturers import adp
 from entities.commission_file import CommissionFile
 from services.api_adapter import ApiAdapter
+from app.resources.pydantic_form import as_form
 
 db = db_services.DatabaseServices()
 api = ApiAdapter()
 router = APIRouter(prefix="/commissions")
 
+@as_form
 class CustomCommissionData(BaseModel):
-    map_rep_customer_id: int
     inv_amt: float
     comm_amt: float
-
-    @validator('map_rep_customer_id')
-    def rep_customer_id_exists(cls, value):
-        exists = api.rep_customer_id_exists(value)
-        if not exists:
-            raise ValueError('Rep-to-Customer Relationship Does Not Exist')
-        return value
+    description: str
 
     @validator('inv_amt')
     def scale_up_inv_amt(cls, value):
@@ -40,9 +35,7 @@ class CustomCommissionData(BaseModel):
 
 
 class ExcelFileResponse(StreamingResponse):
-    
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
     def __init__(self, 
             content: typing.Any, 
             status_code: int = 200, 
@@ -67,8 +60,13 @@ async def download_commission_data():
     return ExcelFileResponse(content=bfile, filename="commissions")
 
 @router.post("/", tags=['commissions'])
-async def process_data_from_a_file(file: bytes = File(), reporting_month: int = Form(),
-        reporting_year: int = Form(), report_id: int=Form(), manufacturer_id: int = Form()):
+async def process_data_from_a_file(
+        file: bytes = File(), 
+        reporting_month: int = Form(),
+        reporting_year: int = Form(), 
+        report_id: int=Form(),
+        manufacturer_id: int = Form()
+    ):
     file_obj = CommissionFile(file,"Detail")
     new_sub = submission.NewSubmission(file_obj,reporting_month,reporting_year,report_id,manufacturer_id)
     mfg_preprocessor = adp.ADPPreProcessor
@@ -79,19 +77,27 @@ async def process_data_from_a_file(file: bytes = File(), reporting_month: int = 
         "errors":json.loads(api.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
 
 @router.post("/{submission_id}", tags=['commissions'])
-async def add_custom_entry_to_commission_data(submission_id: int, data: CustomCommissionData, description: str):
+async def add_custom_entry_to_commission_data(
+        submission_id: int,
+        map_rep_customer_id: int,
+        data: CustomCommissionData = Depends(CustomCommissionData.as_form)
+    ):
     if not api.submission_exists(submission_id):
         raise HTTPException(400, detail="report submission does not exist")
-    row_id = api.set_new_commission_data_entry(submission_id=submission_id, **data.dict())
-    return {row_id: description}
+    payload = {"map_rep_customer_id": map_rep_customer_id} | data.dict(exclude={"description"})
+    row_id = api.set_new_commission_data_entry(submission_id=submission_id, **payload)
+    return {"Success": f"line written to row {row_id}"}
     
 
 @router.put("/{row_id}", tags=['commissions'])
-async def modify_an_entry_in_commission_data(row_id: int, data: CustomCommissionData):
+async def modify_an_entry_in_commission_data(
+        row_id: int, data:
+        CustomCommissionData = Depends(CustomCommissionData.as_form)
+    ):
     row_exists = api.get_commission_data_by_row(row_id)
     if not row_exists:
         raise HTTPException(400, detail="row does not exist")
-    api.modify_commission_data_row(row_id, **data.dict())
+    api.modify_commission_data_row(row_id, **data.dict(exclude={"description"}))
 
 @router.delete("/{row_id}", tags=['commissions'])
 async def remove_a_line_in_commission_data(row_id: int):

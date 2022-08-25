@@ -20,7 +20,10 @@ def error_factory(error_data: DataFrame, type_: int, submission_id: int) -> List
     return result_list
 
 def no_customer_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if data_affected.empty: return
+    if not isinstance(data_affected, DataFrame):
+        return
+    if data_affected.empty:
+        return
     errors = error_factory(data_affected,1,submission_id)
     db = db_services.DatabaseServices()
     for error in errors:
@@ -29,7 +32,10 @@ def no_customer_error(data_affected: DataFrame, submission_id: int, *args, **kwa
 
 
 def no_city_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if data_affected.empty: return
+    if not isinstance(data_affected, DataFrame):
+        return
+    if data_affected.empty:
+        return
     errors = error_factory(data_affected,2,submission_id)
     db = db_services.DatabaseServices()
     for error in errors:
@@ -37,7 +43,10 @@ def no_city_error(data_affected: DataFrame, submission_id: int, *args, **kwargs)
     event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
 
 def no_state_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if data_affected.empty: return
+    if not isinstance(data_affected, DataFrame):
+        return
+    if data_affected.empty:
+        return
     errors = error_factory(data_affected,3,submission_id)
     db = db_services.DatabaseServices()
     for error in errors:
@@ -45,7 +54,10 @@ def no_state_error(data_affected: DataFrame, submission_id: int, *args, **kwargs
     event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
 
 def no_branch_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if data_affected.empty: return
+    if not isinstance(data_affected, DataFrame):
+        return
+    if data_affected.empty:
+        return
     errors = error_factory(data_affected,4,submission_id)
     db = db_services.DatabaseServices()
     for error in errors:
@@ -53,7 +65,10 @@ def no_branch_error(data_affected: DataFrame, submission_id: int, *args, **kwarg
     event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
 
 def no_rep_assigned_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if data_affected.empty: return
+    if not isinstance(data_affected, DataFrame):
+        return
+    if data_affected.empty:
+        return
     errors = error_factory(data_affected,5,submission_id)
     db = db_services.DatabaseServices()
     for error in errors:

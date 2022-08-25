@@ -54,7 +54,7 @@ class ADPPreProcessor(PreProcessor):
         ref_cols = result.columns.tolist()[:3]
 
         for ref_col in ref_cols:
-            result[ref_col] = result.loc[:,ref_col].apply(str.upper)
+            result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
         return PreProcessedData(result,ref_cols,*ref_cols,events)
 

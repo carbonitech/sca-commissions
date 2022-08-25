@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Hashable
 import pandas as pd
 
@@ -40,7 +41,9 @@ class Reintegrator:
     def _send_event_by_submission(self, table: pd.DataFrame, event_: Hashable) -> None:
         for sub_id in table["submission_id"].unique().tolist():
             mask = table["submission_id"] == sub_id
-            sub_id_table = table.loc[mask,:].set_index("row_index")
+            sub_id_table = table.loc[mask,:]
+            if "row_index" in table.columns.tolist():
+                sub_id_table = sub_id_table.set_index("row_index")
             sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason'])]
             event.post_event(
                 event_,
@@ -57,6 +60,15 @@ class Reintegrator:
             raise EmptyTableException
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for for id merging strategy
         self.staged_data = self.error_table.copy()
+        for sub_id in self.staged_data["submission_id"].unique().tolist():
+            rows_affected = len(self.error_table[self.error_table["submission_id"]==sub_id])    
+            msg = f"reprocessing of errors initiated by reassessment of {self.target_err.name} errors. {rows_affected} rows affected"
+            event.post_event(
+                "Reprocessing",
+                data = msg,
+                submission_id = sub_id,
+                start_step=self.database.last_step_num(sub_id)+1
+            )
         return self
 
     def remove_error_db_entries(self) -> 'Reintegrator':
@@ -72,7 +84,7 @@ class Reintegrator:
                 how="left", left_on=left_on_name, right_on="recorded_name"
             )
         # customer column is going from a name string to an id integer
-        self.staged_data.loc[:,left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int)
+        self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.error_table.iloc[no_match_indices,:]
         # this table has extra columns and combines multiple submissions
@@ -87,9 +99,9 @@ class Reintegrator:
                 self.staged_data, self.map_city_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
         )
-
         # city column is going from a name string to an id integer
-        self.staged_data.loc[:,left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int)
+        new_ids = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
+        self.staged_data[left_on_name] = new_ids
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.error_table.iloc[no_match_indices,:]
         self._send_event_by_submission(unmapped_no_match_table,ErrorType(2))
@@ -105,7 +117,7 @@ class Reintegrator:
             )
 
         # state column is going from a name string to an id integer
-        self.staged_data.loc[:,left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int)
+        self.staged_data.loc[:,left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
         unmapped_no_match_table = self.error_table.iloc[no_match_indices,:]
         self._send_event_by_submission(unmapped_no_match_table,ErrorType(3))
@@ -126,7 +138,7 @@ class Reintegrator:
                 suffixes=(None,"_ref_table")
         ) 
 
-        new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+        new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
         self.staged_data.loc[:,new_column] = new_col_values
 
         no_match_indices = self.staged_data.loc[self.staged_data[new_column]==0].index.to_list()
@@ -150,7 +162,6 @@ class Reintegrator:
             right_on=["customer_id","city_id","state_id"],
             suffixes=(None,"_ref_table")
         )
-
         new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list()
         self.staged_data.insert(0,new_column,new_col_values)
 
@@ -171,7 +182,19 @@ class Reintegrator:
         self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
         return self
 
+
+    def insert_recorded_at_column(self) -> 'Reintegrator':
+        self.staged_data["recorded_at"] = datetime.now()
+        return self
+
+
     def register_commission_data(self) -> 'Reintegrator':
+        if self.staged_data.empty:
+            # my method for removing rows checks for existing rows with falsy values.
+            # Avoid writing a blank row in the database from an empty dataframe
+            return self
+        else:
+            self.staged_data = self.staged_data.dropna() # just in case
         self.database.record_final_data(self.staged_data)
         self._send_event_by_submission(self.staged_data, "Data Recorded")
         return self
@@ -191,6 +214,7 @@ class Reintegrator:
         .filter_out_any_rows_unmapped() \
         .drop_extra_columns()           \
         .filter_out_any_rows_unmapped() \
+        .insert_recorded_at_column()    \
         .register_commission_data()
 
         return

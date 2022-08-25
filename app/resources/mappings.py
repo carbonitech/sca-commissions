@@ -56,7 +56,7 @@ async def create_new_rep_mapping(customer_id: int, new_mapping: RepCustomerMappi
         raise HTTPException(400, detail=f"Branch does not exist for customer: {api.get_customer(customer_id).name.values[0]}")
     branches_currently_mapped = api.get_rep_to_customer_full(customer_id)
     branch_mapping = branches_currently_mapped.loc[
-        (branches_currently_mapped["Branch ID"] == new_mapping.customer_branch_id),"Rep"]
+        (branches_currently_mapped["branch_id"] == new_mapping.customer_branch_id),"rep"]
     if not branch_mapping.empty:
         raise HTTPException(400, detail=f"Branch is already assigned to {branch_mapping.values[0]}")
     api.set_rep_to_customer_mapping(**new_mapping.dict(exclude_none=True))
@@ -105,11 +105,12 @@ async def get_all_mappings_for_city_names():
 async def get_all_mappings_for_a_city(city_id: int):
     return json.loads(api.get_all_city_name_mappings(city_id).to_json(orient="records"))
 
-@router.post("/cities", tags=["cities"])
-async def create_new_mapping_for_a_city(new_mapping: CityNameMapping):
-    current_city = api.get_cities(new_mapping.city_id)
+@router.post("/cities{city_id}", tags=["cities"])
+async def create_new_mapping_for_a_city(city_id: int, new_mapping: CityNameMapping):
+    current_city = api.get_cities(city_id)
     if current_city.empty:
         raise HTTPException(400, detail="City name does not exist")
+    new_mapping.city_id = city_id
     api.set_city_name_mapping(**new_mapping.dict(exclude_none=True))
 
 @router.put("/cities/{city_id}/{mapping_id}", tags=["cities"])

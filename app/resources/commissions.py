@@ -1,6 +1,8 @@
 from io import BytesIO
 import typing
 import json
+import calendar
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Form, File, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
@@ -67,6 +69,23 @@ async def process_data_from_a_file(
         report_id: int=Form(),
         manufacturer_id: int = Form()
     ):
+    existing_submissions = api.get_all_submissions()
+    existing_submission = existing_submissions.loc[
+        (existing_submissions["reporting_month"] == reporting_month)
+        & (existing_submissions["reporting_year"] == reporting_year)
+        & (existing_submissions["report_id"] == report_id)
+    ]
+    if not existing_submission.empty:
+        report_name = existing_submission['report_name'].squeeze()
+        manuf = existing_submission['name'].squeeze()
+        date_ = datetime.strftime(existing_submission['submission_date'].squeeze(),"%m/%d/%Y %I:%M %p")
+        report_month = calendar.month_name[existing_submission['reporting_month'].squeeze()]
+        report_year = str(existing_submission['reporting_year'].squeeze())
+        id_ = str(existing_submission['id'].squeeze())
+        msg = f"The {report_name} report for {manuf} for reporting period " \
+            f"{report_month} {report_year} was already submitted at " \
+            f"{date_} with id {id_}"
+        raise HTTPException(400, detail=msg)
     file_obj = CommissionFile(file,"Detail")
     new_sub = submission.NewSubmission(file_obj,reporting_month,reporting_year,report_id,manufacturer_id)
     mfg_preprocessor = adp.ADPPreProcessor

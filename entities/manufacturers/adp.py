@@ -5,9 +5,9 @@ for Advanced Distributor Products (ADP)
 import pandas as pd
 import numpy as np
 from entities.commission_data import PreProcessedData
-from entities.preprocessor import PreProcessor
+from entities.preprocessor import AbstractPreProcessor
 
-class ADPPreProcessor(PreProcessor):
+class PreProcessor(AbstractPreProcessor):
     """
     Remarks:
         - ADP's report comes as a single file with multiple tabs
@@ -18,10 +18,9 @@ class ADPPreProcessor(PreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _standard_report_preprocessing(self) -> PreProcessedData:
+    def _standard_report_preprocessing(self,data) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
         events = []
-        data = self.file.to_df()
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         events.append(("Formatting","removed spaces from column names",self.submission_id))
@@ -59,9 +58,9 @@ class ADPPreProcessor(PreProcessor):
         return PreProcessedData(result,ref_cols,*ref_cols,events)
 
 
-    def _coburn_report_preprocessing(self) -> PreProcessedData: ...
-    def _re_michel_report_preprocessing(self) -> PreProcessedData: ...
-    def _lennox_report_preprocessing(self) -> PreProcessedData: ...
+    def _coburn_report_preprocessing(self,data) -> PreProcessedData: ...
+    def _re_michel_report_preprocessing(self,data) -> PreProcessedData: ...
+    def _lennox_report_preprocessing(self,data) -> PreProcessedData: ...
 
     def preprocess(self) -> PreProcessedData:
         method_by_id = {
@@ -72,6 +71,6 @@ class ADPPreProcessor(PreProcessor):
         }
         preprocess_method = method_by_id.get(self.report_id, None)
         if preprocess_method:
-            return preprocess_method()
+            return preprocess_method(self.file.to_df())
         else:
             return

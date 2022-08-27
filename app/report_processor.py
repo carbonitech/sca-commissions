@@ -3,7 +3,7 @@ import pandas as pd
 
 from app import event
 from db.db_services import DatabaseServices
-from entities.preprocessor import PreProcessor
+from entities.preprocessor import AbstractPreProcessor
 from entities.submission import NewSubmission
 from entities.error import ErrorType
 
@@ -11,7 +11,7 @@ from entities.error import ErrorType
 class ReportProcessor:
     
     def __init__(
-            self, preprocessor: PreProcessor, 
+            self, preprocessor: AbstractPreProcessor, 
             submission: NewSubmission, database: DatabaseServices
         ):
         self.database = database
@@ -169,7 +169,7 @@ class ReportProcessor:
         r_id = self.submission.report_id
         sub_id = self.submission_id
         file = self.submission.file
-        preprocessor: PreProcessor = self.preprocessor(r_id, sub_id, file)
+        preprocessor: AbstractPreProcessor = self.preprocessor(r_id, sub_id, file)
         ppdata = preprocessor.preprocess()
         # send events from preprocessing using the manufacturuer (domain obj)
         for event_arg_tuple in ppdata.events: 

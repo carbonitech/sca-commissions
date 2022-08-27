@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from entities.commission_data import PreProcessedData
 from entities.commission_file import CommissionFile
 
-class PreProcessor(ABC):
+class AbstractPreProcessor(ABC):
     
     result_columns = ["customer","city","state","inv_amt","comm_amt"]
 

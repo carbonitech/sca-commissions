@@ -78,15 +78,17 @@ class PreProcessor(AbstractPreProcessor):
             return value.lower().strip().replace(" total","")
 
         data.loc[:,"Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
+        events.append(("Formatting","striped Branch column down to branch number only"))
 
         # convert dollars to cents to avoid demical imprecision
-        data.loc[:,"Amount"]= data["Amount"].apply(lambda amt: amt*100)
-        data.loc[:,"Commission"] = data["Commission"].apply(lambda amt: amt*100)
+        data.loc[:,"Amount"]= data["Amount"].fillna(0).apply(lambda amt: amt*100)
+        data.loc[:,"Commission"] = data["Commission"].fillna(0).apply(lambda amt: amt*100)
 
+        # amounts are negative to represent deductions from Coburn DC shipments to outside of the SCA territory
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
 
-        return OneLineAdjustment("Coburn", "various", "MS", total_inv_adj, total_comm_adj)
+        return OneLineAdjustment("COBURN", "VARIOUS", "MS", total_inv_adj, total_comm_adj)
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...

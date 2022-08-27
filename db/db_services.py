@@ -43,6 +43,12 @@ class DatabaseServices:
     def get_mappings(self, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),self.engine)
 
+    def get_all_manufacturers(self) -> dict:
+        sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
+        with self.engine.begin() as conn:
+            query_result = conn.execute(sql).fetchall()
+        return {id_: name_.lower() for id_, name_ in query_result}
+
     def get_branches(self) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES)
         return pd.read_sql(sql,con=self.engine)

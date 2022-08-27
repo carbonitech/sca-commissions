@@ -12,7 +12,7 @@ from pandas import ExcelWriter
 from db import db_services
 from app import report_processor
 from entities import submission
-from entities.manufacturers import adp
+from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
 from services.api_adapter import ApiAdapter
 from app.resources.pydantic_form import as_form
@@ -44,7 +44,7 @@ class ExcelFileResponse(StreamingResponse):
             headers: typing.Optional[typing.Mapping[str, str]] = None, 
             media_type: typing.Optional[str] = None, 
             background: typing.Optional[BackgroundTask] = None, 
-            filename: str = "NoName") -> None:
+            filename: str = "download") -> None:
         super().__init__(content, status_code, headers, media_type, background)
         self.raw_headers.append((b"Content-Disposition",f"attachment; filename={filename}.xlsx".encode('latin-1')))
 
@@ -63,11 +63,11 @@ async def download_commission_data():
 
 @router.post("/", tags=['commissions'])
 async def process_data_from_a_file(
-        file: bytes = File(), 
+        report_id: int,
+        manufacturer_id: int,
+        file: bytes = File(),
         reporting_month: int = Form(),
-        reporting_year: int = Form(), 
-        report_id: int=Form(),
-        manufacturer_id: int = Form()
+        reporting_year: int = Form()
     ):
     existing_submissions = api.get_all_submissions()
     existing_submission = existing_submissions.loc[
@@ -86,14 +86,15 @@ async def process_data_from_a_file(
             f"{report_month} {report_year} was already submitted at " \
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
-    file_obj = CommissionFile(file,"Detail")
+    try:
+        file_obj = CommissionFile(file)
+    except AssertionError as e:
+        raise HTTPException(400, detail=str(e))
     new_sub = submission.NewSubmission(file_obj,reporting_month,reporting_year,report_id,manufacturer_id)
-    mfg_preprocessor = adp.ADPPreProcessor
+    mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
     await mfg_report_processor.process_and_commit()
-    return {"sub_id": mfg_report_processor.submission_id,
-        "steps":json.loads(api.get_processing_steps(mfg_report_processor.submission_id).to_json(orient="records")),
-        "errors":json.loads(api.get_errors(mfg_report_processor.submission_id).to_json(orient="records"))}
+    return
 
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(

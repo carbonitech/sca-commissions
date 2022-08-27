@@ -4,7 +4,7 @@ for Advanced Distributor Products (ADP)
 """
 import pandas as pd
 import numpy as np
-from entities.commission_data import PreProcessedData
+from entities.commission_data import PreProcessedData, OneLineAdjustment
 from entities.preprocessor import AbstractPreProcessor
 
 class PreProcessor(AbstractPreProcessor):
@@ -18,14 +18,14 @@ class PreProcessor(AbstractPreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _standard_report_preprocessing(self,data) -> PreProcessedData:
+    def _standard_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
         events = []
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         events.append(("Formatting","removed spaces from column names",self.submission_id))
 
-        # convert dollars to cents to avoid demical precision weirdness
+        # convert dollars to cents to avoid demical imprecision
         data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
         data.Rep1Commission = data.loc[:,"Rep1Commission"].apply(lambda amt: amt*100)
 
@@ -58,9 +58,39 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result,ref_cols,*ref_cols,events)
 
 
-    def _coburn_report_preprocessing(self,data) -> PreProcessedData: ...
-    def _re_michel_report_preprocessing(self,data) -> PreProcessedData: ...
-    def _lennox_report_preprocessing(self,data) -> PreProcessedData: ...
+    def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
+        events = []
+
+        data.columns = [col.replace(" ","") for col in data.columns.tolist()]
+        events.append(("Formatting","removed spaces from column names",self.submission_id))
+        comm_col_before = data.columns.values[-1]
+        com_col_after = "Commission"
+        data = data.rename(columns={comm_col_before: com_col_after}) # normalize final column in case commission rate changes
+        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {com_col_after}",self.submission_id))
+
+        na_filter_col = "Date"
+        key_cols = ["Amount","Branch","Location","Commission"]
+        data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
+        events.append(("Formatting",f"filtered out blank rows in the {na_filter_col} column",self.submission_id))
+        events.append(("Formatting",f"filtered out all columns EXCEPT {', '.join(key_cols)}",self.submission_id))
+
+        def strip_branch_number(value: str) -> int:
+            return value.lower().strip().replace(" total","")
+
+        data.loc[:,"Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
+
+        # convert dollars to cents to avoid demical imprecision
+        data.loc[:,"Amount"]= data["Amount"].apply(lambda amt: amt*100)
+        data.loc[:,"Commission"] = data["Commission"].apply(lambda amt: amt*100)
+
+        total_inv_adj = -data["Amount"].sum()
+        total_comm_adj = -data["Commission"].sum()
+
+        return OneLineAdjustment("Coburn", "various", "MS", total_inv_adj, total_comm_adj)
+
+
+    def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
+    def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
 
     def preprocess(self) -> PreProcessedData:
         method_by_id = {

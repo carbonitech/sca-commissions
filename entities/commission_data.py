@@ -21,3 +21,12 @@ class PostProcessedData:
     data: DataFrame
     process_steps: List[ProcessingStep]
     errors: List[Error]
+
+
+@dataclass
+class OneLineAdjustment:
+    customer: str
+    city: str
+    state: str
+    inv_amt: int
+    comm_amt: int

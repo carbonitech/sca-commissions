@@ -378,7 +378,14 @@ class ApiAdapter:
             .join(branches)                    \
             .join(customers)                   \
             .join(cities)                      \
-            .join(states)
+            .join(states)                      \
+            .order_by(
+                submission_data.reporting_year.desc(),
+                submission_data.reporting_month.desc(),
+                customers.name.asc(),
+                cities.name.asc(),
+                states.name.asc()
+            )
 
         if submission_id:
             sql = sql.where(commission_data_raw.submission_id == submission_id)

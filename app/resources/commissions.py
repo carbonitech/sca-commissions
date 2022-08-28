@@ -107,7 +107,6 @@ async def add_custom_entry_to_commission_data(
     payload = {"map_rep_customer_id": map_rep_customer_id} | data.dict(exclude={"description"})
     row_id = api.set_new_commission_data_entry(submission_id=submission_id, **payload)
     return {"Success": f"line written to row {row_id}"}
-    
 
 @router.put("/{row_id}", tags=['commissions'])
 async def modify_an_entry_in_commission_data(

@@ -118,5 +118,14 @@ class DatabaseServices:
         result = pd.read_sql(sql, con=self.engine)
         result.columns = ["map_rep_customer_id", "customer_id", "city_id", 
                 "state_id"]
-        
+
         return result
+
+    def get_report_name_by_id(self, report_id: int) -> str:
+        sql = sqlalchemy.select(REPORTS.report_name).where(REPORTS.id == report_id)
+        with self.engine.begin() as conn:
+            result = conn.execute(sql).one_or_none()
+        if result:
+            return result[0]
+        
+

@@ -95,13 +95,13 @@ class PreProcessor(AbstractPreProcessor):
     def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
 
     def preprocess(self) -> PreProcessedData:
-        method_by_id = {
-            1: self._standard_report_preprocessing,
-            2: self._coburn_report_preprocessing,
-            3: self._lennox_report_preprocessing,
-            4: self._re_michel_report_preprocessing
+        method_by_name = {
+            "standard": self._standard_report_preprocessing,
+            "coburn": self._coburn_report_preprocessing,
+            "lennox": self._lennox_report_preprocessing,
+            "re_michel": self._re_michel_report_preprocessing
         }
-        preprocess_method = method_by_id.get(self.report_id, None)
+        preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
             return preprocess_method(self.file.to_df())
         else:

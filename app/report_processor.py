@@ -166,11 +166,13 @@ class ReportProcessor:
         return self
 
     async def preprocess(self) -> 'ReportProcessor':
-        r_id = self.submission.report_id
+        report_name = self.database.get_report_name_by_id(self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
-        preprocessor: AbstractPreProcessor = self.preprocessor(r_id, sub_id, file)
+        preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         ppdata = preprocessor.preprocess()
+        # TODO: make a check here for PreProcessedData object OR a 'data adjustment' one-liner
+
         # send events from preprocessing using the manufacturuer (domain obj)
         for event_arg_tuple in ppdata.events: 
             event.post_event(*event_arg_tuple)

@@ -105,7 +105,7 @@ async def get_all_mappings_for_city_names():
 async def get_all_mappings_for_a_city(city_id: int):
     return json.loads(api.get_all_city_name_mappings(city_id).to_json(orient="records"))
 
-@router.post("/cities{city_id}", tags=["cities"])
+@router.post("/cities/{city_id}", tags=["cities"])
 async def create_new_mapping_for_a_city(city_id: int, new_mapping: CityNameMapping):
     current_city = api.get_cities(city_id)
     if current_city.empty:

@@ -122,7 +122,7 @@ async def create_db():
     return {"message": "tables created"}
 
 @app.get("/resetdb")
-async def reset_database():
+async def reset_database(token: str = PROTECTED[0]):
     result_del = await delete_db()
     result_make = await create_db()
     return [result_del, result_make]

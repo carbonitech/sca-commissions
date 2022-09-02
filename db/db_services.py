@@ -38,7 +38,7 @@ load_dotenv()
 
 class DatabaseServices:
 
-    engine = sqlalchemy.create_engine(getenv("DATABASE_URL"))
+    engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
 
     def get_mappings(self, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),self.engine)

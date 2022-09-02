@@ -38,7 +38,7 @@ load_dotenv()
 
 class ApiAdapter:
 
-    engine = sqlalchemy.create_engine(getenv("DATABASE_URL"))
+    engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
 
     def get_customers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS)

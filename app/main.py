@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBearer
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 from jose.jwt import get_unverified_header, decode
 
@@ -21,6 +22,17 @@ token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
 ALGORITHMS = os.getenv('ALGORITHMS')
 AUDIENCE = os.getenv('AUDIENCE')
+ORIGINS = os.getenv('ORIGINS')
+ORIGINS_REGEX = os.getenv('ORIGINS_REGEX')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ORIGINS,
+    allow_origin_regex=ORIGINS_REGEX,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
     error = None

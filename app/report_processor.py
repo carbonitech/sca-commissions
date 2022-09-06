@@ -171,8 +171,6 @@ class ReportProcessor:
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         ppdata = preprocessor.preprocess()
-        # TODO: make a check here for PreProcessedData object OR a 'data adjustment' one-liner
-
         # send events from preprocessing using the manufacturuer (domain obj)
         for event_arg_tuple in ppdata.events: 
             event.post_event(*event_arg_tuple)

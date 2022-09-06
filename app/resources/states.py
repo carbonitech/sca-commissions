@@ -24,14 +24,16 @@ async def get_a_state(state_id: int):
     return json.loads(states)
 
 @router.post("/", tags=["states"])
-async def add_a_state(new_state: State):
+async def add_a_state(new_state: str = Form()):
+    # TODO ENABLE REACTIVATION OF DELETED STATE IF INPUT MATCHES
     existing_states = api.get_states()
     existing_state = existing_states.loc[
-        existing_states.name == new_state.name
+        existing_states.name == new_state
     ]
     if not existing_state.empty:
         raise HTTPException(400, detail=f"State already exists with id {existing_state.id.squeeze()}")
-    return {"new id": api.set_new_state(**new_state.dict())}
+    value = {"name": new_state}
+    return {"new id": api.set_new_state(**value)}
 
 @router.put("/{state_id}", tags=["states"])
 async def modify_a_state(state_id: int, state_info: State):
@@ -67,6 +69,5 @@ async def modify_mapping_for_a_state(state_id: int, mapping_id: int, modified_ma
     mapping_ids = all_mappings.loc[:,"mapping_id"]
     if mapping_id not in mapping_ids.values:
         raise HTTPException(400, detail=f"this mapping does not exist for state name {state.name.squeeze()}")
-    modified_mapping.state_id = state_id
     value = {"state_id": state_id, "recorded_name": modified_mapping}
     api.modify_state_name_mapping(mapping_id,**value)

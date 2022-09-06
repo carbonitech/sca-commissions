@@ -200,21 +200,23 @@ class Reintegrator:
         return self
 
     def process_and_commmit(self) -> None:
-        self._filter_for_existing_records_with_target_error_type() \
-        .remove_error_db_entries()      \
-        .fill_customer_ids()            \
-        .filter_out_any_rows_unmapped() \
-        .fill_city_ids()                \
-        .filter_out_any_rows_unmapped() \
-        .fill_state_ids()               \
-        .filter_out_any_rows_unmapped() \
-        .add_branch_id()                \
-        .filter_out_any_rows_unmapped() \
-        .add_rep_customer_ids()         \
-        .filter_out_any_rows_unmapped() \
-        .drop_extra_columns()           \
-        .filter_out_any_rows_unmapped() \
-        .insert_recorded_at_column()    \
-        .register_commission_data()
-
+        try:
+            self._filter_for_existing_records_with_target_error_type() \
+            .remove_error_db_entries()      \
+            .fill_customer_ids()            \
+            .filter_out_any_rows_unmapped() \
+            .fill_city_ids()                \
+            .filter_out_any_rows_unmapped() \
+            .fill_state_ids()               \
+            .filter_out_any_rows_unmapped() \
+            .add_branch_id()                \
+            .filter_out_any_rows_unmapped() \
+            .add_rep_customer_ids()         \
+            .filter_out_any_rows_unmapped() \
+            .drop_extra_columns()           \
+            .filter_out_any_rows_unmapped() \
+            .insert_recorded_at_column()    \
+            .register_commission_data()
+        except EmptyTableException:
+            pass
         return

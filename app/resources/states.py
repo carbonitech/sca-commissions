@@ -44,3 +44,29 @@ async def modify_a_state(state_id: int, state_info: State):
 async def delete_a_state(state_id: int):
     # soft delete
     api.delete_state(state_id)
+
+
+@router.get("/{state_id}/mappings", tags=["states"])
+async def get_all_mappings_for_a_state(state_id: int):
+    return json.loads(api.get_all_state_name_mappings(state_id).to_json(orient="records"))
+
+@router.post("/{state_id}/mappings", tags=["states"])
+async def create_new_mapping_for_a_state(state_id: int, new_mapping: str = Form()):
+    current_state = not api.get_states(new_mapping.state_id).empty
+    if not current_state:
+        raise HTTPException(400, detail="State does not exist")
+    value = {"state_id": state_id, "recorded_name": new_mapping}
+    api.set_state_name_mapping(**value)
+
+@router.put("/{state_id}/mappings/{mapping_id}", tags=["states"])
+async def modify_mapping_for_a_state(state_id: int, mapping_id: int, modified_mapping: str = Form()):
+    state = api.get_states(state_id)
+    if state.empty:
+        raise HTTPException(400, detail=f"state with id {state_id} does not exist")
+    all_mappings = api.get_all_state_name_mappings(state_id)
+    mapping_ids = all_mappings.loc[:,"mapping_id"]
+    if mapping_id not in mapping_ids.values:
+        raise HTTPException(400, detail=f"this mapping does not exist for state name {state.name.squeeze()}")
+    modified_mapping.state_id = state_id
+    value = {"state_id": state_id, "recorded_name": modified_mapping}
+    api.modify_state_name_mapping(mapping_id,**value)

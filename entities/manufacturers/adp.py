@@ -4,7 +4,7 @@ for Advanced Distributor Products (ADP)
 """
 import pandas as pd
 import numpy as np
-from entities.commission_data import PreProcessedData, OneLineAdjustment
+from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
 
 class PreProcessor(AbstractPreProcessor):
@@ -55,30 +55,33 @@ class PreProcessor(AbstractPreProcessor):
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
-        return PreProcessedData(result,ref_cols,*ref_cols,events)
+        return PreProcessedData(result, ref_cols, *ref_cols, events)
 
 
     def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
         events = []
 
-        data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        events.append(("Formatting","removed spaces from column names",self.submission_id))
         comm_col_before = data.columns.values[-1]
-        com_col_after = "Commission"
-        data = data.rename(columns={comm_col_before: com_col_after}) # normalize final column in case commission rate changes
-        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {com_col_after}",self.submission_id))
+        comm_col_after = "Commission"
+        data = data.rename(columns={comm_col_before: comm_col_after}) # normalize final column in case commission rate changes
+        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {comm_col_after}",self.submission_id))
+        data.columns = [col.replace(" ","") for col in data.columns.tolist() if isinstance(col,str)]
+        events.append(("Formatting","removed spaces from column names",self.submission_id))
 
         na_filter_col = "Date"
+        branch_total_amount_filter = "Amount"
         key_cols = ["Amount","Branch","Location","Commission"]
         data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
-        events.append(("Formatting",f"filtered out blank rows in the {na_filter_col} column",self.submission_id))
+        data = data[~data[branch_total_amount_filter].isna()]
+        events.append(("Formatting",f"filtered for only blank rows in the {na_filter_col} column",self.submission_id))
+        events.append(("Formatting",f"filtered out blank rows in the {branch_total_amount_filter} column",self.submission_id))
         events.append(("Formatting",f"filtered out all columns EXCEPT {', '.join(key_cols)}",self.submission_id))
 
         def strip_branch_number(value: str) -> int:
             return value.lower().strip().replace(" total","")
 
         data.loc[:,"Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
-        events.append(("Formatting","striped Branch column down to branch number only"))
+        events.append(("Formatting","striped Branch column down to branch number only",self.submission_id))
 
         # convert dollars to cents to avoid demical imprecision
         data.loc[:,"Amount"]= data["Amount"].fillna(0).apply(lambda amt: amt*100)
@@ -87,8 +90,14 @@ class PreProcessor(AbstractPreProcessor):
         # amounts are negative to represent deductions from Coburn DC shipments to outside of the SCA territory
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
+        
+        result = pd.DataFrame([["COBURN", "VARIOUS", "MS", total_inv_adj, total_comm_adj]], columns=self.result_columns)
+        ref_cols = self.result_columns[:3]
 
-        return OneLineAdjustment("COBURN", "VARIOUS", "MS", total_inv_adj, total_comm_adj)
+        for ref_col in ref_cols:
+            result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
+
+        return PreProcessedData(result, ref_cols, *ref_cols, events)
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...

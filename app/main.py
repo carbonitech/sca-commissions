@@ -1,7 +1,3 @@
-import sys
-from package_hotfix import serializer
-sys.modules["sqlalchemy_jsonapi.serializer"] = serializer # not thrilled about this
-
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware

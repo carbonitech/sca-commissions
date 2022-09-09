@@ -144,4 +144,5 @@ class FinalCommissionDataDTO(Base):
     inv_amt = Column(Float)
     comm_amt = Column(Float)
 
+setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken
 serializer = JSONAPI(Base)

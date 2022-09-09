@@ -7,7 +7,7 @@ import json
 
 import pandas as pd
 import sqlalchemy
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app import event
 from db import models
@@ -39,6 +39,7 @@ load_dotenv()
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     def get_customers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS)
@@ -60,6 +61,15 @@ class ApiAdapter:
                 .where(CUSTOMERS.id == cust_id)
         result = pd.read_sql(sql, con=self.engine)
         return result
+
+    # JSON:API implementation - passing in a db session instead of creating one
+    def get_customer_jsonapi(self, db: Session, cust_id: int):
+        sql = sqlalchemy.select(CUSTOMERS) \
+                .where(CUSTOMERS.id == cust_id)
+        # data, = db.execute(sql).fetchone()
+        data = models.serializer.get_resource(db,{"include":"map-names,branches"},CUSTOMERS.__tablename__,cust_id)
+            # relations = inspect(CUSTOMERS).relationships.items()
+        return data
 
     def check_customer_exists_by_name(self, name: str) -> bool:
         sql = sqlalchemy.select(CUSTOMERS).where(CUSTOMERS.name == name)
@@ -200,7 +210,7 @@ class ApiAdapter:
             sql = sql.where(CUSTOMERS.id == customer_id)
 
         table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["customer_id", "customer", "_", "mapping_id", "alias", "_"] # deleted, customer_id
+        table.columns = ["customer_id", "customer", "mapping_id", "alias", "_"] # deleted, customer_id
         return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:

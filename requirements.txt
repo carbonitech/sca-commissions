@@ -15,6 +15,7 @@ greenlet==1.1.2
 h11==0.13.0
 httptools==0.4.0
 idna==3.3
+inflection==0.5.1
 itsdangerous==2.1.2
 Jinja2==3.1.2
 MarkupSafe==2.1.1
@@ -38,6 +39,7 @@ rsa==4.9
 six==1.16.0
 sniffio==1.2.0
 SQLAlchemy==1.4.40
+SQLAlchemy-JSONAPI==4.0.10
 starlette==0.19.1
 typer==0.6.1
 typing_extensions==4.3.0

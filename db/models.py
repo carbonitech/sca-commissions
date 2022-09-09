@@ -2,7 +2,8 @@
 
 from datetime import datetime
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship, deferred
+from sqlalchemy_jsonapi import JSONAPI
 
 Base = declarative_base()
 
@@ -29,9 +30,9 @@ class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
-    deleted = Column(DateTime)
-    branches = relationship("CustomerBranch")
-    map_names = relationship("MapCustomerName")
+    deleted = deferred(Column(DateTime))
+    branches = relationship("CustomerBranch", back_populates="customer")
+    map_names = relationship("MapCustomerName", back_populates="customer")
 
 
 class CustomerBranch(Base):
@@ -40,8 +41,9 @@ class CustomerBranch(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"))
     city_id = Column(Integer, ForeignKey("cities.id"))
     state_id = Column(Integer, ForeignKey("states.id"))
-    deleted = Column(DateTime)
+    deleted = deferred(Column(DateTime))
     rep = relationship("MapRepToCustomer")
+    customer = relationship("Customer", back_populates="branches")
 
 
 class ManufacturersReport(Base):
@@ -66,9 +68,11 @@ class Representative(Base):
 
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
+    __jsonapi_type_override__ = __tablename__ # required to avoid MapCustomerName -> map-customer-name
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
     customer_id = Column(Integer, ForeignKey("customers.id"))
+    customer = relationship("Customer", back_populates="map_names")
 
 
 class MapCityName(Base):
@@ -140,3 +144,4 @@ class FinalCommissionDataDTO(Base):
     inv_amt = Column(Float)
     comm_amt = Column(Float)
 
+serializer = JSONAPI(Base)

@@ -73,12 +73,12 @@ def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
 
 PROTECTED = [Depends(authenticate_auth0_token)]
 
+app.include_router(resources.customers, dependencies=PROTECTED)
 app.include_router(resources.reps, dependencies=PROTECTED)
 app.include_router(resources.cities, dependencies=PROTECTED)
 app.include_router(resources.states, dependencies=PROTECTED)
 app.include_router(resources.mappings, dependencies=PROTECTED)
 app.include_router(resources.branches, dependencies=PROTECTED)
-app.include_router(resources.customers, dependencies=PROTECTED)
 app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
 app.include_router(resources.manufacturers, dependencies=PROTECTED)

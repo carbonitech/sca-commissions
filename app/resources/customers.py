@@ -1,13 +1,45 @@
-from fastapi import APIRouter, HTTPException, Form
+from fastapi import APIRouter, HTTPException, Form, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 import json
 from services.api_adapter import ApiAdapter
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers")
 
+def get_db():
+    db = api.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 class Customer(BaseModel):
     name: str
+
+# class CustomerBranch(BaseModel):
+#     customer_id: int
+#     city_id: int
+#     state_id: int
+
+#     class Config:
+#         orm_mode = True
+
+# class Customer(CustomerBase):
+#     id: int
+#     branches: list[CustomerBranch] = []
+
+#     class Config:
+#         orm_mode = True
+
+#### JSON:API Spec ####
+@router.get("/{customer_id}/jsonapi", tags=["jsonapi"],
+        # response_model=Customer
+        )
+async def customer_by_id_jsonapi(customer_id: int, db: Session=Depends(get_db)):
+    customer = api.get_customer_jsonapi(db, customer_id)
+    return customer
+##################
 
 @router.get("/", tags=["customers"])
 async def all_customers():

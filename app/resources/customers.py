@@ -17,34 +17,29 @@ def get_db():
 class Customer(BaseModel):
     name: str
 
-# class CustomerBranch(BaseModel):
-#     customer_id: int
-#     city_id: int
-#     state_id: int
+class QueryArgs(BaseModel):
+    # TODO : the json:api specification has parameters like fields using a bracket notation (i.e. fields[some_field] instead of fields=some_field) 
+    # meaning that the default behavior, using equals, is causing most of these parameters to not work
+    include: str|None = None
+    fields: str|None = None
+    sort: str|None = None
+    page: str|None = None
+    filter: str|None = None
 
-#     class Config:
-#         orm_mode = True
+### JSON API ###
+@router.get("/", tags=["jsonapi"])
+async def all_customers(db: Session=Depends(get_db), query: QueryArgs = Depends()):
+    query = query.dict(exclude_none=True)
+    customers = api.get_many_customers_jsonapi(db,query)
+    return customers
 
-# class Customer(CustomerBase):
-#     id: int
-#     branches: list[CustomerBranch] = []
-
-#     class Config:
-#         orm_mode = True
-
-#### JSON:API Spec ####
-@router.get("/{customer_id}/jsonapi", tags=["jsonapi"],
-        # response_model=Customer
-        )
-async def customer_by_id_jsonapi(customer_id: int, db: Session=Depends(get_db)):
-    customer = api.get_customer_jsonapi(db, customer_id)
+@router.get("/{customer_id}", tags=["jsonapi"])
+async def customer_by_id(customer_id: int,db: Session=Depends(get_db), query: QueryArgs = Depends()):
+    query = query.dict(exclude_none=True)
+    customer = api.get_customer(db, customer_id, query)
     return customer
 ##################
 
-@router.get("/", tags=["customers"])
-async def all_customers():
-    customers = api.get_customers().to_json(orient="records", date_format="iso")
-    return({"customers": json.loads(customers)})
 
 @router.post("/", tags=["customers"])
 async def new_customer(customer_name: str = Form()):
@@ -54,11 +49,6 @@ async def new_customer(customer_name: str = Form()):
     if not matches.empty:
         raise HTTPException(status_code=400, detail="Customer already exists")
     return {"customer_id": api.new_customer(customer_fastapi=customer_name)}
-
-@router.get("/{customer_id}", tags=["customers"])
-async def customer_by_id(customer_id: int):
-    customer = api.get_customer(customer_id).to_json(orient="records", date_format="iso")
-    return({"customer": json.loads(customer)})
 
 @router.put("/{customer_id}", tags=["customers"])
 async def modify_customer(customer_id: int, new_data: Customer):

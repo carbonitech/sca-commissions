@@ -62,15 +62,6 @@ class ApiAdapter:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    # JSON:API implementation - passing in a db session instead of creating one
-    def get_customer_jsonapi(self, db: Session, cust_id: int):
-        sql = sqlalchemy.select(CUSTOMERS) \
-                .where(CUSTOMERS.id == cust_id)
-        # data, = db.execute(sql).fetchone()
-        data = models.serializer.get_resource(db,{"include":"map-names,branches"},CUSTOMERS.__tablename__,cust_id)
-            # relations = inspect(CUSTOMERS).relationships.items()
-        return data
-
     def check_customer_exists_by_name(self, name: str) -> bool:
         sql = sqlalchemy.select(CUSTOMERS).where(CUSTOMERS.name == name)
         with Session(bind=self.engine) as session:
@@ -549,3 +540,13 @@ class ApiAdapter:
         sql = sqlalchemy.update(CITIES).values(deleted=None).where(CITIES.id == city_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+
+
+    # JSON:API implementation - passing in a db session instead of creating one
+    def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
+        data = models.serializer.get_resource(db,query,CUSTOMERS.__tablename__,cust_id)
+        return data
+
+    def get_many_customers_jsonapi(self, db: Session, query: dict) -> dict:
+        data = models.serializer.get_collection(db,query,CUSTOMERS.__tablename__)
+        return data

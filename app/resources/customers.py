@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Form, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-import json
 from services.api_adapter import ApiAdapter
 
 api = ApiAdapter()

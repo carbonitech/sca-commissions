@@ -564,3 +564,11 @@ class ApiAdapter:
     def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> dict:
         model_name = hyphenate_name(CITIES.__tablename__)
         return models.serializer.get_resource(db,query,model_name,city_id)
+
+    def get_state_jsonapi(self, db: Session, state_id: int, query: dict) -> dict:
+        model_name = hyphenate_name(STATES.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,state_id)
+
+    def get_many_states_jsonapi(self, db: Session, query: dict) -> dict:
+        model_name = hyphenate_name(STATES.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)

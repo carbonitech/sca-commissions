@@ -552,4 +552,7 @@ class ApiAdapter:
         return data
 
     def get_branches_by_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
-        return models.serializer.get_related(db,query,CUSTOMERS.__tablename__,cust_id,"branches")
+        return models.serializer.get_related(db,query,CUSTOMERS.__tablename__,cust_id,BRANCHES.__tablename__.replace("_","-"))
+
+    def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
+            return models.serializer.get_related(db,{},primary,id_,secondary)

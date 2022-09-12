@@ -36,6 +36,9 @@ MAPPING_TABLES = {
 
 load_dotenv()
 
+def hyphenate_name(table_name: str) -> str:
+    return table_name.replace("_","-")
+
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
@@ -544,15 +547,20 @@ class ApiAdapter:
 
     # JSON:API implementation - passing in a db session instead of creating one
     def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
-        data = models.serializer.get_resource(db,query,CUSTOMERS.__tablename__,cust_id)
-        return data
+        model_name = hyphenate_name(CUSTOMERS.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,cust_id)
 
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> dict:
-        data = models.serializer.get_collection(db,query,CUSTOMERS.__tablename__)
-        return data
-
-    def get_branches_by_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
-        return models.serializer.get_related(db,query,CUSTOMERS.__tablename__,cust_id,BRANCHES.__tablename__.replace("_","-"))
+        model_name = hyphenate_name(CUSTOMERS.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)
 
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
-            return models.serializer.get_related(db,{},primary,id_,secondary)
+        return models.serializer.get_related(db,{},primary,id_,secondary)
+
+    def get_many_cities_jsonapi(self, db: Session, query: dict):
+        model_name = hyphenate_name(CITIES.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)
+
+    def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> dict:
+        model_name = hyphenate_name(CITIES.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,city_id)

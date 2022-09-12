@@ -104,17 +104,17 @@ async def create_db():
             'states': models.State,
             'customers': models.Customer,
             'customer_branches': models.CustomerBranch,
-            'manufacturers': models.ManufacturerDTO,
+            'manufacturers': models.Manufacturer,
             'manufacturers_reports': models.ManufacturersReport,
             'representatives': models.Representative,
             'map_customer_name': models.MapCustomerName,
             'map_city_names': models.MapCityName,
             'map_state_names': models.MapStateName,
             'map_reps_customers': models.MapRepToCustomer,
-            'report_submissions_log': models.SubmissionDTO,
-            'report_processing_steps_log': models.ProcessingStepDTO,
-            'current_errors': models.ErrorDTO,
-            'final_commission_data': models.FinalCommissionDataDTO
+            'report_submissions_log': models.Submission,
+            'report_processing_steps_log': models.ProcessingStep,
+            'current_errors': models.Error,
+            'final_commission_data': models.CommissionData
     }
     # load csv files
     tables_dir = './tests/db_tables'

@@ -21,12 +21,12 @@ CUSTOMER_NAME_MAP = models.MapCustomerName
 CITY_NAME_MAP = models.MapCityName
 STATE_NAME_MAP = models.MapStateName
 REPS_CUSTOMERS_MAP = models.MapRepToCustomer
-MANUFACTURERS = models.ManufacturerDTO
+MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
-COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
-SUBMISSIONS_TABLE = models.SubmissionDTO
-PROCESS_STEPS_LOG = models.ProcessingStepDTO
-ERRORS_TABLE = models.ErrorDTO
+COMMISSION_DATA_TABLE = models.CommissionData
+SUBMISSIONS_TABLE = models.Submission
+PROCESS_STEPS_LOG = models.ProcessingStep
+ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,

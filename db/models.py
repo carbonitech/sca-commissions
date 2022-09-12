@@ -72,7 +72,7 @@ class MapRepToCustomer(Base):
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     orphaned = Column(DateTime)
-    commission_data = relationship("CommissionData", back_populates="rep_customer")
+    commission_data = relationship("CommissionData", back_populates="map_rep_customer")
     rep_name = relationship("Representative", back_populates="branches")
     branch = relationship("CustomerBranch", back_populates="rep")
 

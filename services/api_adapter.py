@@ -21,12 +21,12 @@ CUSTOMER_NAME_MAP = models.MapCustomerName
 CITY_NAME_MAP = models.MapCityName
 STATE_NAME_MAP = models.MapStateName
 REPS_CUSTOMERS_MAP = models.MapRepToCustomer
-MANUFACTURERS = models.ManufacturerDTO
+MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
-COMMISSION_DATA_TABLE = models.FinalCommissionDataDTO
-SUBMISSIONS_TABLE = models.SubmissionDTO
-PROCESS_STEPS_LOG = models.ProcessingStepDTO
-ERRORS_TABLE = models.ErrorDTO
+COMMISSION_DATA_TABLE = models.CommissionData
+SUBMISSIONS_TABLE = models.Submission
+PROCESS_STEPS_LOG = models.ProcessingStep
+ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
@@ -546,6 +546,7 @@ class ApiAdapter:
 
 
     # JSON:API implementation - passing in a db session instead of creating one
+    # TODO: THE RESOURCE NAME IS DETERMINED BY THE CLASS MODEL NAME, HYPHENATED AND PLURALIZED, NOT THE __tablename__ ATTR
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
         return models.serializer.get_related(db,{},primary,id_,secondary)
 
@@ -579,4 +580,12 @@ class ApiAdapter:
 
     def get_many_reps_jsonapi(self, db: Session, query: dict) -> dict:
         model_name = hyphenate_name(REPS.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)
+
+    def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict) -> dict:
+        model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,submission_id)
+
+    def get_many_submissions_jsonapi(self, db: Session, query: dict) -> dict:
+        model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
         return models.serializer.get_collection(db,query,model_name)

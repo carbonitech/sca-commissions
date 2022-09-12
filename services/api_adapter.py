@@ -546,6 +546,9 @@ class ApiAdapter:
 
 
     # JSON:API implementation - passing in a db session instead of creating one
+    def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
+        return models.serializer.get_related(db,{},primary,id_,secondary)
+
     def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,cust_id)
@@ -553,9 +556,6 @@ class ApiAdapter:
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> dict:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         return models.serializer.get_collection(db,query,model_name)
-
-    def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
-        return models.serializer.get_related(db,{},primary,id_,secondary)
 
     def get_many_cities_jsonapi(self, db: Session, query: dict):
         model_name = hyphenate_name(CITIES.__tablename__)
@@ -571,4 +571,12 @@ class ApiAdapter:
 
     def get_many_states_jsonapi(self, db: Session, query: dict) -> dict:
         model_name = hyphenate_name(STATES.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)
+
+    def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict) -> dict:
+        model_name = hyphenate_name(REPS.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,rep_id)
+
+    def get_many_reps_jsonapi(self, db: Session, query: dict) -> dict:
+        model_name = hyphenate_name(REPS.__tablename__)
         return models.serializer.get_collection(db,query,model_name)

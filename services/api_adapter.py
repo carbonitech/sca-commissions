@@ -550,3 +550,6 @@ class ApiAdapter:
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> dict:
         data = models.serializer.get_collection(db,query,CUSTOMERS.__tablename__)
         return data
+
+    def get_branches_by_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
+        return models.serializer.get_related(db,query,CUSTOMERS.__tablename__,cust_id,"branches")

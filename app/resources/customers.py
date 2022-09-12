@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Form, Depends
+from fastapi import APIRouter, HTTPException, Form, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import json
@@ -27,17 +27,23 @@ class QueryArgs(BaseModel):
     filter: str|None = None
 
 ### JSON API ###
-@router.get("/", tags=["jsonapi"])
-async def all_customers(db: Session=Depends(get_db), query: QueryArgs = Depends()):
-    query = query.dict(exclude_none=True)
+@router.get("", tags=["jsonapi"])
+async def all_customers(request: Request, db: Session=Depends(get_db)):
+    query = request.query_params
     customers = api.get_many_customers_jsonapi(db,query)
     return customers
 
 @router.get("/{customer_id}", tags=["jsonapi"])
-async def customer_by_id(customer_id: int,db: Session=Depends(get_db), query: QueryArgs = Depends()):
-    query = query.dict(exclude_none=True)
-    customer = api.get_customer(db, customer_id, query)
+async def customer_by_id(customer_id: int, request: Request, db: Session=Depends(get_db)):
+    query = request.query_params
+    customer = api.get_customer_jsonapi(db, customer_id, query)
     return customer
+
+@router.get("/{customer_id}/branches", tags=["jsonapi"])
+async def customer_branches_by_id(customer_id: int, request: Request, db: Session=Depends(get_db)):
+    query = request.query_params
+    branches = api.get_branches_by_customer_jsonapi(db, customer_id, query)
+    return branches
 ##################
 
 
@@ -62,7 +68,3 @@ async def modify_customer(customer_id: int, new_data: Customer):
 async def delete_customer(customer_id: int):
     api.delete_customer(customer_id)
 
-@router.get("/{customer_id}/branches", tags=["customers"])
-async def customer_branches_by_id(customer_id: int):
-    branches = api.get_branches_by_customer(customer_id).to_json(orient="records", date_format="iso")
-    return({"branches": json.loads(branches)})

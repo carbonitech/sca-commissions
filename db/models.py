@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
-from sqlalchemy.orm import declarative_base, relationship, deferred
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy_jsonapi import JSONAPI
 
 Base = declarative_base()
@@ -30,18 +30,19 @@ class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
     name = Column(String)
-    deleted = deferred(Column(DateTime))
+    deleted = Column(DateTime)
     branches = relationship("CustomerBranch", back_populates="customer")
     map_names = relationship("MapCustomerName", back_populates="customer")
 
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
+    __jsonapi_type_override__ = 'branches'
     id = Column(Integer,primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
     city_id = Column(Integer, ForeignKey("cities.id"))
     state_id = Column(Integer, ForeignKey("states.id"))
-    deleted = deferred(Column(DateTime))
+    deleted = Column(DateTime)
     rep = relationship("MapRepToCustomer")
     customer = relationship("Customer", back_populates="branches")
 
@@ -68,7 +69,6 @@ class Representative(Base):
 
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
-    __jsonapi_type_override__ = __tablename__ # required to avoid MapCustomerName -> map-customer-name
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
     customer_id = Column(Integer, ForeignKey("customers.id"))

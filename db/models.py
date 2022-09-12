@@ -7,7 +7,6 @@ from sqlalchemy_jsonapi import JSONAPI
 
 Base = declarative_base()
 
-## Model-only Tables
 class City(Base):
     __tablename__ = 'cities'
     id = Column(Integer,primary_key=True)
@@ -73,7 +72,7 @@ class MapRepToCustomer(Base):
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     orphaned = Column(DateTime)
-    commission_data = relationship("FinalCommissionDataDTO", back_populates="rep_customer")
+    commission_data = relationship("CommissionData", back_populates="rep_customer")
     rep_name = relationship("Representative", back_populates="branches")
     branch = relationship("CustomerBranch", back_populates="rep")
 
@@ -89,6 +88,13 @@ class Representative(Base):
     branches = relationship("MapRepToCustomer", back_populates="rep_name")
 
 
+class Manufacturer(Base):
+    __tablename__ = 'manufacturers'
+    id = Column(Integer,primary_key=True)
+    name = Column(String)
+    deleted = Column(DateTime)
+    manufacturers_reports = relationship("ManufacturersReport", back_populates="manufacturer")
+
 class ManufacturersReport(Base):
     __tablename__ = 'manufacturers_reports'
     id = Column(Integer,primary_key=True)
@@ -97,54 +103,52 @@ class ManufacturersReport(Base):
     yearly_frequency = Column(Integer)
     POS_report = Column(Boolean)
     deleted = Column(DateTime)
-
-## Entity DTOs
-class ManufacturerDTO(Base):
-    __tablename__ = 'manufacturers'
-    id = Column(Integer,primary_key=True)
-    name = Column(String)
-    deleted = Column(DateTime)
-    manuf_reports = relationship("ManufacturersReport")
+    manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
+    submissions = relationship("Submission", back_populates="manufacturers_reports")
 
 
-class SubmissionDTO(Base):
+class Submission(Base):
     __tablename__ = 'submissions'
     id = Column(Integer,primary_key=True)
     submission_date = Column(DateTime)
     reporting_month = Column(Integer)
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
-    commission_data = relationship("FinalCommissionDataDTO")
-    errors = relationship("ErrorDTO")
-    steps = relationship("ProcessingStepDTO")
+    manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
+    commission_data = relationship("CommissionData")
+    errors = relationship("Error", back_populates="submission")
+    processing_steps = relationship("ProcessingStep", back_populates="submission")
 
 
-class ProcessingStepDTO(Base):
+class ProcessingStep(Base):
     __tablename__ = 'processing_steps'
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     step_num = Column(Integer)
     description = Column(String)
+    submission = relationship("Submission", back_populates="processing_steps")
     
 
-class ErrorDTO(Base):
+class Error(Base):
     __tablename__ = 'errors'
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     row_index = Column(Integer)
     reason = Column(Integer)
     row_data = Column(TEXT)
+    submission = relationship("Submission", back_populates="errors")
 
 
-class FinalCommissionDataDTO(Base):
-    __tablename__ = 'final_commission_data'
+class CommissionData(Base):
+    __tablename__ = 'commission_data'
     row_id = Column(Integer,primary_key=True)
     recorded_at = Column(DateTime, default = datetime.now())
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))
     inv_amt = Column(Float)
     comm_amt = Column(Float)
-    rep_customer = relationship("MapRepToCustomer", back_populates="commission_data")
+    map_rep_customer = relationship("MapRepToCustomer", back_populates="commission_data")
+    submission = relationship("Submission", back_populates="commission_data")
 
-setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken
+setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI(Base)

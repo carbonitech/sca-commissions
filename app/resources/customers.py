@@ -13,17 +13,6 @@ def get_db():
     finally:
         db.close()
 
-class Customer(BaseModel):
-    name: str
-
-class QueryArgs(BaseModel):
-    # TODO : the json:api specification has parameters like fields using a bracket notation (i.e. fields[some_field] instead of fields=some_field) 
-    # meaning that the default behavior, using equals, is causing most of these parameters to not work
-    include: str|None = None
-    fields: str|None = None
-    sort: str|None = None
-    page: str|None = None
-    filter: str|None = None
 
 
 @router.get("", tags=["customers"])

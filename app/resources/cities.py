@@ -25,6 +25,8 @@ async def get_city_by_id(city_id: int, request: Request, db: Session=Depends(get
     customer = api.get_city_jsonapi(db, city_id, query)
     return customer
 
+# TODO implement these routes in JSON:API
+
 # @router.post("/", tags=["cities"])
 # async def add_a_city(city:City = Depends(City.as_form)):
 #     all_cities = api.get_cities()

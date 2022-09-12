@@ -16,14 +16,14 @@ def get_db():
 @router.get("", tags=["states"])
 async def all_states(request: Request, db: Session=Depends(get_db)):
     query = request.query_params
-    customers = api.get_many_states_jsonapi(db,query)
-    return customers
+    return api.get_many_states_jsonapi(db,query)
 
 @router.get("/{state_id}", tags=["states"])
 async def state_by_id(state_id: int, request: Request, db: Session=Depends(get_db)):
     query = request.query_params
-    customer = api.get_state_jsonapi(db, state_id, query)
-    return customer
+    return api.get_state_jsonapi(db, state_id, query)
+
+# TODO implement these routes in JSON:API
 
 # @router.post("/", tags=["states"])
 # async def add_a_state(new_state: str = Form()):

@@ -18,14 +18,12 @@ def get_db():
 @router.get("", tags=["customers"])
 async def all_customers(request: Request, db: Session=Depends(get_db)):
     query = request.query_params
-    customers = api.get_many_customers_jsonapi(db,query)
-    return customers
+    return api.get_many_customers_jsonapi(db,query)
 
 @router.get("/{customer_id}", tags=["customers"])
 async def customer_by_id(customer_id: int, request: Request, db: Session=Depends(get_db)):
     query = request.query_params
-    customer = api.get_customer_jsonapi(db, customer_id, query)
-    return customer
+    return api.get_customer_jsonapi(db, customer_id, query)
 
 # TODO implement these routes in JSON:API
 

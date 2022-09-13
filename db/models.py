@@ -61,7 +61,7 @@ class CustomerBranch(Base):
     city_id = Column(Integer, ForeignKey("cities.id"))
     state_id = Column(Integer, ForeignKey("states.id"))
     deleted = Column(DateTime)
-    rep = relationship("MapRepToCustomer", back_populates="branch")
+    representative = relationship("MapRepToCustomer", back_populates="branch")
     customer = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")
     state_name = relationship("State", back_populates="branch_states")
@@ -74,7 +74,7 @@ class MapRepToCustomer(Base):
     orphaned = Column(DateTime)
     commission_data = relationship("CommissionData", back_populates="map_rep_customer")
     rep_name = relationship("Representative", back_populates="branches")
-    branch = relationship("CustomerBranch", back_populates="rep")
+    branch = relationship("CustomerBranch", back_populates="representative")
 
 
 class Representative(Base):

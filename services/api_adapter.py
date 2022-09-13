@@ -592,3 +592,11 @@ class ApiAdapter:
     def get_many_submissions_jsonapi(self, db: Session, query: dict) -> dict:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
         return models.serializer.get_collection(db,query,model_name)
+
+    def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict) -> dict:
+        model_name = hyphenate_name(MANUFACTURERS.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,manuf_id)
+
+    def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> dict:
+        model_name = hyphenate_name(MANUFACTURERS.__tablename__)
+        return models.serializer.get_collection(db,query,model_name)

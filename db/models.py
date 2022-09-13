@@ -13,14 +13,14 @@ class City(Base):
     name = Column(String)
     deleted = Column(DateTime)
     branch_cities = relationship("CustomerBranch", back_populates="city_name")
-    map_names = relationship("MapCityName", back_populates="city_name")
+    map_city_names = relationship("MapCityName", back_populates="city_name")
 
 class MapCityName(Base):
     __tablename__ = 'map_city_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
     city_id = Column(Integer, ForeignKey("cities.id"))
-    city_name = relationship("City", back_populates="map_names")
+    city_name = relationship("City", back_populates="map_city_names")
 
 
 class State(Base):
@@ -29,14 +29,14 @@ class State(Base):
     name = Column(String)
     deleted = Column(DateTime)
     branch_states = relationship("CustomerBranch", back_populates="state_name")
-    map_names = relationship("MapStateName", back_populates="state_name")
+    map_state_names = relationship("MapStateName", back_populates="state_name")
 
 class MapStateName(Base):
     __tablename__ = 'map_state_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
     state_id = Column(Integer, ForeignKey("states.id"))
-    state_name = relationship("State", back_populates="map_names")
+    state_name = relationship("State", back_populates="map_state_names")
 
 
 class Customer(Base):
@@ -45,14 +45,14 @@ class Customer(Base):
     name = Column(String)
     deleted = Column(DateTime)
     customer_branches = relationship("CustomerBranch", back_populates="customer")
-    map_names = relationship("MapCustomerName", back_populates="customer")
+    map_customer_name = relationship("MapCustomerName", back_populates="customer")
 
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    customer = relationship("Customer", back_populates="map_names")
+    customer = relationship("Customer", back_populates="map_customer_name")
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
@@ -141,7 +141,7 @@ class Error(Base):
 
 class CommissionData(Base):
     __tablename__ = 'commission_data'
-    row_id = Column(Integer,primary_key=True)
+    id = Column(Integer,primary_key=True)
     recorded_at = Column(DateTime, default = datetime.now())
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))

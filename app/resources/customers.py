@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Form, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter

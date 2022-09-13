@@ -1,10 +1,10 @@
 from io import BytesIO
 import typing
-import json
 import calendar
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Form, File, Depends
+from fastapi import APIRouter, HTTPException, Form, File, Depends, Request
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, validator
 from pandas import ExcelWriter
@@ -19,7 +19,14 @@ from app.resources.pydantic_form import as_form
 
 db = db_services.DatabaseServices()
 api = ApiAdapter()
-router = APIRouter(prefix="/commissions")
+router = APIRouter(prefix="/commission-data")
+
+def get_db():
+    db = api.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @as_form
 class CustomCommissionData(BaseModel):
@@ -49,12 +56,21 @@ class ExcelFileResponse(StreamingResponse):
         self.raw_headers.append((b"Content-Disposition",f"attachment; filename={filename}.xlsx".encode('latin-1')))
 
 
-@router.get("/", tags=['commissions'])
-async def get_commission_data():
-    return {"data": json.loads(api.commission_data_with_all_names().to_json(orient="records"))}
+@router.get("", tags=['commissions'])
+async def commission_data(request: Request, db: Session=Depends(get_db)):
+    query = request.query_params
+    return api.get_all_commission_data_jsonapi(db,query)
+
+@router.get("/{row_id}")
+async def get_commission_data_row(row_id: int, request: Request, db: Session=Depends(get_db)):
+    query = request.query_params
+    return api.get_commission_data_by_id_jsonapi(db,row_id,query)
 
 @router.get("/download", tags=['commissions'], response_class=ExcelFileResponse)
 async def download_commission_data():
+    """
+    TODO: make compliant with JSON:API
+    """
     bfile = BytesIO()
     with ExcelWriter(bfile) as file:
         api.commission_data_with_all_names().to_excel(file,sheet_name="data",index=False)

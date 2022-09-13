@@ -18,4 +18,4 @@ def get_related_handler(primary:str, id_:int, secondary:str, db: Session=Depends
 
 @router.get("/{primary}/{id_}/relationships/{secondary}", tags=["relationships"])
 def get_self_relationship_handler(primary:str, id_:int, secondary:str, db: Session=Depends(get_db)):
-    raise HTTPException(status_code=501, detail="self relationship links not implemented")
+    return api.get_relationship(db,primary,id_,secondary)

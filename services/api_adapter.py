@@ -550,6 +550,9 @@ class ApiAdapter:
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
         return models.serializer.get_related(db,{},primary,id_,secondary)
 
+    def get_relationship(self, db: Session, primary: str, id_: int, secondary: str) -> dict:
+        return models.serializer.get_relationship(db,{},primary,id_,secondary)
+
     def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> dict:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,cust_id)

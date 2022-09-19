@@ -9,6 +9,7 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
+from starlette.requests import QueryParams
 
 from app import event
 from db import models
@@ -34,6 +35,7 @@ MAPPING_TABLES = {
     "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
+MAX_PAGE_SIZE: int = 300
 
 load_dotenv()
 
@@ -548,6 +550,96 @@ class ApiAdapter:
 
     # JSON:API implementation - passing in a db session instead of creating one
     # TODO: THE RESOURCE NAME IS DETERMINED BY THE CLASS MODEL NAME, HYPHENATED AND PLURALIZED, NOT THE __tablename__ ATTR
+
+    def _add_pagination(self, query: QueryParams, db: Session, resource) -> tuple[QueryParams|dict, dict]:
+        resource_name: str = resource.__jsonapi_type__
+        query_as_dict = query._dict
+        size = MAX_PAGE_SIZE
+        offset = 0
+        row_count: int = db.execute(
+                sqlalchemy.select([sqlalchemy.func.count()])
+                .select_from(resource)
+                ).scalar()
+        if row_count == 0:
+            return query_as_dict, {}
+        passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
+        link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
+        if passed_args:
+            if {'number', 'size'} == set(passed_args.keys()):
+                number = int(passed_args['number'])
+                size = min(int(passed_args['size']), MAX_PAGE_SIZE)
+                offset = (number-1) * size
+            elif {'limit', 'offset'} == set(passed_args.keys()):
+                offset = int(passed_args['offset'])
+                limit = int(passed_args['limit'])
+                size = min(limit, MAX_PAGE_SIZE)
+                link_template = "/{resource_name}?page[offset]={offset}&page[limit]={limit}"
+
+        total_pages = -(row_count // -size) # ceiling division
+        if total_pages == 1:
+            query_as_dict = {k:v for k,v in query_as_dict.items() if not k.startswith("page")} # remove any pagination if there aren't any pages
+            return query_as_dict, {}
+        else:
+            current_page = (offset // size) + 1
+            first_page = 1
+            last_page = total_pages
+            if current_page > last_page:
+                current_page = last_page
+                offset = (current_page-1)*size
+            next_page = current_page + 1 if current_page != last_page else None
+            prev_page = current_page - 1 if current_page != 1 else None
+            if "number" in link_template:
+                pages = {
+                    "first": first_page,
+                    "last": last_page,
+                    "next": next_page,
+                    "prev": prev_page
+                }
+                links = {
+                    link_name: link_template.format(
+                        resource_name=resource_name,
+                        page_num=page_val, 
+                        page_size=size
+                        ) 
+                    for link_name,page_val in pages.items() 
+                    if page_val is not None
+                }
+                query_as_dict.update({
+                    "page[number]": str(current_page-1),
+                    "page[size]": str(size)
+                })
+            else:
+                offsets = {
+                    "first": 0,
+                    "last": (total_pages - 1) * size,
+                    "next": (next_page - 1) * size if next_page is not None else None,
+                    "prev": (prev_page - 1) * size if prev_page is not None else None
+                }
+                links = {
+                    link_name: link_template.format(
+                        resource_name=resource_name,
+                        offset=offset_val,
+                        limit=size
+                        )
+                    for link_name,offset_val in offsets.items() 
+                    if offset_val is not None
+                }
+                query_as_dict.update({
+                    "page[offset]": str(offset),
+                    "page[limit]": str(size)
+                })
+
+
+        result_addition = {
+            "meta":{"totalPages": total_pages, "currentPage": current_page},
+            "links": links
+        }
+        return query_as_dict, result_addition
+
+    def _add_default_sort(self, query: dict) -> None:
+        if "sort" not in query:
+            query.update({"sort": "id"})
+
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
         return models.serializer.get_related(db,{},primary,id_,secondary)
 
@@ -560,11 +652,21 @@ class ApiAdapter:
 
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,CUSTOMERS)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_many_cities_jsonapi(self, db: Session, query: dict):
         model_name = hyphenate_name(CITIES.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,CITIES)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CITIES.__tablename__)
@@ -576,7 +678,12 @@ class ApiAdapter:
 
     def get_many_states_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(STATES.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,STATES)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(REPS.__tablename__)
@@ -584,7 +691,12 @@ class ApiAdapter:
 
     def get_many_reps_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(REPS.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,REPS)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
@@ -592,7 +704,12 @@ class ApiAdapter:
 
     def get_many_submissions_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,SUBMISSIONS_TABLE)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
@@ -600,7 +717,12 @@ class ApiAdapter:
 
     def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,MANUFACTURERS)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp
 
     def get_commission_data_by_id_jsonapi(self, db: Session, row_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
@@ -608,4 +730,9 @@ class ApiAdapter:
 
     def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
-        return models.serializer.get_collection(db,query,model_name)
+        new_query, additional_response = self._add_pagination(query,db,COMMISSION_DATA_TABLE)
+        self._add_default_sort(new_query)
+        json_api_resp = models.serializer.get_collection(db,new_query,model_name)
+        if additional_response:
+            json_api_resp.data.update(additional_response)
+        return json_api_resp

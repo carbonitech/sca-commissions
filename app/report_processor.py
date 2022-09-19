@@ -172,8 +172,11 @@ class ReportProcessor:
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         ppdata = preprocessor.preprocess()
         # send events from preprocessing using the manufacturuer (domain obj)
-        for event_arg_tuple in ppdata.events: 
-            event.post_event(*event_arg_tuple)
+        for step_num, event_arg_tuple in enumerate(ppdata.events):
+            if step_num == 0:
+                event.post_event(*event_arg_tuple,start_step=1)
+            else:
+                event.post_event(*event_arg_tuple)
         self.staged_data = ppdata.data.copy()
         self.ppdata = ppdata
         return self

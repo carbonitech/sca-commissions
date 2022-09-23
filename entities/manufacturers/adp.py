@@ -60,6 +60,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
         events = []
+        default_customer_name = "COBURN" # how to get around this?
 
         comm_col_before = data.columns.values[-1]
         comm_col_after = "Commission"
@@ -91,7 +92,7 @@ class PreProcessor(AbstractPreProcessor):
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
         
-        result = pd.DataFrame([["COBURN", "VARIOUS", "MS", total_inv_adj, total_comm_adj]], columns=self.result_columns)
+        result = pd.DataFrame([[default_customer_name, "VARIOUS", "MS", total_inv_adj, total_comm_adj]], columns=self.result_columns)
         ref_cols = self.result_columns[:3]
 
         for ref_col in ref_cols:
@@ -100,7 +101,26 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, ref_cols, *ref_cols, events)
 
 
-    def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
+    def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+        events = []
+        default_customer_name = "RE MICHEL" # how to get around this?
+
+        data = data.dropna(subset=data.columns.tolist()[0])
+        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+        data = data.dropna(axis=1, how='all')
+        events.append(("Formatting","removed columns with no values",self.submission_id))
+        data.loc[:,"branch_number"] = data.pop("Branch#").astype(int)
+        data.loc[:,"inv_amt"] = data.pop("Cost")*0.75
+        events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",self.submission_id))
+        data.loc[:,"comm_amt"] = data["inv_amt"]*0.03
+        events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",self.submission_id))
+        data.loc[:,"customer"] = default_customer_name
+        events.append(("Formatting","added a column with customer name {default_customer_name} in all rows",self.submission_id))
+        result = data.loc[:,["branch_number", "customer", "inv_amt", "comm_amt"]]
+
+        # return PreProcessedData(result, )
+        
+
     def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
 
     def preprocess(self) -> PreProcessedData:

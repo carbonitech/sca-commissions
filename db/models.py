@@ -63,20 +63,11 @@ class CustomerBranch(Base):
     store_number = Column(Integer)
     deleted = Column(DateTime)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
-    representative = relationship("MapRepToCustomer", back_populates="branch")
     customer = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")
     state_name = relationship("State", back_populates="branch_states")
-
-class MapRepToCustomer(Base):
-    __tablename__ = 'map_reps_customers'
-    id = Column(Integer,primary_key=True)
-    rep_id = Column(Integer, ForeignKey("representatives.id"))
-    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
-    orphaned = Column(DateTime)
-    commission_data = relationship("CommissionData", back_populates="map_rep_customer")
-    rep_name = relationship("Representative", back_populates="branches")
-    branch = relationship("CustomerBranch", back_populates="representative")
+    representative = relationship("Representative", back_populates="branch")
+    commission_data = relationship("CommissionData", back_populates="branch")
 
 
 class Representative(Base):
@@ -87,7 +78,7 @@ class Representative(Base):
     initials = Column(String)
     date_joined = Column(DateTime)
     deleted = Column(DateTime)
-    branches = relationship("MapRepToCustomer", back_populates="rep_name")
+    branch = relationship("CustomerBranch", back_populates="representative")
 
 
 class Manufacturer(Base):
@@ -146,10 +137,10 @@ class CommissionData(Base):
     id = Column(Integer,primary_key=True)
     recorded_at = Column(DateTime, default = datetime.now())
     submission_id = Column(Integer, ForeignKey("submissions.id"))
-    map_rep_customer_id = Column(Integer, ForeignKey("map_reps_customers.id"))
+    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     inv_amt = Column(Float)
     comm_amt = Column(Float)
-    map_rep_customer = relationship("MapRepToCustomer", back_populates="commission_data")
+    branch = relationship("CustomerBranch", back_populates="commission_data")
     submission = relationship("Submission", back_populates="commission_data")
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

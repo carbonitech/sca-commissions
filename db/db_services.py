@@ -20,7 +20,7 @@ REPS = models.Representative
 CUSTOMER_NAME_MAP = models.MapCustomerName
 CITY_NAME_MAP = models.MapCityName
 STATE_NAME_MAP = models.MapStateName
-REPS_CUSTOMERS_MAP = models.MapRepToCustomer
+REPS_CUSTOMERS_MAP = None
 MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
@@ -30,7 +30,7 @@ ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
-    "map_reps_customers": models.MapRepToCustomer,
+    # "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
 

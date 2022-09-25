@@ -570,7 +570,7 @@ class ApiAdapter:
                 .select_from(resource)
                 ).scalar()
         if row_count == 0:
-            return query_as_dict, {}
+            return query_as_dict, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
         link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
         if passed_args:
@@ -587,7 +587,7 @@ class ApiAdapter:
         total_pages = -(row_count // -size) # ceiling division
         if total_pages == 1:
             query_as_dict = {k:v for k,v in query_as_dict.items() if not k.startswith("page")} # remove any pagination if there aren't any pages
-            return query_as_dict, {}
+            return query_as_dict, {"meta":{"totalPages": 1, "currentPage": 1}} # include info that there's only one "page" even though no pagination occurred
         else:
             current_page = (offset // size) + 1
             first_page = 1

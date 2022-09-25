@@ -16,6 +16,7 @@ from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
 from services.api_adapter import ApiAdapter
 from app.resources.pydantic_form import as_form
+from app.jsonapi import Query, convert_to_jsonapi
 
 db = db_services.DatabaseServices()
 api = ApiAdapter()
@@ -57,14 +58,20 @@ class ExcelFileResponse(StreamingResponse):
 
 
 @router.get("", tags=['commissions'])
-async def commission_data(request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_all_commission_data_jsonapi(db,query)
+async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_all_commission_data_jsonapi(db,jsonapi_query)
 
 @router.get("/{row_id}")
-async def get_commission_data_row(row_id: int, request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_commission_data_by_id_jsonapi(db,row_id,query)
+async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query)
 
 @router.get("/download", tags=['commissions'], response_class=ExcelFileResponse)
 async def download_commission_data():

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.jsonapi import Query, convert_to_jsonapi
 
 from services.api_adapter import ApiAdapter
 
@@ -16,14 +16,20 @@ def get_db():
 
 
 @router.get("", tags=["reps"])
-async def all_reps(request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_many_reps_jsonapi(db,query)
+async def all_reps(query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_many_reps_jsonapi(db,jsonapi_query)
 
 @router.get("/{rep_id}", tags=["reps"])
-async def rep_by_id(rep_id: int, request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_rep_jsonapi(db, rep_id, query)
+async def rep_by_id(rep_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_rep_jsonapi(db, rep_id, jsonapi_query)
 
 # TODO implement these routes in JSON:API
 

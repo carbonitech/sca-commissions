@@ -557,9 +557,12 @@ class ApiAdapter:
     # JSON:API implementation - passing in a db session instead of creating one
     # TODO: THE RESOURCE NAME IS DETERMINED BY THE CLASS MODEL NAME, HYPHENATED AND PLURALIZED, NOT THE __tablename__ ATTR
 
-    def _add_pagination(self, query: QueryParams, db: Session, resource) -> tuple[QueryParams|dict, dict]:
+    def _add_pagination(self, query: QueryParams|dict, db: Session, resource) -> tuple[QueryParams|dict, dict]:
         resource_name: str = resource.__jsonapi_type__
-        query_as_dict = query._dict
+        if isinstance(query, QueryParams):
+            query_as_dict = query._dict
+        else:
+            query_as_dict = query
         size = MAX_PAGE_SIZE
         offset = 0
         row_count: int = db.execute(

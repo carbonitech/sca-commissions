@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter
+from app.jsonapi import Query, convert_to_jsonapi
 
 api = ApiAdapter()
 router = APIRouter(prefix="/cities")
@@ -14,15 +14,21 @@ def get_db():
         db.close()
 
 @router.get("", tags=["cities"])
-async def get_all_cities(request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    cities = api.get_many_cities_jsonapi(db,query)
+async def get_all_cities(query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    cities = api.get_many_cities_jsonapi(db,jsonapi_query)
     return cities
 
 @router.get("/{city_id}", tags=["cities"])
-async def get_city_by_id(city_id: int, request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    customer = api.get_city_jsonapi(db, city_id, query)
+async def get_city_by_id(city_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    customer = api.get_city_jsonapi(db, city_id, jsonapi_query)
     return customer
 
 # TODO implement these routes in JSON:API

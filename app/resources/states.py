@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter
+from app.jsonapi import Query, convert_to_jsonapi
 
 api = ApiAdapter()
 router = APIRouter(prefix="/states")
@@ -14,14 +14,20 @@ def get_db():
         db.close()
 
 @router.get("", tags=["states"])
-async def all_states(request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_many_states_jsonapi(db,query)
+async def all_states(query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_many_states_jsonapi(db,jsonapi_query)
 
 @router.get("/{state_id}", tags=["states"])
-async def state_by_id(state_id: int, request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_state_jsonapi(db, state_id, query)
+async def state_by_id(state_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_state_jsonapi(db, state_id, jsonapi_query)
 
 # TODO implement these routes in JSON:API
 

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from services.api_adapter import ApiAdapter
+from app.jsonapi import Query, convert_to_jsonapi
 
 api = ApiAdapter()
 router = APIRouter(prefix="/manufacturers")
@@ -14,13 +14,19 @@ def get_db():
         db.close()
 
 @router.get("", tags=["manufacturers"])
-async def all_manufacturers(request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_many_manufacturers_jsonapi(db,query)
+async def all_manufacturers(query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_many_manufacturers_jsonapi(db,jsonapi_query)
 @router.get("/{manuf_id}", tags=["manufacturers"])
-async def manufacturer_by_id(manuf_id: int, request: Request, db: Session=Depends(get_db)):
-    query = request.query_params
-    return api.get_manufacturer_jsonapi(db,manuf_id,query)
+async def manufacturer_by_id(manuf_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    try:
+        jsonapi_query = convert_to_jsonapi(query)
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))
+    return api.get_manufacturer_jsonapi(db,manuf_id,jsonapi_query)
     
 # @router.post("/", tags=["manufacturers"])
 # async def add_a_manufacturer(manuf_name: Manufacturer):

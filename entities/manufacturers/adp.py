@@ -117,7 +117,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,"customer"] = default_customer_name
         events.append(("Formatting","added a column with customer name {default_customer_name} in all rows",self.submission_id))
         result = data.loc[:,["branch_number", "customer", "inv_amt", "comm_amt"]]
-
+        # TODO: add store_number column and seperate flow if the column isn't null? or an attr flag?
         # return PreProcessedData(result, )
         
 

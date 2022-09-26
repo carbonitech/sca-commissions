@@ -110,7 +110,7 @@ async def create_db():
             'map_customer_name': models.MapCustomerName,
             'map_city_names': models.MapCityName,
             'map_state_names': models.MapStateName,
-            'map_reps_customers': models.MapRepToCustomer,
+            # 'map_reps_customers': models.MapRepToCustomer,
             'report_submissions_log': models.Submission,
             'report_processing_steps_log': models.ProcessingStep,
             'current_errors': models.Error,

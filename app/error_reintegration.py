@@ -21,7 +21,7 @@ class Reintegrator:
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.branches = database.get_branches()
-        self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
+        # self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
         self.target_err = target_err
         self.error_table = pd.concat(   # expand row_data into dataframe columns
             [
@@ -128,7 +128,7 @@ class Reintegrator:
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows will get kicked to errors and removed
         """
-        new_column: str = "branch_id"
+        new_column: str = "customer_branch_id"
         left_on_list = ["customer","city","state"]
 
         merged_with_branches = pd.merge(
@@ -179,7 +179,7 @@ class Reintegrator:
         return self
 
     def drop_extra_columns(self) -> 'Reintegrator':
-        self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
+        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt"]]
         return self
 
 
@@ -211,12 +211,12 @@ class Reintegrator:
             .filter_out_any_rows_unmapped() \
             .add_branch_id()                \
             .filter_out_any_rows_unmapped() \
-            .add_rep_customer_ids()         \
-            .filter_out_any_rows_unmapped() \
             .drop_extra_columns()           \
             .filter_out_any_rows_unmapped() \
             .insert_recorded_at_column()    \
             .register_commission_data()
+            # .add_rep_customer_ids()         \
+            # .filter_out_any_rows_unmapped() \
         except EmptyTableException:
             pass
         return

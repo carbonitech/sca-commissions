@@ -21,7 +21,7 @@ class ReportProcessor:
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.branches = database.get_branches()
-        self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
+        # self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
 
     def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:
         return self.ppdata.data.iloc[indices]
@@ -94,7 +94,7 @@ class ReportProcessor:
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows will get kicked to errors and removed
         """
-        new_column: str = "branch_id"
+        new_column: str = "customer_branch_id"
         left_on_list = self.ppdata.map_rep_customer_ref_cols
 
         merged_with_branches = pd.merge(
@@ -151,7 +151,7 @@ class ReportProcessor:
         return self
 
     async def drop_extra_columns(self) -> 'ReportProcessor':
-        self.staged_data = self.staged_data.loc[:,["submission_id","map_rep_customer_id","inv_amt","comm_amt"]]
+        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt"]]
         return self
 
     async def register_commission_data(self) -> 'ReportProcessor':
@@ -210,8 +210,8 @@ class ReportProcessor:
         await self.filter_out_any_rows_unmapped()
         await self.add_branch_id()
         await self.filter_out_any_rows_unmapped()
-        await self.add_rep_customer_ids()
-        await self.filter_out_any_rows_unmapped()
+        # await self.add_rep_customer_ids()
+        # await self.filter_out_any_rows_unmapped()
         await self.drop_extra_columns()
         await self.filter_out_any_rows_unmapped()
         await self.insert_recorded_at_column()

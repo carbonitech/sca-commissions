@@ -30,6 +30,13 @@ def get_db():
         db.close()
 
 @as_form
+class CommissionFileInfo(BaseModel):
+    report_id: int
+    manufacturer_id: int
+    reporting_month: int
+    reporting_year: int
+
+@as_form
 class CustomCommissionData(BaseModel):
     inv_amt: float
     comm_amt: float
@@ -84,20 +91,24 @@ async def download_commission_data():
     bfile.seek(0)
     return ExcelFileResponse(content=bfile, filename="commissions")
 
-@router.post("/", tags=['commissions'])
+@router.post("", tags=['commissions'])  # TODO remove trailing slash
 async def process_data_from_a_file(
-        report_id: int,
-        manufacturer_id: int,
+        commission_info: CommissionFileInfo = Depends(CommissionFileInfo.as_form),
         file: bytes = File(),
-        reporting_month: int = Form(),
-        reporting_year: int = Form()
     ):
+
+    report_id = commission_info.report_id
+    reporting_month = commission_info.reporting_month
+    reporting_year = commission_info.reporting_year
+    manufacturer_id = commission_info.manufacturer_id
+
     existing_submissions = api.get_all_submissions()
     existing_submission = existing_submissions.loc[
         (existing_submissions["reporting_month"] == reporting_month)
         & (existing_submissions["reporting_year"] == reporting_year)
         & (existing_submissions["report_id"] == report_id)
     ]
+
     if not existing_submission.empty:
         report_name = existing_submission['report_name'].squeeze()
         manuf = existing_submission['name'].squeeze()
@@ -113,7 +124,12 @@ async def process_data_from_a_file(
         file_obj = CommissionFile(file)
     except AssertionError as e:
         raise HTTPException(400, detail=str(e))
-    new_sub = submission.NewSubmission(file_obj,reporting_month,reporting_year,report_id,manufacturer_id)
+    new_sub = submission.NewSubmission(
+            file_obj,
+            reporting_month,
+            reporting_year,
+            report_id,
+            manufacturer_id)
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
     await mfg_report_processor.process_and_commit()

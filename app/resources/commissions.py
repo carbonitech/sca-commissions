@@ -2,7 +2,7 @@ from io import BytesIO
 import typing
 import calendar
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Form, File, Depends, Request
+from fastapi import APIRouter, HTTPException, File, Depends, BackgroundTasks, Response, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
@@ -28,13 +28,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-@as_form
-class CommissionFileInfo(BaseModel):
-    report_id: int
-    manufacturer_id: int
-    reporting_month: int
-    reporting_year: int
 
 @as_form
 class CustomCommissionData(BaseModel):
@@ -91,16 +84,30 @@ async def download_commission_data():
     bfile.seek(0)
     return ExcelFileResponse(content=bfile, filename="commissions")
 
-@router.post("", tags=['commissions'])  # TODO remove trailing slash
-async def process_data_from_a_file(
-        commission_info: CommissionFileInfo = Depends(CommissionFileInfo.as_form),
-        file: bytes = File(),
-    ):
+async def process_commissions_file(file: bytes, report_id: int, reporting_month: int, reporting_year: int, manufacturer_id: int):
+    try:
+        file_obj = CommissionFile(file)
+    except AssertionError as e:
+        raise HTTPException(400, detail=str(e))
+    new_sub = submission.NewSubmission(
+            file_obj,
+            reporting_month,
+            reporting_year,
+            report_id,
+            manufacturer_id)
+    mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
+    mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
+    await mfg_report_processor.process_and_commit()
 
-    report_id = commission_info.report_id
-    reporting_month = commission_info.reporting_month
-    reporting_year = commission_info.reporting_year
-    manufacturer_id = commission_info.manufacturer_id
+@router.post("", tags=['commissions'])
+async def process_data_from_a_file(
+        bg_tasks: BackgroundTasks,
+        file: bytes = File(),
+        report_id: int = Form(),
+        reporting_month: int = Form(),
+        reporting_year: int = Form(),
+        manufacturer_id: int = Form(),
+    ):
 
     existing_submissions = api.get_all_submissions()
     existing_submission = existing_submissions.loc[
@@ -120,20 +127,10 @@ async def process_data_from_a_file(
             f"{report_month} {report_year} was already submitted at " \
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
-    try:
-        file_obj = CommissionFile(file)
-    except AssertionError as e:
-        raise HTTPException(400, detail=str(e))
-    new_sub = submission.NewSubmission(
-            file_obj,
-            reporting_month,
-            reporting_year,
-            report_id,
-            manufacturer_id)
-    mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
-    mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
-    await mfg_report_processor.process_and_commit()
-    return
+
+    bg_tasks.add_task(process_commissions_file, file, report_id, reporting_month, reporting_year, manufacturer_id)
+
+    return Response(status_code=202)
 
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(

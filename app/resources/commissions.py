@@ -1,6 +1,8 @@
 import calendar
 import secrets
 import json
+from dotenv import load_dotenv
+from os import getenv
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, File, Depends, BackgroundTasks, Response, Form
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from services.api_adapter import ApiAdapter
 from app.resources.pydantic_form import as_form
 from app.jsonapi import Query, convert_to_jsonapi
 
+load_dotenv()
 db = db_services.DatabaseServices()
 api = ApiAdapter()
 router = APIRouter(prefix="/commission-data")
@@ -74,6 +77,7 @@ async def commission_data_file_link(
     """
     Generates a download link for the commission data
     """
+    duration = float(getenv('FILE_LINK_DURATION'))
     _now = datetime.now()
     hash_ = secrets.token_urlsafe()
     record = {
@@ -81,7 +85,7 @@ async def commission_data_file_link(
         "type": "commission_data",
         "query_args": json.dumps(query_params.dict(exclude_none=True)),
         "created_at": _now,
-        "expires_at": _now + timedelta(seconds=30)
+        "expires_at": _now + timedelta(seconds=60*duration)
     }
     api.generate_file_record(db, record)
     return {"downloadLink": f"/download?file={hash_}"}

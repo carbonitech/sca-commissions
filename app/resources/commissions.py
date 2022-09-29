@@ -1,13 +1,10 @@
-from io import BytesIO
-import typing
 import calendar
-from datetime import datetime
+import secrets
+import json
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, File, Depends, BackgroundTasks, Response, Form
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from starlette.background import BackgroundTask
 from pydantic import BaseModel, validator
-from pandas import ExcelWriter
 
 from db import db_services
 from app import report_processor
@@ -43,19 +40,15 @@ class CustomCommissionData(BaseModel):
     def scale_up_comm_amt(cls, value):
         return value*100
 
-
-class ExcelFileResponse(StreamingResponse):
-    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    def __init__(self, 
-            content: typing.Any, 
-            status_code: int = 200, 
-            headers: typing.Optional[typing.Mapping[str, str]] = None, 
-            media_type: typing.Optional[str] = None, 
-            background: typing.Optional[BackgroundTask] = None, 
-            filename: str = "download") -> None:
-        super().__init__(content, status_code, headers, media_type, background)
-        self.raw_headers.append((b"Content-Disposition",f"attachment; filename={filename}.xlsx".encode('latin-1')))
-
+class CommissionDataDownloadParameters(BaseModel):
+    filename: str = "commissions"
+    startDate: str|None = None
+    endDate: str|None = None
+    manufacturer: int|None = None
+    customer: int|None = None
+    city: int|None = None
+    state: int|None = None
+    representative: int|None = None
 
 @router.get("", tags=['commissions'])
 async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
@@ -73,16 +66,26 @@ async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Sessi
         raise HTTPException(status_code=400,detail=str(err))
     return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query)
 
-@router.get("/download", tags=['commissions'], response_class=ExcelFileResponse)
-async def download_commission_data():
+@router.post("/download", tags=['commissions'])
+async def commission_data_file_link(
+        query_params: CommissionDataDownloadParameters,
+        db: Session=Depends(get_db)
+    ):
     """
-    TODO: make compliant with JSON:API
+    Generates a download link for the commission data
     """
-    bfile = BytesIO()
-    with ExcelWriter(bfile) as file:
-        api.commission_data_with_all_names().to_excel(file,sheet_name="data",index=False)
-    bfile.seek(0)
-    return ExcelFileResponse(content=bfile, filename="commissions")
+    _now = datetime.now()
+    hash_ = secrets.token_urlsafe()
+    record = {
+        "hash": hash_,
+        "type": "commission_data",
+        "query_args": json.dumps(query_params.dict(exclude_none=True)),
+        "created_at": _now,
+        "expires_at": _now + timedelta(seconds=30)
+    }
+    api.generate_file_record(db, record)
+    return {"downloadLink": f"/download?file={hash_}"}
+
 
 async def process_commissions_file(file: bytes, report_id: int, reporting_month: int, reporting_year: int, manufacturer_id: int):
     try:

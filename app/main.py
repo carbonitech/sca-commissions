@@ -83,6 +83,7 @@ app.include_router(resources.branches, dependencies=PROTECTED)
 app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
 app.include_router(resources.manufacturers, dependencies=PROTECTED)
+app.include_router(resources.downloads)
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()
@@ -114,7 +115,8 @@ async def create_db():
             'report_submissions_log': models.Submission,
             'report_processing_steps_log': models.ProcessingStep,
             'current_errors': models.Error,
-            'final_commission_data': models.CommissionData
+            'final_commission_data': models.CommissionData,
+            'file_downloads': models.FileDownloads
     }
     # load csv files
     tables_dir = './tests/db_tables'

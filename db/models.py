@@ -143,5 +143,16 @@ class CommissionData(Base):
     branch = relationship("CustomerBranch", back_populates="commission_data")
     submission = relationship("Submission", back_populates="commission_data")
 
+class FileDownloads(Base):
+    __tablename__ = "file_downloads"
+    id = Column(Integer,primary_key=True)
+    hash = Column(String)
+    type = Column(String)
+    query_args = Column(TEXT)
+    created_at = Column(DateTime)
+    expires_at = Column(DateTime)
+    downloaded = Column(Boolean, default=False)
+
+
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI(Base)

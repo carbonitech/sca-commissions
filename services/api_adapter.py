@@ -35,6 +35,7 @@ MAPPING_TABLES = {
     # "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
+DOWNLOADS = models.FileDownloads
 MAX_PAGE_SIZE: int = 300
 
 load_dotenv()
@@ -362,53 +363,71 @@ class ApiAdapter:
     def convert_month_from_number_to_name(month_num: int) -> str:
         return calendar.month_name[month_num]
 
-    def commission_data_with_all_names(self, submission_id:int = 0) -> pd.DataFrame:
+    def commission_data_with_all_names(self, submission_id:int = 0, **kwargs) -> pd.DataFrame:
         """runs sql query to produce the commission table format used by SCA
         and converts month number to name and cents to dollars before return
         
         Returns: pd.DataFrame"""
-        # commission_data_raw = COMMISSION_DATA_TABLE
-        # submission_data = SUBMISSIONS_TABLE
-        # reports = REPORTS
-        # manufacturers = MANUFACTURERS
-        # map_reps_to_customers = REPS_CUSTOMERS_MAP
-        # reps = REPS
-        # branches = BRANCHES
-        # customers = CUSTOMERS
-        # cities = CITIES
-        # states = STATES
-        # sql = sqlalchemy.select(commission_data_raw.row_id,
-        #     submission_data.reporting_year, submission_data.reporting_month,
-        #     manufacturers.name, reps.initials, customers.name,
-        #     cities.name, states.name, commission_data_raw.inv_amt,
-        #     commission_data_raw.comm_amt
-        #     ).select_from(commission_data_raw) \
-        #     .join(submission_data)             \
-        #     .join(reports)                     \
-        #     .join(manufacturers)               \
-        #     .join(map_reps_to_customers)       \
-        #     .join(reps)                        \
-        #     .join(branches)                    \
-        #     .join(customers)                   \
-        #     .join(cities)                      \
-        #     .join(states)                      \
-        #     .order_by(
-        #         submission_data.reporting_year.desc(),
-        #         submission_data.reporting_month.desc(),
-        #         customers.name.asc(),
-        #         cities.name.asc(),
-        #         states.name.asc()
-        #     )
+        commission_data_raw = COMMISSION_DATA_TABLE
+        submission_data = SUBMISSIONS_TABLE
+        reports = REPORTS
+        manufacturers = MANUFACTURERS
+        reps = REPS
+        branches = BRANCHES
+        customers = CUSTOMERS
+        cities = CITIES
+        states = STATES
+        sql = sqlalchemy.select(commission_data_raw.id,
+            submission_data.reporting_year, submission_data.reporting_month,
+            manufacturers.name, reps.initials, customers.name,
+            cities.name, states.name, commission_data_raw.inv_amt,
+            commission_data_raw.comm_amt
+            ).select_from(commission_data_raw) \
+            .join(submission_data)             \
+            .join(reports)                     \
+            .join(manufacturers)               \
+            .join(branches)                    \
+            .join(reps)                        \
+            .join(customers)                   \
+            .join(cities)                      \
+            .join(states)                      \
+            .order_by(
+                submission_data.reporting_year.desc(),
+                submission_data.reporting_month.desc(),
+                customers.name.asc(),
+                cities.name.asc(),
+                states.name.asc()
+            )
 
-        # if submission_id:
-        #     sql = sql.where(commission_data_raw.submission_id == submission_id)
-        # view_table = pd.read_sql(sql, con=self.engine)
-        # view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
-        #         "Customer Name","City","State","Inv Amt","Comm Amt"]
-        # view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
-        # view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
-        # view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
-        # return view_table
+        if submission_id:
+            sql = sql.where(commission_data_raw.submission_id == submission_id)
+
+        if (start_date := kwargs.get("startDate")):
+            sql = sql.where(sqlalchemy.and_(
+                submission_data.reporting_year >= start_date.year,
+                submission_data.reporting_month >= start_date.month))
+        if (end_date := kwargs.get("endDate")):
+            sql = sql.where(sqlalchemy.and_(
+                submission_data.reporting_year <= end_date.year,
+                submission_data.reporting_month <= end_date.month))
+        if(manufacturer := kwargs.get("manufacturer")):
+            sql = sql.where(manufacturers.id == manufacturer)
+        if(customer := kwargs.get("customer")):
+            sql = sql.where(customers.id == customer)
+        if(city := kwargs.get("city")):
+            sql = sql.where(cities.id == city)
+        if(state := kwargs.get("state")):
+            sql = sql.where(states.id == state)
+        if(representative := kwargs.get("representative")):
+            sql = sql.where(reps.id == representative)
+
+        view_table = pd.read_sql(sql, con=self.engine)
+        view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
+                "Customer Name","City","State","Inv Amt","Comm Amt"]
+        view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
+        view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
+        return view_table
 
     def get_commission_data_by_row(self, row_id: int) -> COMMISSION_DATA_TABLE:
         sql = sqlalchemy.select(COMMISSION_DATA_TABLE) \
@@ -552,6 +571,26 @@ class ApiAdapter:
         sql = sqlalchemy.update(CITIES).values(deleted=None).where(CITIES.id == city_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+
+
+    def generate_file_record(self, db: Session, record: dict):
+        sql = sqlalchemy.insert(DOWNLOADS).values(**record)
+        with db as session:
+            session.execute(sql)
+            session.commit()
+
+
+    def download_file_lookup(self, db: Session, hash: str):
+        sql = sqlalchemy.select(DOWNLOADS).where(DOWNLOADS.hash == hash)
+        with db as session:
+            return session.execute(sql).one_or_none()
+
+
+    def mark_file_downloaded(self, db: Session, hash: str):
+        sql = sqlalchemy.update(DOWNLOADS).values(downloaded = True).where(DOWNLOADS.hash == hash)
+        with db as session:
+            session.execute(sql)
+            session.commit()
 
 
     # JSON:API implementation - passing in a db session instead of creating one

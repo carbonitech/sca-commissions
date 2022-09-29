@@ -8,3 +8,4 @@ from app.resources.submissions import router as submissions
 from app.resources.cities import router as cities
 from app.resources.states import router as states
 from app.resources.relationships import router as relationships
+from app.resources.download import router as downloads

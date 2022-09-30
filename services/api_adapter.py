@@ -203,6 +203,13 @@ class ApiAdapter:
             session.commit()
         event.post_event("New Record", BRANCHES, **values)
         return
+    
+    def create_new_customer_branch_bulk(self, records=list[dict]):
+        sql = sqlalchemy.insert(BRANCHES)
+        with Session(bind=self.engine) as session:
+            session.execute(sql, records)
+            session.commit()
+        return
 
     def get_all_customer_name_mappings(self, customer_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS,CUSTOMER_NAME_MAP)\

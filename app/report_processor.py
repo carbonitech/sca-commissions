@@ -7,6 +7,7 @@ from entities.preprocessor import AbstractPreProcessor
 from entities.submission import NewSubmission
 from entities.error import ErrorType
 
+from services import api_adapter
 
 class ReportProcessor:
     
@@ -21,7 +22,10 @@ class ReportProcessor:
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.branches = database.get_branches()
-        # self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
+        self.api = api_adapter.ApiAdapter()
+
+    def reset_branch_ref(self):
+        self.branches = self.database.get_branches()
 
     def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:
         return self.ppdata.data.iloc[indices]
@@ -93,6 +97,7 @@ class ReportProcessor:
         """
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows will get kicked to errors and removed
+
         """
         new_column: str = "customer_branch_id"
         left_on_list = self.ppdata.map_rep_customer_ref_cols
@@ -104,36 +109,16 @@ class ReportProcessor:
         ) 
 
         new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
-        self.staged_data[new_column] = new_col_values
+        self.staged_data.loc[:, new_column] = new_col_values
 
-        no_match_indices = self.staged_data.loc[self.staged_data[new_column]==0].index.to_list()
-        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-        event.post_event(ErrorType(4), unmapped_no_match_table,submission_id=self.submission_id)
-        return self
-
-
-    async def add_rep_customer_ids(self) -> 'ReportProcessor':
-        """
-        adds a map_rep_customer id column by comparing the customer, city,
-        and state columns named in ref_columns to respective columns in a derived
-        reps-to-customer reference table
-        # TODO : CHANGE REFERENCE USED FOR MERGE TO USE JUST THE MAP-REP-CUSTOMERS TABLE AS-IS
-        """
-        new_column: str = "map_rep_customer_id"
-        left_on_list = self.ppdata.map_rep_customer_ref_cols
-
-        merged_w_reference = pd.merge(
-            self.staged_data, self.reps_to_cust_branch_ref,
-            how="left", left_on=left_on_list,
-            right_on=["customer_id","city_id","state_id"]
-        )
-
-        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list()
-        self.staged_data.insert(0,new_column,new_col_values)
-
-        no_match_indices = self.staged_data.loc[self.staged_data[new_column] == 0].index.to_list()
-        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-        event.post_event(ErrorType(5), unmapped_no_match_table, submission_id=self.submission_id)
+        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["customer","city","state"]]
+        if not no_match_table.empty:
+            no_match_table.columns = ["customer_id","city_id","state_id"]
+            no_match_records = no_match_table.drop_duplicates().to_dict(orient="records")
+            self.api.create_new_customer_branch_bulk(no_match_records)
+            event.post_event("Formatting", f"added {len(no_match_records)} branches to the branches table without a rep assignment",submission_id=self.submission_id)
+            self.reset_branch_ref()
+            await self.add_branch_id()
         return self
 
 
@@ -210,8 +195,6 @@ class ReportProcessor:
         await self.filter_out_any_rows_unmapped()
         await self.add_branch_id()
         await self.filter_out_any_rows_unmapped()
-        # await self.add_rep_customer_ids()
-        # await self.filter_out_any_rows_unmapped()
         await self.drop_extra_columns()
         await self.filter_out_any_rows_unmapped()
         await self.insert_recorded_at_column()

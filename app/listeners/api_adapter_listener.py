@@ -20,9 +20,7 @@ def new_entity_default_name_mapping(table: model.Base, *args, **kwargs):
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     error_type = None
-    if table == model.MapRepToCustomer:
-        error_type = error.ErrorType(5)
-    elif table == model.MapCustomerName:
+    if table == model.MapCustomerName:
         error_type = error.ErrorType(1)
     elif table == model.MapCityName:
         error_type = error.ErrorType(2)

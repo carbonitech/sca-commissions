@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, File, Depends, BackgroundTasks, Response, Form
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
+from typing import Optional
 
 from db import db_services
 from app import report_processor
@@ -44,7 +45,7 @@ class CustomCommissionData(BaseModel):
         return value*100
 
 class CommissionDataDownloadParameters(BaseModel):
-    filename: str = "commissions"
+    filename: str|None = "commissions"
     startDate: str|None = None
     endDate: str|None = None
     manufacturer: int|None = None
@@ -71,7 +72,7 @@ async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Sessi
 
 @router.post("/download", tags=['commissions'])
 async def commission_data_file_link(
-        query_params: CommissionDataDownloadParameters,
+        query_params: Optional[CommissionDataDownloadParameters] = None,
         db: Session=Depends(get_db)
     ):
     """
@@ -83,7 +84,7 @@ async def commission_data_file_link(
     record = {
         "hash": hash_,
         "type": "commission_data",
-        "query_args": json.dumps(query_params.dict(exclude_none=True)),
+        "query_args": json.dumps(query_params.dict(exclude_none=True)) if query_params else json.dumps({"filename": "commissions"}),
         "created_at": _now,
         "expires_at": _now + timedelta(seconds=60*duration)
     }

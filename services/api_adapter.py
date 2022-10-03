@@ -410,13 +410,27 @@ class ApiAdapter:
             sql = sql.where(commission_data_raw.submission_id == submission_id)
 
         if (start_date := kwargs.get("startDate")):
-            sql = sql.where(sqlalchemy.and_(
-                submission_data.reporting_year >= start_date.year,
-                submission_data.reporting_month >= start_date.month))
+            try:
+                start_date = datetime.fromisoformat(start_date)
+            except ValueError:
+                start_date = datetime.fromisoformat(start_date.replace("Z",""))
+            except Exception as e:
+                print(e)
+            if isinstance(start_date, datetime):
+                sql = sql.where(sqlalchemy.and_(
+                    submission_data.reporting_year >= start_date.year,
+                    submission_data.reporting_month >= start_date.month))
         if (end_date := kwargs.get("endDate")):
-            sql = sql.where(sqlalchemy.and_(
-                submission_data.reporting_year <= end_date.year,
-                submission_data.reporting_month <= end_date.month))
+            try:
+                end_date = datetime.fromisoformat(end_date)
+            except ValueError:
+                end_date = datetime.fromisoformat(end_date.replace("Z",""))
+            except Exception as e:
+                print(e)
+            if isinstance(end_date, datetime):
+                sql = sql.where(sqlalchemy.and_(
+                    submission_data.reporting_year <= end_date.year,
+                    submission_data.reporting_month <= end_date.month))
         if(manufacturer := kwargs.get("manufacturer")):
             sql = sql.where(manufacturers.id == manufacturer)
         if(customer := kwargs.get("customer")):

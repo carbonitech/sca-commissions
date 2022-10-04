@@ -632,7 +632,7 @@ class ApiAdapter:
         ## _add_pagination and _add_default_sort should be added as methods in JSONAPI_ and used in get_collections
         if (filter_args_str := query.get('filter')):
             filter_args: dict[str,str] = json.loads(filter_args_str)
-            filter_args = {k:v.split(',') for k,v in filter_args.items() if v is not None}
+            filter_args = {k:[sub_v.upper().strip() for sub_v in v.split(',')] for k,v in filter_args.items() if v is not None}
             filter_query_args = []
             for field, values in filter_args.items():
                 try:

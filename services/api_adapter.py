@@ -4,6 +4,7 @@ import calendar
 from dotenv import load_dotenv
 from os import getenv
 import json
+import warnings
 
 import pandas as pd
 import sqlalchemy
@@ -625,10 +626,26 @@ class ApiAdapter:
             query_as_dict = query
         size = MAX_PAGE_SIZE
         offset = 0
-        row_count: int = db.execute(
-                sqlalchemy.select([sqlalchemy.func.count()])
-                .select_from(resource)
-                ).scalar()
+        row_cnt_sql = sqlalchemy.select([sqlalchemy.func.count()]).select_from(resource)
+        ## TODO factor this out to a function because it is also in the JSONAPI subclass JSONAPI_
+        ## better yet, incorporate all pagination and default sort operations into an override version of get_collections
+        ## _add_pagination and _add_default_sort should be added as methods in JSONAPI_ and used in get_collections
+        if (filter_args_str := query.get('filter')):
+            filter_args: dict[str,str] = json.loads(filter_args_str)
+            filter_args = {k:v.split(',') for k,v in filter_args.items() if v is not None}
+            filter_query_args = []
+            for field, values in filter_args.items():
+                try:
+                    model_attr = getattr(resource, field)
+                except Exception as err:
+                    warnings.warn(f"Warning: field {field} with value {values} was not evaluated as a filter because {str(err)}. Filter argument was ignored.")
+                    continue
+                filter_query_args.append(
+                    sqlalchemy.or_(*[model_attr.like('%'+value+'%') for value in values])
+                    )
+            row_cnt_sql = row_cnt_sql.filter(*filter_query_args)
+
+        row_count: int = db.execute(row_cnt_sql).scalar()
         if row_count == 0:
             return query_as_dict, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}

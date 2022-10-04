@@ -10,7 +10,7 @@ class Query(BaseModel):
 
 def convert_to_jsonapi(query: dict) -> dict:
     jsonapi_query = {}
-    bracketed_params = ['fields','filter','page']
+    bracketed_params = ['fields','page']
     for param_name, param_value in query.dict(exclude_none=True).items():
         param_name: str
         param_value: str

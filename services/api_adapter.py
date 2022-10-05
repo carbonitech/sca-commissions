@@ -432,15 +432,15 @@ class ApiAdapter:
                 sql = sql.where(sqlalchemy.and_(
                     submission_data.reporting_year <= end_date.year,
                     submission_data.reporting_month <= end_date.month))
-        if(manufacturer := kwargs.get("manufacturer")):
+        if(manufacturer := kwargs.get("manufacturer_id")):
             sql = sql.where(manufacturers.id == manufacturer)
-        if(customer := kwargs.get("customer")):
+        if(customer := kwargs.get("customer_id")):
             sql = sql.where(customers.id == customer)
-        if(city := kwargs.get("city")):
+        if(city := kwargs.get("city_id")):
             sql = sql.where(cities.id == city)
-        if(state := kwargs.get("state")):
+        if(state := kwargs.get("state_id")):
             sql = sql.where(states.id == state)
-        if(representative := kwargs.get("representative")):
+        if(representative := kwargs.get("representative_id")):
             sql = sql.where(reps.id == representative)
 
         view_table = pd.read_sql(sql, con=self.engine)

@@ -48,11 +48,11 @@ class CommissionDataDownloadParameters(BaseModel):
     filename: str|None = "commissions"
     startDate: str|None = None
     endDate: str|None = None
-    manufacturer: int|None = None
-    customer: int|None = None
-    city: int|None = None
-    state: int|None = None
-    representative: int|None = None
+    manufacturer_id: int|None = None
+    customer_id: int|None = None
+    city_id: int|None = None
+    state_id: int|None = None
+    representative_id: int|None = None
 
 @router.get("", tags=['commissions'])
 async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):

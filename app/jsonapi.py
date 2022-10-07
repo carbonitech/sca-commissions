@@ -6,6 +6,8 @@ from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 from sqlalchemy_jsonapi import JSONAPI
 
+DEFAULT_SORT: str = "id"
+
 class Query(BaseModel):
     include: str|None = None
     sort: str|None = None
@@ -40,12 +42,17 @@ class JSONAPI_(JSONAPI):
         Override of JSONAPI get_collection - adding filter parameter handling
         after instantation of session.query on the 'model'
         """
+
+
         model = self._fetch_model(api_key)
         include = self._parse_include(query.get('include', '').split(','))
         fields = self._parse_fields(query)
         included = {}
         sorts = query.get('sort', '').split(',')
         order_by = []
+
+        if sorts == ['']:
+            sorts = [DEFAULT_SORT]
 
         collection = session.query(model)
 

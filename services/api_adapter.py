@@ -739,16 +739,14 @@ class ApiAdapter:
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,CUSTOMERS)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
         return json_api_resp
 
-    def get_many_cities_jsonapi(self, db: Session, query: dict):
+    def get_many_cities_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CITIES.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,CITIES)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
@@ -765,7 +763,6 @@ class ApiAdapter:
     def get_many_states_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(STATES.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,STATES)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
@@ -778,7 +775,6 @@ class ApiAdapter:
     def get_many_reps_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(REPS.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,REPS)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
@@ -791,7 +787,6 @@ class ApiAdapter:
     def get_many_submissions_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,SUBMISSIONS_TABLE)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
@@ -804,7 +799,6 @@ class ApiAdapter:
     def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,MANUFACTURERS)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)
@@ -817,7 +811,6 @@ class ApiAdapter:
     def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
         new_query, additional_response = self._add_pagination(query,db,COMMISSION_DATA_TABLE)
-        self._add_default_sort(new_query)
         json_api_resp = models.serializer.get_collection(db,new_query,model_name)
         if additional_response:
             json_api_resp.data.update(additional_response)

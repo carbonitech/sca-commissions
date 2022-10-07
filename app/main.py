@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+import json
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import RedirectResponse
+from starlette.responses import StreamingResponse
+from starlette.responses import RedirectResponse, JSONResponse
 from jose.jwt import get_unverified_header, decode
 
-import os
 import requests
 import pandas as pd
 from numpy import nan
@@ -33,6 +35,52 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*']
 )
+
+@app.middleware('http')
+async def format_errors_to_jsonapi_spec(request: Request, call_next):
+    """
+    middleware detecting whether an error response is coming back from the request call
+    if an error code within the 400-599 range is detected, return a JSON response formatted
+    to the JSON:API specification, otherwise return the response as-is
+    """
+    response: StreamingResponse = await call_next(request)
+    if not (599 >= response.status_code >= 400):
+        return response
+
+    async def read_body(iterator) -> dict:
+        """
+        builds the full content body of the response from the StreamingResponse
+        bytes -> dict
+        Returns: dict
+        """
+        return json.loads("".join([data.decode() async for data in iterator]))
+        
+
+    resp_body = await read_body(response.body_iterator)
+    resp_body.update({"status":response.status_code})
+    jsonapi_err_response_content = {"errors":[]}
+
+    if response.status_code == 422:
+        for err in resp_body["detail"]:
+            err_detail: str = err["msg"]
+            err_detail = err_detail.replace("value", err["loc"][1])
+            err_title = err["type"]
+            jsonapi_err_response_content["errors"].append(
+                {
+                    "status": response.status_code,
+                    "detail": err_detail,
+                    "title": err_title
+                })
+    else:
+        jsonapi_err_response_content["errors"].append(resp_body)
+    
+
+    return JSONResponse(
+        content=jsonapi_err_response_content,
+        status_code=response.status_code,
+        media_type="application/json"
+    )
+
 
 def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
     error = None

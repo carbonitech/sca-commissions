@@ -3,8 +3,7 @@ import json
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
-from starlette.responses import RedirectResponse, JSONResponse
+from starlette.responses import StreamingResponse, RedirectResponse, JSONResponse
 from jose.jwt import get_unverified_header, decode
 
 import requests

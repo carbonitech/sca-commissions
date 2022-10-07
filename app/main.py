@@ -63,13 +63,15 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
     if response.status_code == 422:
         for err in resp_body["detail"]:
             err_detail: str = err["msg"]
-            err_detail = err_detail.replace("value", err["loc"][1])
+            err_field: str = err["loc"][1]
+            err_detail = err_detail.replace("value", err_field)
             err_title = err["type"]
             jsonapi_err_response_content["errors"].append(
                 {
                     "status": response.status_code,
                     "detail": err_detail,
-                    "title": err_title
+                    "title": err_title,
+                    "field": err_field
                 })
     else:
         jsonapi_err_response_content["errors"].append(resp_body)

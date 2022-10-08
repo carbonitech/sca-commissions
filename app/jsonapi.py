@@ -31,7 +31,19 @@ def convert_to_jsonapi(query: dict) -> dict:
     return jsonapi_query
 
 class JSONAPI_(JSONAPI):
-    """custom fixes applied to the JSONAPI object"""
+    """
+    Custom fixes applied to the JSONAPI object
+
+    _apply_filter static method created to handle filtering arguments.
+        This library does not handle filtering.
+
+    _add_pagination adds pagination metadata totalPages and currentPage
+        as well as pagination links
+
+    get_collection is a copy of JSONAPI's same method, but with new
+        logic spliced in to handle filtering arguments, add pagination metadata and links,
+        and apply a default sorting pattern if a sort argument is not applied.
+    """
 
     @staticmethod
     def hyphenate_name(table_name: str) -> str:
@@ -147,7 +159,6 @@ class JSONAPI_(JSONAPI):
             "links": links
         }
         return query, result_addition
-
 
     def get_collection(self, session: Session, query: QueryParams|dict, model_obj):
         """

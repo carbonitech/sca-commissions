@@ -16,8 +16,15 @@ def get_db():
         db.close()
 
 class Customer(BaseModel):
-    id: int
     name: str
+
+class JSONAPIModificationBodyModel(BaseModel):
+    type: str
+    id: int
+    attributes: Customer
+
+class CustomerModificationRequest(BaseModel):
+    data: JSONAPIModificationBodyModel
 
 @router.get("", tags=["customers"])
 async def all_customers(query: Query=Depends(), db: Session=Depends(get_db)):
@@ -36,11 +43,15 @@ async def customer_by_id(customer_id: int, query: Query=Depends(), db: Session=D
     return api.get_customer_jsonapi(db, customer_id, jsonapi_query)
 
 @router.patch("/{customer_id}", tags=["customers"])
-async def modify_customer(customer_id: int, customer: Customer, db: Session=Depends(get_db)):
+async def modify_customer(customer_id: int, customer: CustomerModificationRequest, db: Session=Depends(get_db)):
     try:
-        return api.modify_customer_jsonapi(db, customer_id, customer.name)
+        return api.modify_customer_jsonapi(db, customer_id, customer.dict())
     except BaseError as err:
-        return err.data
+        """raise an HTTPException instead of this HTTP-like error so FastAPI can handle it properly in the middleware"""
+        data: dict = err.data
+        status_code: int = err.status_code #subclass of BaseError actually raised will have this attr
+        data["errors"][0]["id"] = str(data["errors"][0]["id"]) # 
+        raise HTTPException(status_code=status_code, detail=data)
 
 # TODO implement these routes in JSON:API
 

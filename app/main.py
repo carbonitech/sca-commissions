@@ -44,6 +44,7 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
     to the JSON:API specification, otherwise return the response as-is
     """
 
+
     async def read_body(iterator) -> dict:
         """
         builds the full content body of the response from the StreamingResponse
@@ -53,27 +54,34 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         return json.loads("".join([data.decode() async for data in iterator]))
         
     response: StreamingResponse = await call_next(request)
-    resp_body = await read_body(response.body_iterator)
 
+    if not (599 >= response.status_code >= 400):
+        # must be first to avoid an error with content-length
+        return response
     
+    resp_body = await read_body(response.body_iterator)
     resp_body.update({"status":response.status_code})
     jsonapi_err_response_content = {"errors":[]}
 
-    
+    # output of patch requests errors is already to spec
+    # here it's extracted from the detail field supplied to HTTPException
     match resp_body:
-        case {"errors": [*error_objs]}:
-        # response status code is coming back as 200 in this case
-        # but its actually a returned error in JSON:API spec
-        # for this reason, checks on response.status_code
-            jsonapi_err_response_content = resp_body
+        case {"detail":{"errors": [*error_objs]}}:
+            jsonapi_err_response_content = resp_body["detail"]
+            return JSONResponse(
+                content=jsonapi_err_response_content,
+                status_code=response.status_code,
+                media_type="application/json"
+            )
     
-    if 599 >= response.status_code >= 400:
-        return response
 
     if response.status_code == 422:
         for err in resp_body["detail"]:
             err_detail: str = err["msg"]
-            err_field: str = err["loc"][1]
+            if len(err["loc"]) > 1:
+                err_field: str = err["loc"][1]
+            else:
+                err_field: str = err["loc"][0]
             err_detail = err_detail.replace("value", err_field)
             err_title = err["type"]
             jsonapi_err_response_content["errors"].append(
@@ -85,8 +93,6 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
                 })
     elif response.status_code >= 400:
         jsonapi_err_response_content["errors"].append(resp_body)
-    
-
 
     return JSONResponse(
         content=jsonapi_err_response_content,

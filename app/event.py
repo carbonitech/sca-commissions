@@ -7,8 +7,8 @@ def subscribe(event_type: Hashable, function_call):
         subscribers[event_type] = set()
     subscribers[event_type].add(function_call)
 
-def post_event(event_type: Hashable, data, *args, **kwargs):
+def post_event(event_type: Hashable, data_, *args, **kwargs):
     if event_type not in subscribers:
         return
     for func in subscribers[event_type]:
-        func(data, *args, **kwargs)
+        func(data_, *args, **kwargs)

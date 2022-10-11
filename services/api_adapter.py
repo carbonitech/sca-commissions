@@ -41,6 +41,9 @@ load_dotenv()
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")
 
+def hyphenated_name(table_obj) -> str:
+    return table_obj.__tablename__.replace("_","-")
+
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
@@ -668,3 +671,9 @@ class ApiAdapter:
 
     def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE)
+
+    def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
+        model_name = hyphenated_name(CUSTOMERS)
+        models.serializer.patch_resource(db, json_data, model_name, customer_id)
+        event.post_event("Record Updated", CUSTOMERS, customer_id, **json_data)
+        return

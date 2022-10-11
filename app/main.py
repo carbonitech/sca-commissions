@@ -10,6 +10,7 @@ import requests
 import pandas as pd
 from numpy import nan
 from sqlalchemy.orm import Session
+from sqlalchemy_jsonapi.errors import BaseError
 
 from app import resources
 from app.listeners import api_adapter_listener, error_listener, process_step_listener
@@ -42,9 +43,6 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
     if an error code within the 400-599 range is detected, return a JSON response formatted
     to the JSON:API specification, otherwise return the response as-is
     """
-    response: StreamingResponse = await call_next(request)
-    if not (599 >= response.status_code >= 400):
-        return response
 
     async def read_body(iterator) -> dict:
         """
@@ -54,10 +52,23 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         """
         return json.loads("".join([data.decode() async for data in iterator]))
         
-
+    response: StreamingResponse = await call_next(request)
     resp_body = await read_body(response.body_iterator)
+
+    
     resp_body.update({"status":response.status_code})
     jsonapi_err_response_content = {"errors":[]}
+
+    
+    match resp_body:
+        case {"errors": [*error_objs]}:
+        # response status code is coming back as 200 in this case
+        # but its actually a returned error in JSON:API spec
+        # for this reason, checks on response.status_code
+            jsonapi_err_response_content = resp_body
+    
+    if 599 >= response.status_code >= 400:
+        return response
 
     if response.status_code == 422:
         for err in resp_body["detail"]:
@@ -72,9 +83,10 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
                     "title": err_title,
                     "field": err_field
                 })
-    else:
+    elif response.status_code >= 400:
         jsonapi_err_response_content["errors"].append(resp_body)
     
+
 
     return JSONResponse(
         content=jsonapi_err_response_content,

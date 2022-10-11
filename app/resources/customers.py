@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter
 from app.jsonapi import Query, convert_to_jsonapi
+from sqlalchemy_jsonapi.errors import BaseError
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers")
@@ -13,6 +15,9 @@ def get_db():
     finally:
         db.close()
 
+class Customer(BaseModel):
+    id: int
+    name: str
 
 @router.get("", tags=["customers"])
 async def all_customers(query: Query=Depends(), db: Session=Depends(get_db)):
@@ -30,6 +35,13 @@ async def customer_by_id(customer_id: int, query: Query=Depends(), db: Session=D
         raise HTTPException(status_code=400,detail=str(err))
     return api.get_customer_jsonapi(db, customer_id, jsonapi_query)
 
+@router.patch("/{customer_id}", tags=["customers"])
+async def modify_customer(customer_id: int, customer: Customer, db: Session=Depends(get_db)):
+    try:
+        return api.modify_customer_jsonapi(db, customer_id, customer.name)
+    except BaseError as err:
+        return err.data
+
 # TODO implement these routes in JSON:API
 
 # @router.post("/", tags=["customers"])
@@ -40,14 +52,6 @@ async def customer_by_id(customer_id: int, query: Query=Depends(), db: Session=D
 #     if not matches.empty:
 #         raise HTTPException(status_code=400, detail="Customer already exists")
 #     return {"customer_id": api.new_customer(customer_fastapi=customer_name)}
-
-# @router.put("/{customer_id}", tags=["customers"])
-# async def modify_customer(customer_id: int, new_data: Customer):
-#     new_data.name = new_data.name.strip().upper()
-#     current_customer = api.check_customer_exists_by_name(**new_data.dict())
-#     if current_customer:
-#         raise HTTPException(status_code=400, detail="New Customer Name already exists")
-#     return api.modify_customer(customer_id, **new_data.dict())
 
 # @router.delete("/{customer_id}", tags=["customers"])
 # async def delete_customer(customer_id: int):

@@ -6,17 +6,21 @@ from services.api_adapter import ApiAdapter
 
 api = ApiAdapter()
 
-def new_entity_default_name_mapping(table: model.Base, *args, **kwargs):
-    """sets a default mapping for the new customer, set equal to the name"""
-    if table == model.Customer:
-        data = {"customer_id": kwargs["id"], "recorded_name": kwargs["name"]}
-        api.set_customer_name_mapping(**data)
-    elif table == model.City:
-        data = {"city_id": kwargs["id"], "recorded_name": kwargs["name"]}
-        api.set_city_name_mapping(**data)
-    elif table == model.State:
-        data = {"state_id": kwargs["id"], "recorded_name": kwargs["name"]}
-        api.set_state_name_mapping(**data)
+def entity_default_name_mapping(table: model.Base, *args, **kwargs):
+    """
+    sets a default mapping for a new customer or a current customer with a modified name
+    sets new mapping equal to the name
+    """
+    if (new_name := kwargs.get("name")):
+        if table == model.Customer:
+            data = {"customer_id": kwargs["id"], "recorded_name": new_name}
+            api.set_customer_name_mapping(**data)
+        elif table == model.City:
+            data = {"city_id": kwargs["id"], "recorded_name": new_name}
+            api.set_city_name_mapping(**data)
+        elif table == model.State:
+            data = {"state_id": kwargs["id"], "recorded_name": new_name}
+            api.set_state_name_mapping(**data)
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     error_type = None
@@ -37,6 +41,7 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     return
 
 def setup_api_event_handlers():
-    event.subscribe("New Record", new_entity_default_name_mapping)
+    event.subscribe("New Record", entity_default_name_mapping)
     event.subscribe("New Record", trigger_reprocessing_of_errors)
+    event.subscribe("Record Updated", entity_default_name_mapping)
     event.subscribe("Record Updated", trigger_reprocessing_of_errors)

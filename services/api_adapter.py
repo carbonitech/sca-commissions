@@ -665,5 +665,5 @@ class ApiAdapter:
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
-        event.post_event("Record Updated", CUSTOMERS, id=customer_id, **json_data["data"]["attributes"])
+        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, **json_data["data"]["attributes"])
         return result

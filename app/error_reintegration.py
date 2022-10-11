@@ -65,7 +65,7 @@ class Reintegrator:
             msg = f"reprocessing of errors initiated by reassessment of {self.target_err.name} errors. {rows_affected} rows affected"
             event.post_event(
                 "Reprocessing",
-                data = msg,
+                data_ = msg,
                 submission_id = sub_id,
                 start_step=self.database.last_step_num(sub_id)+1
             )

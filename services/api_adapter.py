@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from os import getenv
 
 import pandas as pd
+from sqlalchemy.exc import IntegrityError
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
@@ -278,28 +279,17 @@ class ApiAdapter:
             sql = sql.where(STATES.id==state_id)
         return pd.read_sql(sql, con=self.engine)
 
-    def get_rep_to_customer_full(self, customer_id: int) -> pd.DataFrame:
-        # sql = sqlalchemy.select(
-        #     REPS_CUSTOMERS_MAP.id,
-        #     BRANCHES.id,
-        #     CUSTOMERS.id, CUSTOMERS.name,
-        #     CITIES.id, CITIES.name,
-        #     STATES.id,STATES.name,
-        #     REPS.id, REPS.initials)\
-        #     .select_from(REPS_CUSTOMERS_MAP).join(BRANCHES).join(CUSTOMERS).join(CITIES)\
-        #     .join(STATES).join(REPS).where(CUSTOMERS.id == customer_id)
-        # table = pd.read_sql(sql, con=self.engine)
-        # table.columns = ["rep_customer_id", "branch_id", "customer_id", "customer",
-        #         "city_id", "city", "state_id", "state", "rep_id", "rep"]
-        # return table
-        ...
 
     def set_customer_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
+            try:
+                session.execute(sql)
+            except IntegrityError:
+                session.rollback()
+            else:
+                session.commit()
+                event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
 
     def set_city_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
@@ -674,6 +664,6 @@ class ApiAdapter:
 
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
-        models.serializer.patch_resource(db, json_data, model_name, customer_id)
-        event.post_event("Record Updated", CUSTOMERS, customer_id, **json_data)
-        return
+        result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
+        event.post_event("Record Updated", CUSTOMERS, id=customer_id, **json_data["data"]["attributes"])
+        return result

@@ -50,7 +50,7 @@ class Customer(Base):
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_name'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
+    recorded_name = Column(String, unique=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
     customer = relationship("Customer", back_populates="map_customer_name")
 

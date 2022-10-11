@@ -12,14 +12,15 @@ def entity_default_name_mapping(table: model.Base, *args, **kwargs):
     sets new mapping equal to the name
     """
     if (new_name := kwargs.get("name")):
+        new_name: str
         if table == model.Customer:
-            data = {"customer_id": kwargs["id"], "recorded_name": new_name}
+            data = {"customer_id": kwargs["id"], "recorded_name": new_name.upper().strip()}
             api.set_customer_name_mapping(**data)
         elif table == model.City:
-            data = {"city_id": kwargs["id"], "recorded_name": new_name}
+            data = {"city_id": kwargs["id"], "recorded_name": new_name.upper().strip()}
             api.set_city_name_mapping(**data)
         elif table == model.State:
-            data = {"state_id": kwargs["id"], "recorded_name": new_name}
+            data = {"state_id": kwargs["id"], "recorded_name": new_name.upper().strip()}
             api.set_state_name_mapping(**data)
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):

@@ -46,7 +46,7 @@ def handle_comm_data_recorded(data: DataFrame, submission_id: int, *args, **kwar
     sum_inv = data.loc[:,"inv_amt"].sum()/100
     sum_comm = data.loc[:,"comm_amt"].sum()/100
 
-    desc_str = f"{num_rows} rows written to the final commission data table."\
+    desc_str = f"{num_rows} rows written to commission data table."\
             f" Total Sales added: ${sum_inv:,.2f}"\
             f" Total Commissions added = ${sum_comm:,.2f}"
     

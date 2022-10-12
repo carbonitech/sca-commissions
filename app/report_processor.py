@@ -9,8 +9,30 @@ from entities.error import ErrorType
 
 from services import api_adapter
 
+class EmptyTableException(Exception):
+    pass
+
 class ReportProcessor:
-    
+    """
+    Handles processing of data delivered through a preprocessor, which itself recieves the file
+    and does manufacturer-specific preprocessing steps. The preprocessor is expected to return the same format 
+    for all manufacturers.
+
+    Data Processing is achieved by gathering name mappings (Customer, City, State, and Branches)
+    and using those mappings to find id numbers in the database. On the happy path, commission 
+    data (invoiced and commission amounts) are recorded in the database with an id and a branch id.
+    If a mapping match isn't found for names (Customer, City, State), the data is placed in an 'errors'
+    table as-is for reprocessing attempts later. If a row maps all names but the ids aren't associated with one
+    another as a branch, a new branch is added to the database without a rep assignment. (While this 
+    does need user attention to add a rep assignment, it's not going to the error's table)
+
+    This Processor is almost identical to the error_reintegration.Reintegrator processor. The main
+    difference is the ability to ingest an error table, check the error types against a target error type,
+    and emit processing step events by-submission. Another key difference is that error reprocessing does not
+    require registration of a new submission id.
+
+    TODO: Merge error_reintegration.Reintegrator with this class to reduce duplication of processing logic 
+    """
     def __init__(
             self, preprocessor: AbstractPreProcessor, 
             submission: NewSubmission, database: DatabaseServices
@@ -96,7 +118,7 @@ class ReportProcessor:
     async def add_branch_id(self) -> 'ReportProcessor':
         """
         Adds the customer's branch id, if the assignment exists.
-        Un-matched rows will get kicked to errors and removed
+        Un-matched rows are added to the customer_branches table without a rep assigned
 
         """
         new_column: str = "customer_branch_id"

@@ -5,6 +5,7 @@ import pandas as pd
 from app import event
 from db.db_services import DatabaseServices
 from entities.error import ErrorType
+from services import api_adapter
 
 class EmptyTableException(Exception):
     pass
@@ -21,7 +22,7 @@ class Reintegrator:
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.branches = database.get_branches()
-        # self.reps_to_cust_branch_ref = database.get_reps_to_cust_branch_ref()
+        self.api = api_adapter.ApiAdapter()
         self.target_err = target_err
         self.error_table = pd.concat(   # expand row_data into dataframe columns
             [
@@ -35,22 +36,34 @@ class Reintegrator:
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """## make sure unprocessed errors re-recorded in the db"""
+        """make sure unprocessed errors re-recorded in the db"""
         return
 
-    def _send_event_by_submission(self, table: pd.DataFrame, event_: Hashable) -> None:
+    def reset_branch_ref(self):
+        self.branches = self.database.get_branches()
+
+
+    def _send_event_by_submission(self, table: pd.DataFrame, event_: Hashable, msg: str=None) -> None:
         for sub_id in table["submission_id"].unique().tolist():
             mask = table["submission_id"] == sub_id
             sub_id_table = table.loc[mask,:]
             if "row_index" in table.columns.tolist():
                 sub_id_table = sub_id_table.set_index("row_index")
             sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason'])]
-            event.post_event(
-                event_,
-                sub_id_table,
-                submission_id=sub_id,
-                start_step=self.database.last_step_num(sub_id)+1
-            )
+            if event_ == "Formatting" and msg:
+                event.post_event(
+                    event_,
+                    msg,
+                    submission_id=sub_id,
+                    start_step=self.database.last_step_num(sub_id)+1
+                )
+            else:
+                event.post_event(
+                    event_,
+                    sub_id_table,
+                    submission_id=sub_id,
+                    start_step=self.database.last_step_num(sub_id)+1
+                )
 
 
     def _filter_for_existing_records_with_target_error_type(self) -> 'Reintegrator':
@@ -141,33 +154,15 @@ class Reintegrator:
         new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
         self.staged_data.loc[:,new_column] = new_col_values
 
-        no_match_indices = self.staged_data.loc[self.staged_data[new_column]==0].index.to_list()
-        unmapped_no_match_table = self.error_table.iloc[no_match_indices,:]
-        self._send_event_by_submission(unmapped_no_match_table,ErrorType(4))
-        return self
+        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["customer","city","state"]]
+        if not no_match_table.empty:
+            no_match_table.columns = ["customer_id","city_id","state_id"]
+            no_match_records = no_match_table.drop_duplicates().to_dict(orient="records")
+            self.api.create_new_customer_branch_bulk(no_match_records)
+            self._send_event_by_submission(no_match_records,"Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment")
+            self.reset_branch_ref()
+            self.add_branch_id()
 
-    def add_rep_customer_ids(self) -> 'Reintegrator':
-        """
-        adds a map_rep_customer id column by comparing the customer, city,
-        and state columns named in ref_columns to respective columns in a derived
-        reps-to-customer reference table
-        # TODO : CHANGE REFERENCE USED FOR MERGE TO USE JUST THE MAP-REP-CUSTOMERS TABLE AS-IS
-        """
-        new_column: str = "map_rep_customer_id"
-        left_on_list = ["customer","city","state"]
-
-        merged_w_reference = pd.merge(
-            self.staged_data, self.reps_to_cust_branch_ref,
-            how="left", left_on=left_on_list,
-            right_on=["customer_id","city_id","state_id"],
-            suffixes=(None,"_ref_table")
-        )
-        new_col_values = merged_w_reference.loc[:,"map_rep_customer_id"].fillna(0).astype(int).to_list()
-        self.staged_data.insert(0,new_column,new_col_values)
-
-        no_match_indices = self.staged_data.loc[self.staged_data[new_column] == 0].index.to_list()
-        unmapped_no_match_table = self.error_table.iloc[no_match_indices]
-        self._send_event_by_submission(unmapped_no_match_table,ErrorType(5))
         return self
 
 
@@ -215,8 +210,6 @@ class Reintegrator:
             .filter_out_any_rows_unmapped() \
             .insert_recorded_at_column()    \
             .register_commission_data()
-            # .add_rep_customer_ids()         \
-            # .filter_out_any_rows_unmapped() \
         except EmptyTableException:
             pass
         return

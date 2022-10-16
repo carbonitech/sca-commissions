@@ -34,9 +34,29 @@ class ReportProcessor:
     TODO: Merge error_reintegration.Reintegrator with this class to reduce duplication of processing logic 
     """
     def __init__(
-            self, preprocessor: AbstractPreProcessor, 
-            submission: NewSubmission, database: DatabaseServices
+            self,
+            database: DatabaseServices,
+            preprocessor: AbstractPreProcessor = None,
+            submission: NewSubmission = None,
+            target_err: ErrorType = None,
+            error_table: pd.DataFrame = None,
         ):
+
+        all_optional_args = (preprocessor, submission, target_err, error_table)
+        # args passed determines a processing path
+        # note to self: empty args in the class initializer will match any class or subclass type. Args are ignored.
+        match all_optional_args:
+            case (AbstractPreProcessor(), NewSubmission(), *args) if not all(args):
+                print("run the report processor as a new submission")
+            case (ErrorType(), pd.DataFrame(), *args) if not all(args):
+                print("run the report as ab errors reintegration")
+            case _:
+                for arg in all_optional_args:
+                    print(type(arg))
+                    print(isinstance(arg,AbstractPreProcessor))
+                raise Exception
+                
+
         self.database = database
         self.submission = submission
         self.preprocessor = preprocessor

@@ -104,7 +104,11 @@ async def process_commissions_file(file: bytes, report_id: int, reporting_month:
             report_id,
             manufacturer_id)
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
-    mfg_report_processor = report_processor.ReportProcessor(mfg_preprocessor,new_sub,db)
+    mfg_report_processor = report_processor.ReportProcessor(
+        preprocessor=mfg_preprocessor,
+        submission=new_sub,
+        database=db
+    )
     await mfg_report_processor.process_and_commit()
 
 @router.post("", tags=['commissions'])
@@ -136,8 +140,8 @@ async def process_data_from_a_file(
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
 
-    bg_tasks.add_task(process_commissions_file, file, report_id, reporting_month, reporting_year, manufacturer_id)
-
+    # bg_tasks.add_task(process_commissions_file, file, report_id, reporting_month, reporting_year, manufacturer_id)
+    await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id)
     return Response(status_code=202)
 
 @router.post("/{submission_id}", tags=['commissions'])

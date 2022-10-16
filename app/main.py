@@ -55,8 +55,8 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         
     response: StreamingResponse = await call_next(request)
 
-    if not (599 >= response.status_code >= 400):
-        # must be first to avoid an error with content-length
+    if (400 > response.status_code >= 300):
+        # must be first to avoid an errors attempting to read the body of a redirect response
         return response
     
     resp_body = await read_body(response.body_iterator)
@@ -67,10 +67,18 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
     # here it's extracted from the detail field supplied to HTTPException
     match resp_body:
         case {"detail":{"errors": [*error_objs]}}:
+            # error object response
             jsonapi_err_response_content = resp_body["detail"]
             return JSONResponse(
                 content=jsonapi_err_response_content,
                 status_code=response.status_code,
+                media_type="application/json"
+            )
+        case {"status_code": code, "data": data} if code < 300:
+            # success object response
+            return JSONResponse(
+                content=data,
+                status_code=code,
                 media_type="application/json"
             )
     

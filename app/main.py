@@ -54,12 +54,25 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         return json.loads("".join([data.decode() async for data in iterator]))
         
     response: StreamingResponse = await call_next(request)
+    match response.raw_headers:
+        case [other, (b'content-type', content_type)]:
+            content_type_dc = content_type.decode()
+            if request.get("path") == "/openapi.json":
+                return response
+            if content_type_dc != "application/json":
+                return response
 
-    if (400 > response.status_code >= 300):
-        # must be first to avoid an errors attempting to read the body of a redirect response
+    if 400 > response.status_code >= 300:
         return response
     
-    resp_body = await read_body(response.body_iterator)
+    try:
+        resp_body = await read_body(response.body_iterator)
+    except Exception as err:
+        print("error while reading the body")
+        print("request: ", request.__dict__)
+        print(str(err)) # so I can see it in logs without throwing a 500 on account of this
+        return response
+
     resp_body.update({"status":response.status_code})
     jsonapi_err_response_content = {"errors":[]}
 

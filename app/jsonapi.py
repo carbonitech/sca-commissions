@@ -236,4 +236,7 @@ class JSONAPI_(JSONAPI):
         if pagination_meta_and_links:
             response.data.update(pagination_meta_and_links)
             
-        return response
+        return response.data
+
+    def get_resource(self, session, query, api_type, obj_id):
+        return super().get_resource(session, query, api_type, obj_id).data

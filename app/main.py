@@ -10,7 +10,6 @@ import requests
 import pandas as pd
 from numpy import nan
 from sqlalchemy.orm import Session
-from sqlalchemy_jsonapi.errors import BaseError
 
 from app import resources
 from app.listeners import api_adapter_listener, error_listener, process_step_listener
@@ -144,7 +143,6 @@ app.include_router(resources.customers, dependencies=PROTECTED)
 app.include_router(resources.reps, dependencies=PROTECTED)
 app.include_router(resources.cities, dependencies=PROTECTED)
 app.include_router(resources.states, dependencies=PROTECTED)
-# app.include_router(resources.mappings, dependencies=PROTECTED) 
 app.include_router(resources.branches, dependencies=PROTECTED)
 app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
@@ -177,7 +175,6 @@ async def create_db():
             'map_customer_name': models.MapCustomerName,
             'map_city_names': models.MapCityName,
             'map_state_names': models.MapStateName,
-            # 'map_reps_customers': models.MapRepToCustomer,
             'report_submissions_log': models.Submission,
             'report_processing_steps_log': models.ProcessingStep,
             'current_errors': models.Error,

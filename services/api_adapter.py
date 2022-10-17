@@ -339,12 +339,6 @@ class ApiAdapter:
         result.loc[:,'row_data'] = result.loc[:,'row_data'].apply(lambda json_str: json.loads(json_str))
         return result
 
-    def rep_customer_id_exists(self, id_: int) -> bool:
-        # sql = sqlalchemy.select(REPS_CUSTOMERS_MAP).where(REPS_CUSTOMERS_MAP.id == id_)
-        # with self.engine.begin() as conn:
-        #     result = conn.execute(sql)
-        # return True if result else False
-        ...
 
     def set_new_commission_data_entry(self, **kwargs) -> int:
         sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)\

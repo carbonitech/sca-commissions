@@ -240,3 +240,9 @@ class JSONAPI_(JSONAPI):
 
     def get_resource(self, session, query, api_type, obj_id):
         return super().get_resource(session, query, api_type, obj_id).data
+
+    def get_relationship(self, session, query, api_type, obj_id, rel_key):
+        return super().get_relationship(session, query, api_type, obj_id, rel_key).data
+
+    def get_related(self, session, query, api_type, obj_id, rel_key):
+        return super().get_related(session, query, api_type, obj_id, rel_key).data

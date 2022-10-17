@@ -109,7 +109,7 @@ async def process_commissions_file(file: bytes, report_id: int, reporting_month:
         submission=new_sub,
         database=db
     )
-    await mfg_report_processor.process_and_commit()
+    mfg_report_processor.process_and_commit()
 
 @router.post("", tags=['commissions'])
 async def process_data_from_a_file(

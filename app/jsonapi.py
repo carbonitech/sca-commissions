@@ -3,7 +3,7 @@ import warnings
 from pydantic import BaseModel
 from sqlalchemy import or_, select, func
 from sqlalchemy.orm import Session, Query as sqlQuery
-from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError
+from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError, BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
@@ -29,6 +29,13 @@ def convert_to_jsonapi(query: dict) -> dict:
         else:
             jsonapi_query[param_name] = param_value
     return jsonapi_query
+
+def format_error(error: BaseError) -> dict:
+    """format the error for raises an HTTPException so FastAPI can handle it properly"""
+    data: dict = error.data
+    status_code: int = error.status_code #subclass of BaseError actually raised will have this attr
+    data["errors"][0]["id"] = str(data["errors"][0]["id"])
+    return {"status_code": status_code, "detail": data}
 
 class JSONAPI_(JSONAPI):
     """

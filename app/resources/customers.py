@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter
-from app.jsonapi import Query, convert_to_jsonapi
+from app.jsonapi import Query, convert_to_jsonapi, format_error
 from sqlalchemy_jsonapi.errors import BaseError
 
 api = ApiAdapter()
@@ -47,13 +47,8 @@ async def modify_customer(customer_id: int, customer: CustomerModificationReques
     try:
         return api.modify_customer_jsonapi(db, customer_id, customer.dict())
     except BaseError as err:
-        """raise an HTTPException instead of this HTTP-like error so FastAPI can handle it properly in the middleware"""
-        data: dict = err.data
-        status_code: int = err.status_code #subclass of BaseError actually raised will have this attr
-        data["errors"][0]["id"] = str(data["errors"][0]["id"]) # 
-        raise HTTPException(status_code=status_code, detail=data)
+        raise HTTPException(**format_error(err))
 
-# TODO implement these routes in JSON:API
 
 # @router.post("/", tags=["customers"])
 # async def new_customer(customer_name: str = Form()):

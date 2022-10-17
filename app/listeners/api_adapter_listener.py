@@ -1,4 +1,4 @@
-from app import event, error_reintegration
+from app import event, report_processor
 from entities import error
 import db.models as model
 from db.db_services import DatabaseServices
@@ -37,8 +37,8 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     if error_type:
         errors = api.get_errors()
         db = DatabaseServices()
-        reintegrator = error_reintegration.Reintegrator(error_type, errors, db)
-        reintegrator.process_and_commmit()
+        processor = report_processor.ReportProcessor(database=db,target_err=error_type, error_table=errors)
+        processor.process_and_commit()
     return
 
 def setup_api_event_handlers():

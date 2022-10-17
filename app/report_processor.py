@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Hashable
 import pandas as pd
 
 from app import event
@@ -26,40 +27,39 @@ class ReportProcessor:
     another as a branch, a new branch is added to the database without a rep assignment. (While this 
     does need user attention to add a rep assignment, it's not going to the error's table)
 
-    This Processor is almost identical to the error_reintegration.Reintegrator processor. The main
-    difference is the ability to ingest an error table, check the error types against a target error type,
-    and emit processing step events by-submission. Another key difference is that error reprocessing does not
-    require registration of a new submission id.
-
-    TODO: Merge error_reintegration.Reintegrator with this class to reduce duplication of processing logic 
     """
     def __init__(
             self,
             database: DatabaseServices,
-            preprocessor: AbstractPreProcessor = None,
+            preprocessor: AbstractPreProcessor = None, # a class obj, not an instance
             submission: NewSubmission = None,
             target_err: ErrorType = None,
-            error_table: pd.DataFrame = None,
+            error_table: pd.DataFrame = pd.DataFrame()
         ):
 
-        all_optional_args = (preprocessor, submission, target_err, error_table)
-        # args passed determines a processing path
-        # note to self: empty args in the class initializer will match any class or subclass type. Args are ignored.
-        match all_optional_args:
-            case (AbstractPreProcessor(), NewSubmission(), *args) if not all(args):
-                print("run the report processor as a new submission")
-            case (ErrorType(), pd.DataFrame(), *args) if not all(args):
-                print("run the report as ab errors reintegration")
-            case _:
-                for arg in all_optional_args:
-                    print(type(arg))
-                    print(isinstance(arg,AbstractPreProcessor))
-                raise Exception
-                
+        self.skip = False
+        self.reintegration = False
+        
+        if preprocessor and submission:
+            if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
+                self.submission = submission
+                self.preprocessor = preprocessor
+
+        elif target_err and isinstance(error_table, pd.DataFrame):
+            if isinstance(target_err, ErrorType):
+                self.reintegration = True
+                self.target_err = target_err
+                self.error_table = pd.concat(   # expand row_data into dataframe columns
+                    [
+                        error_table, 
+                        pd.json_normalize(error_table.pop("row_data"),max_level=1)
+                    ], 
+                    axis=1).reset_index(drop=True)
+        else:
+            self.skip = True
+            return
 
         self.database = database
-        self.submission = submission
-        self.preprocessor = preprocessor
         self.map_customer_name = database.get_mappings("map_customer_name")
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
@@ -76,15 +76,64 @@ class ReportProcessor:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
         return round(total_comm)
 
-
     def total_sales(self) -> int:
         total_sales = self.staged_data.loc[:,"inv_amt"].sum()
         return round(total_sales)
 
+    def _send_event_by_submission(self, indecies: list, event_: Hashable, msg: str=None) -> None:
+        if self.reintegration:
+            table = self.error_table.iloc[indecies,:]
+        else:
+            table = self.ppdata.data.iloc[indecies,:]
+            table.insert(0,"submission_id",self.submission_id)
 
-    async def fill_customer_ids(self) -> 'ReportProcessor':
+        for sub_id in table["submission_id"].unique().tolist():
+            mask = table["submission_id"] == sub_id
+            sub_id_table = table.loc[mask,:]
+            if "row_index" in table.columns.tolist():
+                sub_id_table = sub_id_table.set_index("row_index")
+            sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason'])]
+            if event_ == "Formatting" and msg:
+                event.post_event(
+                    event_,
+                    msg,
+                    submission_id=sub_id,
+                    start_step=self.database.last_step_num(sub_id)+1
+                )
+            else:
+                event.post_event(
+                    event_,
+                    sub_id_table,
+                    submission_id=sub_id,
+                    start_step=self.database.last_step_num(sub_id)+1
+                )
+
+
+    def _filter_for_existing_records_with_target_error_type(self) -> 'ReportProcessor':
+        mask = self.error_table["reason"] == self.target_err.value
+        table_target_errors = self.error_table.loc[mask]
+        if table_target_errors.empty:
+            raise EmptyTableException
+        self.error_table = table_target_errors.reset_index(drop=True) # fixes for for id merging strategy
+        self.staged_data = self.error_table.copy()
+        for sub_id in self.staged_data["submission_id"].unique().tolist():
+            rows_affected = len(self.error_table[self.error_table["submission_id"]==sub_id])    
+            msg = f"reprocessing of errors initiated by reassessment of {self.target_err.name} errors. {rows_affected} rows affected"
+            event.post_event(
+                "Reprocessing",
+                data_ = msg,
+                submission_id = sub_id,
+                start_step=self.database.last_step_num(sub_id)+1
+            )
+        return self
+
+    def remove_error_db_entries(self) -> 'ReportProcessor':
+        self.database.delete_errors(self.staged_data["id"].to_list())
+        return self
+
+    def fill_customer_ids(self) -> 'ReportProcessor':
         """converts customer column customer id #s using the map_customer_name reference table"""
-        left_on_name = self.ppdata.customer_name_col
+        left_on_name = "customer"
             
         merged_with_name_map = pd.merge(
                 self.staged_data, self.map_customer_name,
@@ -95,14 +144,13 @@ class ReportProcessor:
         self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
 
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
-        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-        event.post_event(ErrorType(1), unmapped_no_match_table, submission_id=self.submission_id)
+        self._send_event_by_submission(no_match_indices,ErrorType(1))
         return self
 
 
-    async def fill_city_ids(self) -> 'ReportProcessor':
+    def fill_city_ids(self) -> 'ReportProcessor':
         """converts city column city id #s using the map_city_names reference table"""
-        left_on_name = self.ppdata.city_name_col
+        left_on_name = "city"
             
         merged_w_cities_map = pd.merge(
                 self.staged_data, self.map_city_names,
@@ -112,14 +160,13 @@ class ReportProcessor:
         # city column is going from a name string to an id integer
         self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
-        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-        event.post_event(ErrorType(2), unmapped_no_match_table, submission_id=self.submission_id)
+        self._send_event_by_submission(no_match_indices,ErrorType(2))
         return self
 
 
-    async def fill_state_ids(self) -> 'ReportProcessor':
+    def fill_state_ids(self) -> 'ReportProcessor':
         """converts column supplied in the args to id #s using the map_state_names reference table"""
-        left_on_name = self.ppdata.state_name_col
+        left_on_name = "state"
 
         merged_w_states_map = pd.merge(
                 self.staged_data, self.map_state_names,
@@ -130,58 +177,61 @@ class ReportProcessor:
         self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
         
         no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
-        unmapped_no_match_table = self.ppdata.data.iloc[no_match_indices]
-        event.post_event(ErrorType(3), unmapped_no_match_table, submission_id=self.submission_id)
+        self._send_event_by_submission(no_match_indices,ErrorType(3))
         return self
 
 
-    async def add_branch_id(self) -> 'ReportProcessor':
+    def add_branch_id(self) -> 'ReportProcessor':
         """
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows are added to the customer_branches table without a rep assigned
 
         """
         new_column: str = "customer_branch_id"
-        left_on_list = self.ppdata.map_rep_customer_ref_cols
+        left_on_list = ["customer","city","state"]
 
         merged_with_branches = pd.merge(
                 self.staged_data, self.branches,
                 how="left", left_on=left_on_list,
-                right_on=["customer_id","city_id","state_id"]
+                right_on=["customer_id","city_id","state_id"],
+                suffixes=(None,"_ref_table")
         ) 
+        try:
+            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+        except KeyError:
+            new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
 
-        new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
         self.staged_data.loc[:, new_column] = new_col_values
 
         no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["customer","city","state"]]
         if not no_match_table.empty:
             no_match_table.columns = ["customer_id","city_id","state_id"]
-            no_match_records = no_match_table.drop_duplicates().to_dict(orient="records")
-            self.api.create_new_customer_branch_bulk(no_match_records)
-            event.post_event("Formatting", f"added {len(no_match_records)} branches to the branches table without a rep assignment",submission_id=self.submission_id)
+            no_match_records = no_match_table.drop_duplicates()
+            self.api.create_new_customer_branch_bulk(no_match_records.to_dict(orient="records"))
+            self._send_event_by_submission(no_match_records.index.to_list(),"Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment")
             self.reset_branch_ref()
-            await self.add_branch_id()
+            self.add_branch_id()
         return self
 
 
-    async def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
+    def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
         mask = self.staged_data.loc[:,~self.staged_data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
-        data_dropped = self.staged_data[~mask]
+        data_dropped = self.staged_data[~mask].index.to_list()
         self.staged_data = self.staged_data[mask]
-        event.post_event("Rows Removed", data_dropped, self.submission_id)
+        self._send_event_by_submission(data_dropped, "Rows Removed")
         return self
 
 
-    async def register_submission(self) -> 'ReportProcessor':
+    def register_submission(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
         self.submission_id = self.database.record_submission(self.submission)
         return self
 
-    async def drop_extra_columns(self) -> 'ReportProcessor':
+    def drop_extra_columns(self) -> 'ReportProcessor':
         self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt"]]
         return self
 
-    async def register_commission_data(self) -> 'ReportProcessor':
+    def register_commission_data(self) -> 'ReportProcessor':
         if self.staged_data.empty:
             # my method for removing rows checks for existing rows with falsy values.
             # Avoid writing a blank row in the database from an empty dataframe
@@ -189,10 +239,10 @@ class ReportProcessor:
         else:
             self.staged_data = self.staged_data.dropna() # just in case
         self.database.record_final_data(self.staged_data)
-        event.post_event("Data Recorded", self.staged_data, self.submission_id)
+        self._send_event_by_submission(self.staged_data.index.to_list(), "Data Recorded")
         return self
 
-    async def preprocess(self) -> 'ReportProcessor':
+    def preprocess(self) -> 'ReportProcessor':
         report_name = self.database.get_report_name_by_id(self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
@@ -208,15 +258,15 @@ class ReportProcessor:
         self.ppdata = ppdata
         return self
 
-    async def insert_submission_id(self) -> 'ReportProcessor':
+    def insert_submission_id(self) -> 'ReportProcessor':
         self.staged_data.insert(0,"submission_id",self.submission_id)
         return self
 
-    async def insert_recorded_at_column(self) -> 'ReportProcessor':
+    def insert_recorded_at_column(self) -> 'ReportProcessor':
         self.staged_data["recorded_at"] = datetime.now()
         return self
 
-    async def process_and_commit(self) -> None:
+    def process_and_commit(self) -> None:
         """
         Taking preprocessed data, use reference tables from the database
         to map customer names, city names, state names, and reps
@@ -225,21 +275,31 @@ class ReportProcessor:
         Effects: commits the submission data, final commission data, errors, and processing steps
                 to the database 
         """
+        if self.skip:
+            return
 
-        await self.register_submission()
-        await self.preprocess()
-        await self.insert_submission_id()
-        await self.fill_customer_ids()
-        await self.filter_out_any_rows_unmapped()
-        await self.fill_city_ids()
-        await self.filter_out_any_rows_unmapped()
-        await self.fill_state_ids()
-        await self.filter_out_any_rows_unmapped()
-        await self.add_branch_id()
-        await self.filter_out_any_rows_unmapped()
-        await self.drop_extra_columns()
-        await self.filter_out_any_rows_unmapped()
-        await self.insert_recorded_at_column()
-        await self.register_commission_data()
+        if not self.reintegration:
+            self.register_submission()      \
+            .preprocess()                   \
+            .insert_submission_id()
+        else:
+            try:             
+                self._filter_for_existing_records_with_target_error_type() \
+                    .remove_error_db_entries()
+            except EmptyTableException:
+                return
         
+        self.fill_customer_ids()        \
+        .filter_out_any_rows_unmapped() \
+        .fill_city_ids()                \
+        .filter_out_any_rows_unmapped() \
+        .fill_state_ids()               \
+        .filter_out_any_rows_unmapped() \
+        .add_branch_id()                \
+        .filter_out_any_rows_unmapped() \
+        .drop_extra_columns()           \
+        .filter_out_any_rows_unmapped() \
+        .insert_recorded_at_column()    \
+        .register_commission_data()     
+
         return

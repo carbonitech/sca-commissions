@@ -32,7 +32,6 @@ ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
-    # "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
 DOWNLOADS = models.FileDownloads
@@ -661,3 +660,11 @@ class ApiAdapter:
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
         event.post_event("Record Updated", CUSTOMERS, id_=customer_id, **json_data["data"]["attributes"])
         return result
+
+
+def get_db():
+    db = ApiAdapter().SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

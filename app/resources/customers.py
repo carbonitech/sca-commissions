@@ -1,19 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter
-from app.jsonapi import Query, convert_to_jsonapi, format_error
 from sqlalchemy_jsonapi.errors import BaseError
+from services.api_adapter import ApiAdapter, get_db
+from app.jsonapi import Query, convert_to_jsonapi, format_error
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers")
-
-def get_db():
-    db = api.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 class Customer(BaseModel):
     name: str

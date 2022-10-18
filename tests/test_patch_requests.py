@@ -27,3 +27,53 @@ def test_customers_patch(database: database):
             hit = True
 
     assert hit, f"{response.json()}"
+
+def test_customers_patch_bad_body(database: database):
+    set_overrides()
+    test_id = randint(1,50)
+    
+    # ids different
+    id_mismatch = False
+    request_body = {
+        "data": {
+            "type": "customers",
+            "id": test_id,
+            "attributes": {
+                "name": "SHASCO INC"
+            }
+        }
+    }
+    response = test_client.patch(f"/customers/{test_id+1}", data=dumps(request_body))
+    match response.json():
+        case {"errors": [{"status": 400, 'detail': 'IDs do not match', **error_objs}]}:
+            id_mismatch = True
+    assert id_mismatch
+
+    # invalid attribute
+    attribute_nonexistant = False
+    request_body = {
+        "data": {
+            "type": "customers",
+            "id": test_id,
+            "attributes": {
+                "names": "SHASCO INC"
+            }
+        }
+    }
+    response = test_client.patch(f"/customers/{test_id}", data=dumps(request_body))
+    match response.json():
+        case {"errors": [{"status": 422, 'detail': 'field required', 'field': 'name'}]}:
+            attribute_nonexistant = True
+    assert attribute_nonexistant
+
+    # no body
+    request_body = {}
+    response = test_client.patch(f"/customers/{test_id}", data=dumps(request_body))
+    match response.json():
+        case {"errors": [*error_objs]}:
+            no_body = [False for x in range(len(error_objs))]
+            for i, error in enumerate(error_objs):
+                match error:
+                    case {"status": 422, "detail": "field required", "field": field}:
+                        no_body[i] = True
+    assert all(no_body)

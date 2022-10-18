@@ -15,7 +15,7 @@ def entity_default_name_mapping(table: model.Base, *args, **kwargs):
         new_name: str
         if table == model.Customer:
             data = {"customer_id": kwargs["id_"], "recorded_name": new_name.upper().strip()}
-            api.set_customer_name_mapping(**data)
+            api.set_customer_name_mapping(db=kwargs.get("db"),**data)
         elif table == model.City:
             data = {"city_id": kwargs["id_"], "recorded_name": new_name.upper().strip()}
             api.set_city_name_mapping(**data)

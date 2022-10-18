@@ -34,7 +34,7 @@ def set_overrides():
 def clear_overrides():
     app.dependency_overrides = {}
 
-@fixture
+@fixture(scope="module")
 def database():
     """
     Note: pytest fixures do set-up up to the yield statement, run the test, and then run the rest.
@@ -78,4 +78,5 @@ def database():
 
     # cleanup
     Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine) # without this, first module of tests passes, rest fail
 

@@ -74,7 +74,8 @@ def database():
             # col names in csv must match table schema
             session.add(DB_TABLES[table](**row)) 
     session.commit()
-    yield
+    
+    yield session
 
     # cleanup
     Base.metadata.drop_all(bind=engine)

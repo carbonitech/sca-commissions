@@ -77,7 +77,7 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         for err in resp_body["detail"]:
             err_detail: str = err["msg"]
             if len(err["loc"]) > 1:
-                err_field: str = err["loc"][1]
+                err_field: str = err["loc"][-1]
             else:
                 err_field: str = err["loc"][0]
             err_detail = err_detail.replace("value", err_field)

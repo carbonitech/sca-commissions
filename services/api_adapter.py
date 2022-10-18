@@ -279,16 +279,6 @@ class ApiAdapter:
         return pd.read_sql(sql, con=self.engine)
 
 
-    def set_customer_name_mapping(self, **kwargs):
-        sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
-        with Session(bind=self.engine) as session:
-            try:
-                session.execute(sql)
-            except IntegrityError:
-                session.rollback()
-            else:
-                session.commit()
-                event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
 
     def set_city_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
@@ -658,8 +648,18 @@ class ApiAdapter:
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
-        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, **json_data["data"]["attributes"])
+        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
         return result
+   
+    def set_customer_name_mapping(self, db: Session, **kwargs):
+        sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
+        try:
+            db.execute(sql)
+        except IntegrityError:
+            db.rollback()
+        else:
+            db.commit()
+            event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
 
 
 def get_db():

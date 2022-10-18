@@ -1,19 +1,10 @@
 from fastapi.testclient import TestClient
-from app.main import app, authenticate_auth0_token
+from app.main import app
+from tests.pytest_fixtures import set_overrides, clear_overrides, database
 
 test_client = TestClient(app)
 
-def skip_authentication():
-    return
-
-def set_overrides():
-    app.dependency_overrides[authenticate_auth0_token] = skip_authentication
-
-def clear_overrides():
-    app.dependency_overrides = {}
-
-
-def test_jsonapi_object_response_from_all_top_level():
+def test_jsonapi_object_response_from_all_top_level(database: database):
     resources = ["customers","cities","states","commission-data","manufacturers","representatives","submissions"]
     for resource in resources:
         set_overrides()
@@ -27,7 +18,7 @@ def test_jsonapi_object_response_from_all_top_level():
             f"Response contained {response.json()} with status code {response.status_code}"
         assert hit, fail_msg
     
-def test_get_customers_with_filter_parameter():
+def test_get_customers_with_filter_parameter(database: database):
     set_overrides()
     filter_field = "name"
     filter_value = "DEA"

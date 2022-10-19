@@ -45,14 +45,14 @@ class Customer(Base):
     name = Column(String)
     deleted = Column(DateTime)
     customer_branches = relationship("CustomerBranch", back_populates="customer")
-    map_customer_name = relationship("MapCustomerName", back_populates="customer")
+    map_customer_names = relationship("MapCustomerName", back_populates="customer")
 
 class MapCustomerName(Base):
-    __tablename__ = 'map_customer_name'
+    __tablename__ = 'map_customer_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String, unique=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    customer = relationship("Customer", back_populates="map_customer_name")
+    customer = relationship("Customer", back_populates="map_customer_names")
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'

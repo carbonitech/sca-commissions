@@ -116,7 +116,7 @@ def test_customers_patch_records_new_name_in_mapping(database: database):
     test_client.patch(f"/customers/{test_id}", data=dumps(request_body))
     hit = False
     try:
-        new_mapping_name = database.execute("SELECT recorded_name FROM map_customer_name WHERE customer_id = :id ORDER BY id DESC LIMIT 1", {"id": test_id}).scalar()  
+        new_mapping_name = database.execute("SELECT recorded_name FROM map_customer_names WHERE customer_id = :id ORDER BY id DESC LIMIT 1", {"id": test_id}).scalar()  
         hit = True if new_mapping_name == new_value else False
     finally:
         database.close() # need this to prevent the test from hanging indefinitely

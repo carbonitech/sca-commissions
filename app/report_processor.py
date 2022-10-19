@@ -61,7 +61,7 @@ class ReportProcessor:
             return
 
         self.database = database
-        self.map_customer_name = database.get_mappings("map_customer_name")
+        self.map_customer_names = database.get_mappings("map_customer_names")
         self.map_city_names = database.get_mappings("map_city_names")
         self.map_state_names = database.get_mappings("map_state_names")
         self.branches = database.get_branches()
@@ -137,7 +137,7 @@ class ReportProcessor:
         left_on_name = "customer"
             
         merged_with_name_map = pd.merge(
-                self.staged_data, self.map_customer_name,
+                self.staged_data, self.map_customer_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
             )
         

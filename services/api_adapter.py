@@ -30,7 +30,7 @@ SUBMISSIONS_TABLE = models.Submission
 PROCESS_STEPS_LOG = models.ProcessingStep
 ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
-    "map_customer_name": models.MapCustomerName,
+    "map_customer_names": models.MapCustomerName,
     "map_city_names": models.MapCityName,
     "map_state_names": models.MapStateName
 }

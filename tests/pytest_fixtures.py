@@ -41,6 +41,7 @@ def database():
     This fixtures sets up the database in a postgres database called "testing" using CSV files.
     All table data is dropped after testing
     """
+    Base.metadata.create_all(bind=engine)
     DB_TABLES = {
                 'cities': models.City,
                 'states': models.State,
@@ -85,5 +86,4 @@ def database():
 
     # cleanup
     Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine) # without this, first module of tests passes, rest fail
 

@@ -13,6 +13,11 @@ from services import api_adapter
 class EmptyTableException(Exception):
     pass
 
+class FileProcessingError(Exception):
+    def __init__(self, *args: object, **kwargs) -> None:
+        super().__init__(*args)
+        self.submission_id: int = kwargs.get("submission_id")
+
 class ReportProcessor:
     """
     Handles processing of data delivered through a preprocessor, which itself recieves the file
@@ -226,12 +231,12 @@ class ReportProcessor:
         Unmatched data is put into the errors table
         """
         new_column: str = "customer_branch_id"
-        left_on_list = ["store_number"]
+        left_on_list = ["store_number", "customer"]
 
         merged_with_branches = pd.merge(
                 self.staged_data, self.branches,
                 how="left", left_on=left_on_list,
-                right_on=["store_number"],
+                right_on=["store_number", "customer_id"],
                 suffixes=(None,"_ref_table")
         ) 
         try:
@@ -240,7 +245,7 @@ class ReportProcessor:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
         self.staged_data.loc[:, new_column] = new_col_values
-        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["store_number"]]
+        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,left_on_list]
         self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
         return self
 
@@ -279,7 +284,10 @@ class ReportProcessor:
         sub_id = self.submission_id
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
-        ppdata = preprocessor.preprocess()
+        try:
+            ppdata = preprocessor.preprocess()
+        except Exception:
+            raise FileProcessingError("There was an error while we attempted to process the file", submission_id=sub_id)
         # send events from preprocessing using the manufacturuer (domain obj)
         match ppdata.data.columns.to_list():
             case ["store_number", *other_cols]:
@@ -341,4 +349,4 @@ class ReportProcessor:
             .insert_recorded_at_column()    \
             .register_commission_data()     
 
-        return
+        return self.submission_id if not self.reintegration else None

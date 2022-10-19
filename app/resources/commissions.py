@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 from os import getenv
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, File, Depends, BackgroundTasks, Response, Form
+from fastapi import APIRouter, HTTPException, File, Depends, Response, Form
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
 from typing import Optional
@@ -96,7 +96,7 @@ async def process_commissions_file(file: bytes, report_id: int, reporting_month:
     try:
         file_obj = CommissionFile(file)
     except AssertionError as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail="There was an error processing the file. Make sure the file has only 1 sheet")
     new_sub = submission.NewSubmission(
             file_obj,
             reporting_month,
@@ -109,16 +109,25 @@ async def process_commissions_file(file: bytes, report_id: int, reporting_month:
         submission=new_sub,
         database=db
     )
-    mfg_report_processor.process_and_commit()
+
+    try:
+        return mfg_report_processor.process_and_commit()
+    except report_processor.FileProcessingError as err:
+        api.delete_submission(err.submission_id)
+        status_code = 400
+        detail = "There was an error processing the file. Make sure the correct report is selected and that there are no blank rows before the table headings"
+        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error"}]}
+        raise HTTPException(status_code, detail=error_obj)
+
 
 @router.post("", tags=['commissions'])
 async def process_data_from_a_file(
-        bg_tasks: BackgroundTasks,
         file: bytes = File(),
         report_id: int = Form(),
         reporting_month: int = Form(),
         reporting_year: int = Form(),
         manufacturer_id: int = Form(),
+        db: Session=Depends(get_db)
     ):
 
     existing_submissions = api.get_all_submissions()
@@ -140,9 +149,8 @@ async def process_data_from_a_file(
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
 
-    # bg_tasks.add_task(process_commissions_file, file, report_id, reporting_month, reporting_year, manufacturer_id)
-    await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id)
-    return Response(status_code=202)
+    new_submission_id = await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id)
+    return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={})
 
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(

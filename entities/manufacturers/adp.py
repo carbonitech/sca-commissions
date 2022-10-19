@@ -137,11 +137,11 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting","removed columns with no values",self.submission_id))
 
         data.loc[:,"store_number"] = data.pop("Branch#").astype(int)
-        data.loc[:,"inv_amt"] = data.pop("Cost")*0.75
+        data.loc[:,"inv_amt"] = data.pop("Cost")*0.75*100
         events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",
             self.submission_id))
 
-        data.loc[:,"comm_amt"] = data["inv_amt"]*0.03
+        data.loc[:,"comm_amt"] = data["inv_amt"]*0.03*100
         events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",
             self.submission_id))
 

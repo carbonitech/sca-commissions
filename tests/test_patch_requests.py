@@ -102,13 +102,14 @@ def test_customers_patch_makes_change_in_target(database: database):
 
 def test_customers_patch_records_new_name_in_mapping(database: database):
     set_overrides()
+    new_value = "NEW AWESOME SIDE BUSINESS, LLC"
     test_id = randint(1,50)
     request_body = {
         "data": {
             "type": "customers",
             "id": test_id,
             "attributes": {
-                "name": "NEW AWESOME BUSINESS, LLC"
+                "name": new_value
             }
         }
     }
@@ -116,8 +117,8 @@ def test_customers_patch_records_new_name_in_mapping(database: database):
     hit = False
     try:
         new_mapping_name = database.execute("SELECT recorded_name FROM map_customer_name WHERE customer_id = :id ORDER BY id DESC LIMIT 1", {"id": test_id}).scalar()  
-        hit = True if new_mapping_name == "NEW AWESOME BUSINESS, LLC" else False
+        hit = True if new_mapping_name == new_value else False
     finally:
         database.close() # need this to prevent the test from hanging indefinitely
 
-    assert hit, f"last mapping name in database with customer_id: {str(test_id)} is {str(new_mapping_name)}. Expected NEW AWESOME BUSINESS, LLC."
+    assert hit, f"last mapping name in database with customer_id: {str(test_id)} is {str(new_mapping_name)}. Expected {new_value}."

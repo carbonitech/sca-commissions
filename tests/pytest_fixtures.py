@@ -74,13 +74,13 @@ def database():
             # col names in csv must match table schema
             session.add(DB_TABLES[table](**row)) 
     session.commit()
-    map_customer_stmt = "INSERT INTO map_customer_name (recorded_name, customer_id) SELECT name,id FROM customers WHERE deleted IN NULL"
-    map_city_stmt = "INSERT INTO map_city_names (recorded_name, city_id) SELECT name,id FROM cities WHERE deleted IN NULL"
-    map_state_stmt = "INSERT INTO map_state_names (recorded_name, state_id) SELECT name,id FROM states WHERE deleted IN NULL"
+    map_customer_stmt = "INSERT INTO map_customer_name (recorded_name, customer_id) SELECT name,id FROM customers WHERE deleted IS NULL;"
+    map_city_stmt = "INSERT INTO map_city_names (recorded_name, city_id) SELECT name,id FROM cities WHERE deleted IS NULL;"
+    map_state_stmt = "INSERT INTO map_state_names (recorded_name, state_id) SELECT name,id FROM states WHERE deleted IS NULL;"
     for map_fill_stmt in [map_customer_stmt, map_city_stmt, map_state_stmt]:
         session.execute(map_fill_stmt)
     session.commit()
-    
+
     yield session
 
     # cleanup

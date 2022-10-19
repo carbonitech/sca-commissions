@@ -20,7 +20,6 @@ REPS = models.Representative
 CUSTOMER_NAME_MAP = models.MapCustomerName
 CITY_NAME_MAP = models.MapCityName
 STATE_NAME_MAP = models.MapStateName
-REPS_CUSTOMERS_MAP = None
 MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
@@ -30,7 +29,6 @@ ERRORS_TABLE = models.Error
 MAPPING_TABLES = {
     "map_customer_name": models.MapCustomerName,
     "map_city_names": models.MapCityName,
-    # "map_reps_customers": models.MapRepToCustomer,
     "map_state_names": models.MapStateName
 }
 
@@ -104,23 +102,6 @@ class DatabaseServices:
                 conn.execute(sql)
 
         
-    def get_reps_to_cust_branch_ref(self) -> pd.DataFrame:
-        """generates a reference for matching the map_rep_customer id to
-        an array of customer, city, and state ids"""
-        branches = BRANCHES
-        rep_mapping = REPS_CUSTOMERS_MAP
-        sql = sqlalchemy \
-            .select(rep_mapping.id, branches.customer_id,
-                branches.city_id, branches.state_id) \
-            .select_from(rep_mapping) \
-            .join(branches) 
-
-        result = pd.read_sql(sql, con=self.engine)
-        result.columns = ["map_rep_customer_id", "customer_id", "city_id", 
-                "state_id"]
-
-        return result
-
     def get_report_name_by_id(self, report_id: int) -> str:
         sql = sqlalchemy.select(REPORTS.report_name).where(REPORTS.id == report_id)
         with self.engine.begin() as conn:
@@ -128,4 +109,3 @@ class DatabaseServices:
         if result:
             return result[0]
         
-

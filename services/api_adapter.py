@@ -84,34 +84,6 @@ class ApiAdapter:
         event.post_event("Record Updated", CUSTOMERS, customer_id, **kwargs)
         return
 
-    def get_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
-        branches = BRANCHES
-        customers = CUSTOMERS
-        cities = CITIES
-        states = STATES
-        rep_mapping = REPS_CUSTOMERS_MAP
-        reps = REPS
-        sql = sqlalchemy \
-            .select(branches.id,customers.name,cities.name,states.name,reps.initials) \
-            .select_from(branches).join(customers).join(cities).join(states).join(rep_mapping).join(reps) \
-            .where(customers.id == customer_id)
-        # filters for branches with rep mappings per inner joins
-        result = pd.read_sql(sql, con=self.engine)
-        result.columns = ["id", "Customer Name", "City", "State", "Salesman"]
-        # append branches for this customer that don't have a rep assigned and return
-        unmapped_branches = self.get_unmapped_branches_by_customer(customer_id=customer_id)
-        return pd.concat([result,unmapped_branches])
-
-    def get_unmapped_branches_by_customer(self, customer_id: int) -> pd.DataFrame:
-        # sql = sqlalchemy.select(BRANCHES.id, CUSTOMERS.name, CITIES.name, STATES.name) \
-        #     .join(CUSTOMERS).join(CITIES).join(STATES).join(REPS_CUSTOMERS_MAP, isouter=True) \
-        #     .where(sqlalchemy.and_(REPS_CUSTOMERS_MAP.id == None, BRANCHES.customer_id==customer_id))
-        # result = pd.read_sql(sql, con=self.engine)
-        # result.columns = ["id", "Customer Name", "City", "State"]
-        # result["Salesman"] = None
-        # return result
-        ...
-
     def delete_a_branch_by_id(self, branch_id: int):
         sql = sqlalchemy.update(BRANCHES) \
             .values(deleted = datetime.now()) \
@@ -141,21 +113,6 @@ class ApiAdapter:
     def get_a_rep(self, rep_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(REPS).where(REPS.id == rep_id)
         return pd.read_sql(sql, con=self.engine)
-
-    def get_rep_and_branches(self, rep_id: int) -> pd.DataFrame:
-        # reps = REPS
-        # customers = CUSTOMERS
-        # branches = BRANCHES
-        # cities = CITIES
-        # states = STATES
-        # map_rep_to_customers = REPS_CUSTOMERS_MAP
-        # sql = sqlalchemy.select(map_rep_to_customers.id,customers.name,cities.name,states.name) \
-        #         .select_from(map_rep_to_customers).join(reps).join(branches).join(customers) \
-        #         .join(cities).join(states).where(map_rep_to_customers.rep_id == rep_id)
-        # result = pd.read_sql(sql, con=self.engine)
-        # result.columns = ["id", "Customer", "City", "State"]
-        # return result
-        ...
 
 
     def get_all_submissions(self) -> pd.DataFrame:
@@ -300,14 +257,6 @@ class ApiAdapter:
             session.execute(sql)
             session.commit()
         event.post_event("New Record", REPS_CUSTOMERS_MAP, **kwargs)
-
-    def update_rep_to_customer_mapping(self, map_id: int, **kwargs):
-        # sql = sqlalchemy.update(REPS_CUSTOMERS_MAP).values(**kwargs).where(REPS_CUSTOMERS_MAP.id == map_id)
-        # with Session(bind=self.engine) as session:
-        #     session.execute(sql)
-        #     session.commit()
-        # event.post_event("Record Updated", REPS_CUSTOMERS_MAP, **kwargs)
-        ...
 
     def get_processing_steps(self, submission_id: int) -> pd.DataFrame:
         """get all report processing steps for a commission report submission"""
@@ -567,6 +516,7 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
 
+    # JSON:API implementation - passing in a db session instead of creating one
 
     def generate_file_record(self, db: Session, record: dict):
         sql = sqlalchemy.insert(DOWNLOADS).values(**record)
@@ -586,9 +536,7 @@ class ApiAdapter:
         with db as session:
             session.execute(sql)
             session.commit()
-
-
-    # JSON:API implementation - passing in a db session instead of creating one
+            
 
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
         return models.serializer.get_related(db,{},primary,id_,secondary)

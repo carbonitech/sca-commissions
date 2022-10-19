@@ -63,7 +63,7 @@ async def modify_customer_rep_mapping(customer_id: int, mapping_id: int, new_map
         raise HTTPException(400, detail="You are not allowed to change the branch id of an existing rep mapping.")
     if new_mapping.rep_id not in api.get_all_reps()["id"].values:
         raise HTTPException(400, detail="Rep does not exist")
-    api.update_rep_to_customer_mapping(mapping_id, **new_mapping.dict(exclude_none=True))
+    # api.update_rep_to_customer_mapping(mapping_id, **new_mapping.dict(exclude_none=True))
 
 @router.delete("/customers/{customer_id}/names", tags=["customers"])
 async def delete_customer_name_mapping(customer_id: int, mapping_id: int):

@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.main import app, authenticate_auth0_token
+from app.main import app
 from random import choices
 from string import ascii_letters, digits, punctuation
 

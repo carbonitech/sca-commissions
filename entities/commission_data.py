@@ -9,10 +9,6 @@ from entities.error import Error
 @dataclass
 class PreProcessedData:
     data: DataFrame
-    map_rep_customer_ref_cols: List[str]
-    customer_name_col: str
-    city_name_col: str
-    state_name_col: str
     events: List[tuple]
     
 

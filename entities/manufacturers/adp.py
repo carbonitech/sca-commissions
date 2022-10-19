@@ -55,12 +55,12 @@ class PreProcessor(AbstractPreProcessor):
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
-        return PreProcessedData(result, ref_cols, *ref_cols, events)
+        return PreProcessedData(result, events)
 
 
     def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
         events = []
-        default_customer_name = "COBURN" # how to get around this?
+        default_customer_name = "COBURN"
 
         comm_col_before = data.columns.values[-1]
         comm_col_after = "Commission"
@@ -98,27 +98,31 @@ class PreProcessor(AbstractPreProcessor):
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
-        return PreProcessedData(result, ref_cols, *ref_cols, events)
+        return PreProcessedData(result, events)
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
         events = []
-        default_customer_name = "RE MICHEL" # how to get around this?
+        default_customer_name = "RE MICHEL"
 
         data = data.dropna(subset=data.columns.tolist()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+
         data = data.dropna(axis=1, how='all')
         events.append(("Formatting","removed columns with no values",self.submission_id))
+
         data.loc[:,"branch_number"] = data.pop("Branch#").astype(int)
         data.loc[:,"inv_amt"] = data.pop("Cost")*0.75
         events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",self.submission_id))
+
         data.loc[:,"comm_amt"] = data["inv_amt"]*0.03
         events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",self.submission_id))
+
         data.loc[:,"customer"] = default_customer_name
         events.append(("Formatting","added a column with customer name {default_customer_name} in all rows",self.submission_id))
+        
         result = data.loc[:,["branch_number", "customer", "inv_amt", "comm_amt"]]
-        # TODO: add store_number column and seperate flow if the column isn't null? or an attr flag?
-        # return PreProcessedData(result, )
+        return PreProcessedData(result, events)
         
 
     def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...

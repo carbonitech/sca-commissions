@@ -39,6 +39,7 @@ class ReportProcessor:
 
         self.skip = False
         self.reintegration = False
+        self.use_store_numbers = False
         
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
@@ -197,21 +198,52 @@ class ReportProcessor:
                 suffixes=(None,"_ref_table")
         ) 
         try:
-            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
-        except KeyError:
             new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
+        except KeyError:
+            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
         self.staged_data.loc[:, new_column] = new_col_values
 
-        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["customer","city","state"]]
+        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,left_on_list]
         if not no_match_table.empty:
             no_match_table.columns = ["customer_id","city_id","state_id"]
             no_match_records = no_match_table.drop_duplicates()
             self.api.create_new_customer_branch_bulk(no_match_records.to_dict(orient="records"))
-            self._send_event_by_submission(no_match_records.index.to_list(),"Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment")
+            self._send_event_by_submission(
+                no_match_records.index.to_list(),
+                "Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment"
+            )
             self.reset_branch_ref()
             self.add_branch_id()
         return self
+
+    def add_branch_id_by_store_number(self) -> 'ReportProcessor':
+        """
+        if branch numbers are in the preprocessed data in place of customer info, 
+            this method replaces matching by customer name, 
+            city name, and state name seperately
+            
+        Unmatched data is put into the errors table
+        """
+        new_column: str = "customer_branch_id"
+        left_on_list = ["store_number"]
+
+        merged_with_branches = pd.merge(
+                self.staged_data, self.branches,
+                how="left", left_on=left_on_list,
+                right_on=["store_number"],
+                suffixes=(None,"_ref_table")
+        ) 
+        try:
+            new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
+        except KeyError:
+            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+
+        self.staged_data.loc[:, new_column] = new_col_values
+        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,["store_number"]]
+        self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
+        return self
+
 
 
     def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
@@ -249,6 +281,9 @@ class ReportProcessor:
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         ppdata = preprocessor.preprocess()
         # send events from preprocessing using the manufacturuer (domain obj)
+        match ppdata.data.columns.to_list():
+            case ["store_number", *other_cols]:
+                self.use_store_numbers = True
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
                 event.post_event(*event_arg_tuple,start_step=1)
@@ -290,16 +325,20 @@ class ReportProcessor:
                 return
         
         self.fill_customer_ids()        \
-        .filter_out_any_rows_unmapped() \
-        .fill_city_ids()                \
-        .filter_out_any_rows_unmapped() \
-        .fill_state_ids()               \
-        .filter_out_any_rows_unmapped() \
-        .add_branch_id()                \
-        .filter_out_any_rows_unmapped() \
-        .drop_extra_columns()           \
-        .filter_out_any_rows_unmapped() \
-        .insert_recorded_at_column()    \
-        .register_commission_data()     
+            .filter_out_any_rows_unmapped()
+            
+        if not self.use_store_numbers:
+            self.fill_city_ids()            \
+            .filter_out_any_rows_unmapped() \
+            .fill_state_ids()               \
+            .filter_out_any_rows_unmapped() \
+            .add_branch_id()
+        else:
+            self.add_branch_id_by_store_number()
+            
+        self.filter_out_any_rows_unmapped() \
+            .drop_extra_columns()           \
+            .insert_recorded_at_column()    \
+            .register_commission_data()     
 
         return

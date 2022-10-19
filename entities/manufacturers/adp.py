@@ -32,7 +32,9 @@ class PreProcessor(AbstractPreProcessor):
         ref_col = data.columns.tolist()[0]
         rows_null = data[data[ref_col].isna()]
         data.dropna(subset=ref_col, inplace=True)
-        events.append(("Rows Removed",rows_null.rename(columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}),self.submission_id))
+        events.append(("Rows Removed",rows_null.rename(
+            columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}
+        ),self.submission_id))
 
         # sum by account convert to a flat table
         piv_table_values = ["NetSales", "Rep1Commission"]
@@ -59,13 +61,20 @@ class PreProcessor(AbstractPreProcessor):
 
 
     def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
+        """
+        Process any tab of the report for Coburn's.
+        Only the the sums of sales and commissions are used, 
+            and they are reported as a single entry of negative amounts,
+            under Customer: COBURN, City: VARIOUS, State: MS
+        """
         events = []
         default_customer_name = "COBURN"
 
         comm_col_before = data.columns.values[-1]
         comm_col_after = "Commission"
-        data = data.rename(columns={comm_col_before: comm_col_after}) # normalize final column in case commission rate changes
-        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {comm_col_after}",self.submission_id))
+        data = data.rename(columns={comm_col_before: comm_col_after}) # if commission rate changes, this column name would change
+        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {comm_col_after}",
+            self.submission_id))
         data.columns = [col.replace(" ","") for col in data.columns.tolist() if isinstance(col,str)]
         events.append(("Formatting","removed spaces from column names",self.submission_id))
 
@@ -74,14 +83,17 @@ class PreProcessor(AbstractPreProcessor):
         key_cols = ["Amount","Branch","Location","Commission"]
         data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
         data = data[~data[branch_total_amount_filter].isna()]
-        events.append(("Formatting",f"filtered for only blank rows in the {na_filter_col} column",self.submission_id))
-        events.append(("Formatting",f"filtered out blank rows in the {branch_total_amount_filter} column",self.submission_id))
-        events.append(("Formatting",f"filtered out all columns EXCEPT {', '.join(key_cols)}",self.submission_id))
+        events.append(("Formatting",f"filtered for only blank rows in the {na_filter_col} column",
+            self.submission_id))
+        events.append(("Formatting",f"filtered out blank rows in the {branch_total_amount_filter} column",
+            self.submission_id))
+        events.append(("Formatting",f"filtered out all columns EXCEPT {', '.join(key_cols)}",
+            self.submission_id))
 
         def strip_branch_number(value: str) -> int:
             return value.lower().strip().replace(" total","")
 
-        data.loc[:,"Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
+        data["Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
         events.append(("Formatting","striped Branch column down to branch number only",self.submission_id))
 
         # convert dollars to cents to avoid demical imprecision
@@ -92,7 +104,8 @@ class PreProcessor(AbstractPreProcessor):
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
         
-        result = pd.DataFrame([[default_customer_name, "VARIOUS", "MS", total_inv_adj, total_comm_adj]], columns=self.result_columns)
+        result = pd.DataFrame([[default_customer_name, "VARIOUS", "MS", total_inv_adj, total_comm_adj]],
+            columns=self.result_columns)
         ref_cols = self.result_columns[:3]
 
         for ref_col in ref_cols:
@@ -102,6 +115,18 @@ class PreProcessor(AbstractPreProcessor):
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+        """
+        Process any tab of the report for RE Michel
+        The data provides branch numbers as well as locations
+        Branch numbers are stored in the database and should be used 
+            as the preferred method for matching to database customer entities
+        Locations in the form of city-state could be parsed out, but with more work
+            and prone to run into errors.
+
+        Returns a dataset with branch number, customer name (a default value), 
+            and amounts per branch
+
+        """
         events = []
         default_customer_name = "RE MICHEL"
 
@@ -111,17 +136,20 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(axis=1, how='all')
         events.append(("Formatting","removed columns with no values",self.submission_id))
 
-        data.loc[:,"branch_number"] = data.pop("Branch#").astype(int)
+        data.loc[:,"store_number"] = data.pop("Branch#").astype(int)
         data.loc[:,"inv_amt"] = data.pop("Cost")*0.75
-        events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",self.submission_id))
+        events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",
+            self.submission_id))
 
         data.loc[:,"comm_amt"] = data["inv_amt"]*0.03
-        events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",self.submission_id))
+        events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",
+            self.submission_id))
 
         data.loc[:,"customer"] = default_customer_name
-        events.append(("Formatting","added a column with customer name {default_customer_name} in all rows",self.submission_id))
-        
-        result = data.loc[:,["branch_number", "customer", "inv_amt", "comm_amt"]]
+        events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
+            self.submission_id))
+
+        result = data.loc[:,["store_number", "customer", "inv_amt", "comm_amt"]]
         return PreProcessedData(result, events)
         
 

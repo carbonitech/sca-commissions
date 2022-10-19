@@ -3,52 +3,31 @@ Specifications for SCA Commissions Processing Project
 As a User (Manufacturer or SCA Principal or SCA Employee):
 	* Role: User
 	* Able to upload commission files as-is
-		- basic checks should be done (# of tabs, number of headings by tab, etc.)
-		- have the uploader identify which sheets are which (i.e. "Coburn JUN" == "Coburn POS")
 	* Able to upload multiple files (Is this really necessary? One at a time might be sufficient and clearer)
 	* Able to confirm that the report was received (web gui flash msg & email)
 	* Able to confirm which reports have been sent (or not sent) and which are expected
-		- Table maps manufacturer to report name (i.e. ADP --> RE Michel POS)
-		- Table logs manufacturer report submissions by report name
-		- Query on the joined tables and use logic to determine if the most recent month's set is incomplete or if new month should be shown
 	* Able to re-submit reports (i.e. corrections)
-		- Completely replace the dataset and log in a table which rows changed and what changed
 	* Able to review prior uploads (vague)
 	* Able to review the post-processed file
-		- serve the result of a SQL query in the webpage, downloadable to excel format
 
 As a User (SCA Principal):
 	* Role: Admin
 	* Able to access submitted commission reports in pre-processed form
-		- view excel file in browser or download
 	* Able to access submitted commission reports in post-processed form
-		- view result of a SQL query in the webpage, downloadable to excel
 	* Able to review a report of the processing steps for each submission between pre- and post-processing for each report submission
-		- log each significant data cleaning, mapping, and enriching processing step
 	* Able to access a compiled report, updated in real time
-		- commissions report, can be downloaded, and/or uploaded to a dataset that is used for PowerBI
 	* Able to modify custom mappings and enrichment datasets (i.e. manf customer names mapped to sca customer names)
-		- maintain seperate SQL tables for each mapping
 	* Able to receive and review notifications of anomolies that need attention
-		- maintain a staging area for line items that need attention
 
 Application Requirements:
 	* Verify & maintain manufacturer accounts for file uploads
-		- Users & roles tables
 	* Persist up-loads as-is and make them accessible to all users with privileges
-		- Amazon "Bucket" storage
 	* Persist all report processing steps and make them accessible to all users with privileges
-		- log as described in another section
 	* Persist reports post-processing and make them accessible to all users with privileges
-		- SQL query as described in another section
 	* Use reference tables to clean and enrich data
-		- universal references for all manufacturers
 	* Expose reference tables to SCA and allow edits
 	* Catch & isolate anomolies (i.e. new, unmapped customer names), and notify SCA that action is needed (i.e. add mapping entry)
-		- form post/put/delete requests to modify underlying tables
 	* Automatically integrate changes (i.e. manf reupload or anomoly resolution) into post-processed data and final report
-		- posting changes initiates processing
 	* Web-based UI for all user-facing features
 	* Each manufacturer can be added or removed in modular fashion
-		- each manufacturer has the its own directory/module
 	* Post-processed report is a standardized format, regardless of manufacturer file format

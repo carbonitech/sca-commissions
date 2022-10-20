@@ -53,7 +53,7 @@ async def format_errors_to_jsonapi_spec(request: Request, call_next):
         return json.loads("".join([data.decode() async for data in iterator]))
         
     response: StreamingResponse = await call_next(request)
-    if 400 > response.status_code >= 200:
+    if (400 > response.status_code >= 200) or (response.status_code >= 500):
         return response
     
     resp_body = await read_body(response.body_iterator)

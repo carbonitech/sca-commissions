@@ -592,7 +592,7 @@ class ApiAdapter:
         model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
         return models.serializer.get_resource(db,query,model_name,mapping_id, obj_only=True)
 
-    def create_customer_name_mapping(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
+    def create_customer_name_mapping(self, db: Session, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
         result = models.serializer.post_collection(db,json_data,model_name).data
@@ -601,7 +601,7 @@ class ApiAdapter:
 
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
-        result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
+        result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
         event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
         return result
 

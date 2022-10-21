@@ -1,7 +1,7 @@
 import re
 import json
 import warnings
-from typing import Callable
+from typing import Any, Callable
 from urllib.parse import unquote
 
 from pydantic import BaseModel
@@ -52,7 +52,7 @@ class JSONAPIRelationshipObject(BaseModel):
     data: JSONAPIBaseRelationship
 
 class CustomerRelationship(BaseModel):
-    customer: JSONAPIRelationshipObject
+    customers: JSONAPIRelationshipObject
 
 class NewCustomerNameMapping(JSONAPIBaseModification):
     attributes: CustomerNameMapping
@@ -355,6 +355,19 @@ class JSONAPIRequest(Request):
         formatted_param_url_string = "&".join([f'{x}={y}' for x,y in formatted_params.items() if y]).replace("\'", "\"")
         return QueryParams(formatted_param_url_string)
 
+
+    def convert_key_hyphens_to_underscores(self, target: dict[str,dict|str]) -> dict:
+        new_dict = target.copy()
+        for key, value in target.items():
+            new_key = key.replace("-","_")
+            new_dict[new_key] = new_dict.pop(str(key))
+            if isinstance(value,dict):
+                new_dict[new_key] = self.convert_key_hyphens_to_underscores(value)
+            else:
+                continue
+        return new_dict
+
+
     @property
     def query_params(self) -> QueryParams:
         if not hasattr(self, "_query_params"):
@@ -365,6 +378,11 @@ class JSONAPIRequest(Request):
                 self._query_params = query_params
         return self._query_params
 
+    async def json(self) -> Any:
+        if not hasattr(self, "_json"):
+            body = await self.body()
+            self._json = self.convert_key_hyphens_to_underscores(json.loads(body))
+        return self._json
 
 class JSONAPIRoute(APIRoute):
     def get_route_handler(self) -> Callable:

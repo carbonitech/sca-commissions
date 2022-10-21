@@ -54,6 +54,7 @@ app.include_router(resources.branches, dependencies=PROTECTED)
 app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
 app.include_router(resources.manufacturers, dependencies=PROTECTED)
+app.include_router(resources.customer_names, dependencies=PROTECTED)
 app.include_router(resources.downloads)
 app.include_router(resources.resetdb, dependencies=PROTECTED)
 

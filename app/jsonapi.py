@@ -1,19 +1,20 @@
+import re
 import json
 import warnings
+from typing import Callable
+from urllib.parse import unquote
+
 from pydantic import BaseModel
+from sqlalchemy_jsonapi import JSONAPI
+from starlette.requests import QueryParams
+from starlette.datastructures import QueryParams
+from fastapi import Request, Response
+from fastapi.routing import APIRoute
 from sqlalchemy import or_, select, func
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError, BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
-from sqlalchemy_jsonapi import JSONAPI
-from starlette.requests import QueryParams
 
-import re
-from typing import Callable
-from urllib.parse import unquote
-from fastapi import Request, Response
-from fastapi.routing import APIRoute
-from starlette.datastructures import QueryParams
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
@@ -57,6 +58,8 @@ class JSONAPI_(JSONAPI):
     get_collection is a copy of JSONAPI's same method, but with new
         logic spliced in to handle filtering arguments, add pagination metadata and links,
         and apply a default sorting pattern if a sort argument is not applied.
+
+    _filter_deleted filters for null values in a hard-coded "deleted" column
     """
 
     @staticmethod
@@ -72,7 +75,12 @@ class JSONAPI_(JSONAPI):
 
     @staticmethod
     def _apply_filter(model, sqla_query_obj: sqlQuery, query_params: dict):
-        """"""
+        """
+        handler for filter parameters in the query string
+        for any value or list of values, this filter is permissive,
+        looking for a substring anywhere in the field value that matches the arguement(s)
+        Roughly quivalent to SELECT field FROM table WHERE field LIKE '%value_1% OR LIKE '%value_2%'
+        """
         if (filter_args_str := query_params.get('filter')):
             filter_args: dict[str,str] = json.loads(filter_args_str)
             filter_args = {k:[sub_v.upper().strip() for sub_v in v.split(',')] for k,v in filter_args.items() if v is not None}
@@ -88,9 +96,14 @@ class JSONAPI_(JSONAPI):
             return sqla_query_obj.filter(*filter_query_args)
         return sqla_query_obj
 
+
     @staticmethod
     def _filter_deleted(model, sqla_query_obj: sqlQuery):
-        """"""
+        """
+        The 'deleted' column signals a soft delete.
+        While soft deleting preserves reference integrity,
+            we don't want 'deleted' values showing up in query results
+        """
         field="deleted"
         if model_attr := getattr(model, field, None):
             return sqla_query_obj.filter(model_attr == None)

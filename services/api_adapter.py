@@ -169,15 +169,7 @@ class ApiAdapter:
             session.commit()
         return
 
-    def get_all_customer_name_mappings(self, customer_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS,CUSTOMER_NAME_MAP)\
-                .select_from(CUSTOMERS).join(CUSTOMER_NAME_MAP)
-        if customer_id:
-            sql = sql.where(CUSTOMERS.id == customer_id)
 
-        table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["customer_id", "customer", "mapping_id", "alias", "_"] # deleted, customer_id
-        return table.loc[:,~table.columns.isin(["_"])]
 
     def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CITIES,CITY_NAME_MAP)\
@@ -546,7 +538,7 @@ class ApiAdapter:
 
     def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,cust_id)
+        return models.serializer.get_resource(db,query,model_name,cust_id, obj_only=True)
 
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,CUSTOMERS)
@@ -556,49 +548,63 @@ class ApiAdapter:
 
     def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CITIES.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,city_id)
+        return models.serializer.get_resource(db,query,model_name,city_id, obj_only=True)
 
     def get_state_jsonapi(self, db: Session, state_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(STATES.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,state_id)
+        return models.serializer.get_resource(db,query,model_name,state_id, obj_only=True)
 
     def get_many_states_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,STATES)
 
     def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(REPS.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,rep_id)
+        return models.serializer.get_resource(db,query,model_name,rep_id, obj_only=True)
 
     def get_many_reps_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,REPS)
 
     def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,submission_id)
+        return models.serializer.get_resource(db,query,model_name,submission_id, obj_only=True)
 
     def get_many_submissions_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,SUBMISSIONS_TABLE)
 
     def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,manuf_id)
+        return models.serializer.get_resource(db,query,model_name,manuf_id, obj_only=True)
 
     def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,MANUFACTURERS)
 
     def get_commission_data_by_id_jsonapi(self, db: Session, row_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,row_id)
+        return models.serializer.get_resource(db,query,model_name,row_id, obj_only=True)
 
     def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE)
+   
+    def get_all_customer_name_mappings(self, db: Session, query: dict) -> JSONAPIResponse:
+        return models.serializer.get_collection(db,query,CUSTOMER_NAME_MAP)
+
+    def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict) -> JSONAPIResponse:
+        model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
+        return models.serializer.get_resource(db,query,model_name,mapping_id, obj_only=True)
+
+    def create_customer_name_mapping(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
+        model_name = hyphenated_name(CUSTOMER_NAME_MAP)
+        json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
+        result = models.serializer.post_collection(db,json_data,model_name).data
+        event.post_event("New Record", CUSTOMER_NAME_MAP)
+        return result
 
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id)
         event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
         return result
-   
+
     def set_customer_name_mapping(self, db: Session, **kwargs):
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
         try:

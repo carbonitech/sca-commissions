@@ -23,9 +23,10 @@ app.add_middleware(
 @app.middleware('http')
 async def format_responses_to_jsonapi_spec(request: Request, call_next):
     """
-    middleware detecting whether an error response is coming back from the request call
-    if an error code within the 400-599 range is detected, return a JSON response formatted
-    to the JSON:API specification, otherwise return the response as-is
+    Many default responses from routes are not to JSON:API specifications for
+    one reason or another.
+    This middleware acts as a router based on response code so that 
+    the response body can be prepared to JSON:API spec (if needed) and returned
     """
         
     response: StreamingResponse = await call_next(request)

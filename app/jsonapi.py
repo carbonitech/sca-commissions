@@ -12,18 +12,56 @@ from fastapi import Request, Response
 from fastapi.routing import APIRoute
 from sqlalchemy import or_, select, func
 from sqlalchemy.orm import Session, Query as sqlQuery
-from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError, BaseError
+from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
+
 class Query(BaseModel):
     include: str|None = None
     sort: str|None = None
     fields: str|None = None
     filter: str|None = None
     page: str|None = None
+
+class JSONAPIBaseModification(BaseModel):
+    type: str
+
+class JSONAPIBaseRelationship(BaseModel):
+    type: str
+    id: int
+
+class Customer(BaseModel):
+    name: str
+
+class CustomerModification(JSONAPIBaseModification):
+    id: int
+    attributes: Customer
+
+class CustomerModificationRequest(BaseModel):
+    data: CustomerModification
+
+
+class CustomerNameMapping(BaseModel):
+    recorded_name: str
+
+
+class JSONAPIRelationshipObject(BaseModel):
+    data: JSONAPIBaseRelationship
+
+class CustomerRelationship(BaseModel):
+    customer: JSONAPIRelationshipObject
+
+class NewCustomerNameMapping(JSONAPIBaseModification):
+    attributes: CustomerNameMapping
+    relationships: CustomerRelationship
+
+class NewCustomerNameMappingRequest(BaseModel):
+    data: NewCustomerNameMapping
+    
+
 
 def convert_to_jsonapi(query: dict) -> dict:
     jsonapi_query = {}
@@ -275,8 +313,11 @@ class JSONAPI_(JSONAPI):
             
         return response.data
 
-    def get_resource(self, session, query, api_type, obj_id):
-        return super().get_resource(session, query, api_type, obj_id).data
+    def get_resource(self, session, query, api_type, obj_id, obj_only:bool=False):
+        if obj_only:
+            return super().get_resource(session, query, api_type, obj_id).data
+        else:
+            return super().get_resource(session, query, api_type, obj_id)
 
     def get_relationship(self, session, query, api_type, obj_id, rel_key):
         return super().get_relationship(session, query, api_type, obj_id, rel_key).data

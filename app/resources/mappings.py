@@ -30,6 +30,6 @@ async def map_customer_names(map_customer_name_id: int, db: Session=Depends(get_
     except Exception as err:
         raise HTTPException(status_code=400,detail=str(err))
 
-@router_customers.post("/{customer_id}", tags=['mappings'])
-async def new_map_customer_name(customer_id: int, name_mapping: NewCustomerNameMappingRequest, db: Session=Depends(get_db)):
-    return api.create_customer_name_mapping(db=db, customer_id=customer_id, json_data=name_mapping.dict())
+@router_customers.post("", tags=['mappings'])
+async def new_map_customer_name(name_mapping: NewCustomerNameMappingRequest, db: Session=Depends(get_db)):
+    return api.create_customer_name_mapping(db=db, json_data=name_mapping.dict())

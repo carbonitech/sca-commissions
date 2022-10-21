@@ -44,15 +44,15 @@ class Customer(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     deleted = Column(DateTime)
-    customer_branches = relationship("CustomerBranch", back_populates="customer")
-    map_customer_names = relationship("MapCustomerName", back_populates="customer")
+    customer_branches = relationship("CustomerBranch", back_populates="customers")
+    map_customer_names = relationship("MapCustomerName", back_populates="customers")
 
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_names'
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String, unique=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    customer = relationship("Customer", back_populates="map_customer_names")
+    customers = relationship("Customer", back_populates="map_customer_names")
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
@@ -63,7 +63,7 @@ class CustomerBranch(Base):
     deleted = Column(DateTime)
     store_number = Column(Integer)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
-    customer = relationship("Customer", back_populates="customer_branches")
+    customers = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")
     state_name = relationship("State", back_populates="branch_states")
     representative = relationship("Representative", back_populates="branch")

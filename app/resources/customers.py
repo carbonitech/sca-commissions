@@ -3,22 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy_jsonapi.errors import BaseError
 from services.api_adapter import ApiAdapter, get_db
-from app.jsonapi import Query, convert_to_jsonapi, format_error, JSONAPIRoute
+from app.jsonapi import Query, convert_to_jsonapi, format_error, JSONAPIRoute, CustomerModificationRequest
 
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
-
-class Customer(BaseModel):
-    name: str
-
-class JSONAPIModificationBodyModel(BaseModel):
-    type: str
-    id: int
-    attributes: Customer
-
-class CustomerModificationRequest(BaseModel):
-    data: JSONAPIModificationBodyModel
 
 @router.get("", tags=["customers"])
 async def all_customers(query: Query=Depends(), db: Session=Depends(get_db)):

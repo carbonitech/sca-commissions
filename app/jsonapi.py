@@ -8,6 +8,13 @@ from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_pe
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 
+import re
+from typing import Callable
+from urllib.parse import unquote
+from fastapi import Request, Response
+from fastapi.routing import APIRoute
+from starlette.datastructures import QueryParams
+
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
 class Query(BaseModel):
@@ -253,3 +260,50 @@ class JSONAPI_(JSONAPI):
 
     def get_related(self, session, query, api_type, obj_id, rel_key):
         return super().get_related(session, query, api_type, obj_id, rel_key).data
+
+
+class JSONAPIRequest(Request):
+
+    def handle_jsonapi_params(self, query_params):
+        expression = r'(page|filter|fields)\[(\w*)]'
+        query_params = unquote(query_params).split("&")
+        query_params = dict([tuple(x.split("=")) for x in query_params])
+        formatted_params: dict[dict,dict,dict,str|None,str|None] = {
+            "page": {},
+            "filter": {},
+            "fields": {},
+            "include": query_params.get("include"),
+            "sort": query_params.get("sort"),
+        }
+        for param, value in query_params.items():
+            if match_ := re.match(expression,param):
+                base_name = match_.group(1)
+                member_name = match_.group(2)
+                try:
+                    new_value = {member_name: int(value)}
+                except ValueError:
+                    new_value = {member_name: value}
+                formatted_params[base_name].update(new_value)
+        formatted_param_url_string = "&".join([f'{x}={y}' for x,y in formatted_params.items() if y]).replace("\'", "\"")
+        return QueryParams(formatted_param_url_string)
+
+    @property
+    def query_params(self) -> QueryParams:
+        if not hasattr(self, "_query_params"):
+            query_params = super().query_params
+            if self.headers.get('content-type') == 'application/vnd.api+json':
+                self._query_params = self.handle_jsonapi_params(str(query_params))
+            else:
+                self._query_params = query_params
+        return self._query_params
+
+
+class JSONAPIRoute(APIRoute):
+    def get_route_handler(self) -> Callable:
+        original_route_handler = super().get_route_handler()
+
+        async def custom_route_handler(request: Request) -> Response:
+            request = JSONAPIRequest(request.scope, request.receive)
+            return await original_route_handler(request)
+
+        return custom_route_handler

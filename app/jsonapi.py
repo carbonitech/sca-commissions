@@ -78,17 +78,26 @@ class JSONAPI_(JSONAPI):
             filter_args = {k:[sub_v.upper().strip() for sub_v in v.split(',')] for k,v in filter_args.items() if v is not None}
             filter_query_args = []
             for field, values in filter_args.items():
-                try:
-                    model_attr = getattr(model, field)
-                except Exception as err:
-                    warnings.warn(f"Warning: field {field} with value {values} was not evaluated as a filter because {str(err)}. Filter argument was ignored.")
-                    continue
-                filter_query_args.append(
-                    or_(*[model_attr.like('%'+value+'%') for value in values])
-                    )
+                if model_attr := getattr(model, field, None):
+                    filter_query_args.append(
+                        or_(*[model_attr.like('%'+value+'%') for value in values])
+                        )
+                else:
+                    warnings.warn(f"Warning: filter field {field} with value {values} was ignored.")
                 
             return sqla_query_obj.filter(*filter_query_args)
         return sqla_query_obj
+
+    @staticmethod
+    def _filter_deleted(model, sqla_query_obj: sqlQuery):
+        """"""
+        field="deleted"
+        if model_attr := getattr(model, field, None):
+            return sqla_query_obj.filter(model_attr == None)
+        else:
+            return sqla_query_obj
+
+
 
     def _add_pagination(self, query: dict, db: Session, resource) -> tuple[dict, dict]:
         resource_name: str = resource.__jsonapi_type__
@@ -198,8 +207,9 @@ class JSONAPI_(JSONAPI):
         if sorts == ['']:
             sorts = [DEFAULT_SORT]
 
-        collection = session.query(model)
+        collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
+        collection = self._filter_deleted(model, collection)
 
         for attr in sorts:
             if attr == '':

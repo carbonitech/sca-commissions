@@ -7,7 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db import models
 from db.models import Base
-from app.main import app, authenticate_auth0_token
+from app.main import app
+from app.auth import authenticate_auth0_token
 from services.api_adapter import get_db
 
 load_dotenv()

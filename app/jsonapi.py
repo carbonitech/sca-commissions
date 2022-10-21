@@ -288,6 +288,10 @@ class JSONAPI_(JSONAPI):
 class JSONAPIRequest(Request):
 
     def handle_jsonapi_params(self, query_params):
+        
+        if not query_params:
+            return QueryParams(query_params)
+
         expression = r'(page|filter|fields)\[(\w*)]'
         query_params = unquote(query_params).split("&")
         query_params = dict([tuple(x.split("=")) for x in query_params])

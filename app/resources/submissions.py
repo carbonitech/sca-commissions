@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Form, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter
-from app.jsonapi import Query, convert_to_jsonapi
+from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
 api = ApiAdapter()
-router = APIRouter(prefix="/submissions")
+router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
 
 def get_db():
     db = api.SessionLocal()

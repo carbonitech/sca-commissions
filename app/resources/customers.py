@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy_jsonapi.errors import BaseError
 from services.api_adapter import ApiAdapter, get_db
-from app.jsonapi import Query, convert_to_jsonapi, format_error
+from app.jsonapi import Query, convert_to_jsonapi, format_error, JSONAPIRoute
+
 
 api = ApiAdapter()
-router = APIRouter(prefix="/customers")
+router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
 
 class Customer(BaseModel):
     name: str

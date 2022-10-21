@@ -16,12 +16,12 @@ from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
 from services.api_adapter import ApiAdapter
 from app.resources.pydantic_form import as_form
-from app.jsonapi import Query, convert_to_jsonapi
+from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
 load_dotenv()
 db = db_services.DatabaseServices()
 api = ApiAdapter()
-router = APIRouter(prefix="/commission-data")
+router = APIRouter(prefix="/commission-data", route_class=JSONAPIRoute)
 
 def get_db():
     db = api.SessionLocal()

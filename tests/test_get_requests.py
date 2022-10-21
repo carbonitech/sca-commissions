@@ -29,3 +29,19 @@ def test_get_customers_with_filter_parameter(database: database):
     for data_obj in response.json().get("data"):
         assert filter_field in data_obj["attributes"].keys(), f"Attribute \"{filter_field}\" is not present in object with id {data_obj['id']}"
         assert filter_value in data_obj["attributes"].get(filter_field), f"Filter value \"{filter_value}\" is not present in object with id {data_obj['id']}"
+
+def test_jsonapi_param_handling(database: database):
+    set_overrides()
+    filter_param = "filter[name] = MINGLEDORFF"
+    page_params = "page[size]=5&page[number]=1"
+    headers_content_type = {"Content-Type": "application/vnd.api+json"}
+
+    response = test_client.get(f"/customers?{page_params}", headers=headers_content_type)
+    assert len(response.json()["data"]) == 5
+
+    response = test_client.get(f"/customers?{filter_param}", headers=headers_content_type)
+    # assert len(response.json()["data"]) == 1, f"{response.json()}"
+    assert response.json()["data"][0]["attributes"]["name"].startswith("MINGLEDORFF")
+
+
+    

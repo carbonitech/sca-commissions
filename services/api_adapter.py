@@ -592,6 +592,9 @@ class ApiAdapter:
         model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
         return models.serializer.get_resource(db,query,model_name,mapping_id, obj_only=True)
 
+    def get_many_branches_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
+        return models.serializer.get_collection(db,query,BRANCHES)
+
     def create_customer_name_mapping(self, db: Session, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}

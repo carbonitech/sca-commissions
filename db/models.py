@@ -10,7 +10,7 @@ Base = declarative_base()
 class City(Base):
     __tablename__ = 'cities'
     id = Column(Integer,primary_key=True)
-    name = Column(String)
+    name = Column(String, unique=True)
     deleted = Column(DateTime)
     branch_cities = relationship("CustomerBranch", back_populates="city_name")
     map_city_names = relationship("MapCityName", back_populates="city_name")
@@ -18,7 +18,7 @@ class City(Base):
 class MapCityName(Base):
     __tablename__ = 'map_city_names'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
+    recorded_name = Column(String, unique=True)
     city_id = Column(Integer, ForeignKey("cities.id"))
     city_name = relationship("City", back_populates="map_city_names")
 
@@ -26,7 +26,7 @@ class MapCityName(Base):
 class State(Base):
     __tablename__ = 'states'
     id = Column(Integer,primary_key=True)
-    name = Column(String)
+    name = Column(String, unique=True)
     deleted = Column(DateTime)
     branch_states = relationship("CustomerBranch", back_populates="state_name")
     map_state_names = relationship("MapStateName", back_populates="state_name")
@@ -34,7 +34,7 @@ class State(Base):
 class MapStateName(Base):
     __tablename__ = 'map_state_names'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
+    recorded_name = Column(String, unique=True)
     state_id = Column(Integer, ForeignKey("states.id"))
     state_name = relationship("State", back_populates="map_state_names")
 

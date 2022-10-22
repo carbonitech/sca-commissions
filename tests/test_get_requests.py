@@ -14,8 +14,7 @@ def test_jsonapi_object_response_from_all_top_level(database: database):
                 path.startswith("/{") 
                 or path == '/resetdb' 
                 or path == "/download" 
-                or path == "/"
-                or path.startswith("/branches"))
+                or path == "/")
         ]
     )
     for resource in resources:

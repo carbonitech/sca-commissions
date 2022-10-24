@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from app.jsonapi import JSONAPIRoute, NewCustomerNameMappingRequest, Query, convert_to_jsonapi, format_error, BaseError
+from app.jsonapi import (JSONAPIRoute, NewCustomerNameMappingRequest, Query, 
+        convert_to_jsonapi, format_error, BaseError)
 
 from services.api_adapter import ApiAdapter, get_db
 
@@ -31,4 +32,9 @@ async def map_customer_names(map_customer_name_id: int, db: Session=Depends(get_
 
 @router_customers.post("", tags=['mappings'])
 async def new_map_customer_name(name_mapping: NewCustomerNameMappingRequest, db: Session=Depends(get_db)):
-    return api.create_customer_name_mapping(db=db, json_data=name_mapping.dict())
+    try:
+        return api.create_customer_name_mapping(db=db, json_data=name_mapping.dict())
+    except BaseError as err:
+        raise HTTPException(**format_error(err))
+    except Exception as err:
+        raise HTTPException(status_code=400,detail=str(err))

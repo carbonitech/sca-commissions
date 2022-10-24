@@ -62,7 +62,7 @@ def test_customers_patch_makes_change_in_target(database: database):
     assert hit, f"name in database with id: {str(body.id)} is {str(new_name)}. Expected NEW AWESOME BUSINESS, LLC"
 
 
-def test_customers_patch_records_new_name_in_mapping(database: database):
+def test_customers_patch_creates_new_name_mapping(database: database):
     set_overrides()
     new_value = "NEW AWESOME SIDE BUSINESS, LLC"
     body = RequestBody("customers",{"name": new_value})

@@ -10,6 +10,7 @@ from db.models import Base
 from app.main import app
 from app.auth import authenticate_auth0_token
 from services.api_adapter import get_db
+from random import randint
 
 load_dotenv()
 TESTING_DATABASE_URL = os.getenv("TESTING_DATABASE_URL").replace("postgres://","postgresql://")
@@ -34,6 +35,21 @@ def set_overrides():
 
 def clear_overrides():
     app.dependency_overrides = {}
+
+class RequestBody:
+    def __init__(self, resource_type: str, attributes: dict):
+        self.id = randint(1,50)
+        self.type = resource_type
+        self.attributes = attributes
+    
+    def keys(self) -> list:
+        return list(self.__dict__.keys())
+    
+    def __getitem__(self, key):
+        return getattr(self, key, None)
+
+    def dict(self) -> dict:
+        return {"data": {k:self.__getitem__(k) for k in self.keys() if self.__getitem__(k)}}
 
 @fixture(scope="module")
 def database():

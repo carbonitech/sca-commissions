@@ -1,20 +1,21 @@
 import calendar
 import secrets
 import json
-from dotenv import load_dotenv
 from os import getenv
+from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, File, Depends, Response, Form
+
+from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
-from typing import Optional
+from fastapi import APIRouter, HTTPException, File, Depends, Form
 
 from db import db_services
 from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
-from services.api_adapter import ApiAdapter
+from services.api_adapter import ApiAdapter, get_db
 from app.resources.pydantic_form import as_form
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
@@ -22,13 +23,6 @@ load_dotenv()
 db = db_services.DatabaseServices()
 api = ApiAdapter()
 router = APIRouter(prefix="/commission-data", route_class=JSONAPIRoute)
-
-def get_db():
-    db = api.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @as_form
 class CustomCommissionData(BaseModel):

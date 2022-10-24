@@ -6,18 +6,11 @@ from pandas import ExcelWriter
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
-from services.api_adapter import ApiAdapter
+from services.api_adapter import ApiAdapter, get_db
 from sqlalchemy.orm import Session
 
 api = ApiAdapter()
 router = APIRouter()
-
-def get_db():
-    db = api.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 class ExcelFileResponse(StreamingResponse):
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -39,7 +32,7 @@ async def download_file(file: str, db: Session=Depends(get_db)):
     Database provides parameters required to generate a file and return it and check if hash expired
     """
     if not file:
-        raise HTTPException(404, "no 'file query parameter supplied")
+        raise HTTPException(404, "no file query parameter supplied")
 
     file_lookup = api.download_file_lookup(db, file)
     if not file_lookup:

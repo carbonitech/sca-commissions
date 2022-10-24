@@ -1,3 +1,4 @@
+import functools
 import re
 import json
 import warnings
@@ -8,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
-from fastapi import Request, Response
+from fastapi import Request, Response, HTTPException
 from fastapi.routing import APIRoute
 from sqlalchemy import or_, select, func
 from sqlalchemy.orm import Session, Query as sqlQuery
@@ -393,3 +394,14 @@ class JSONAPIRoute(APIRoute):
             return await original_route_handler(request)
 
         return custom_route_handler
+
+def jsonapi_error_handling(route_function):
+    @functools.wraps(route_function)
+    def error_handling(*args, **kwargs):
+        try:
+            return route_function(*args, **kwargs)
+        except BaseError as err:
+            raise HTTPException(**format_error(err))
+        except Exception as err:
+            raise HTTPException(status_code=400,detail=str(err))
+    return error_handling

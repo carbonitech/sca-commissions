@@ -50,18 +50,12 @@ class CommissionDataDownloadParameters(BaseModel):
 
 @router.get("", tags=['commissions'])
 async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
-    try:
-        jsonapi_query = convert_to_jsonapi(query)
-    except Exception as err:
-        raise HTTPException(status_code=400,detail=str(err))
+    jsonapi_query = convert_to_jsonapi(query)
     return api.get_all_commission_data_jsonapi(db,jsonapi_query)
 
 @router.get("/{row_id}", tags=['commissions'])
 async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
-    try:
-        jsonapi_query = convert_to_jsonapi(query)
-    except Exception as err:
-        raise HTTPException(status_code=400,detail=str(err))
+    jsonapi_query = convert_to_jsonapi(query)
     return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query)
 
 @router.post("/download", tags=['commissions'])

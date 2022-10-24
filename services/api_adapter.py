@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 
 from app import event
+from app.jsonapi import jsonapi_error_handling
 from db import models
 
 CUSTOMERS = models.Customer
@@ -529,72 +530,92 @@ class ApiAdapter:
             session.execute(sql)
             session.commit()
             
-
+    
+    @jsonapi_error_handling
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
         return models.serializer.get_related(db,{},primary,id_,secondary)
-
+    
+    @jsonapi_error_handling
     def get_relationship(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
-
+    
+    @jsonapi_error_handling
     def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,cust_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,CUSTOMERS)
-
+    
+    @jsonapi_error_handling
     def get_many_cities_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,CITIES)
-
+    
+    @jsonapi_error_handling
     def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CITIES.__tablename__)
         return models.serializer.get_resource(db,query,model_name,city_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_state_jsonapi(self, db: Session, state_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(STATES.__tablename__)
         return models.serializer.get_resource(db,query,model_name,state_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_many_states_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,STATES)
-
+    
+    @jsonapi_error_handling
     def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(REPS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,rep_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_many_reps_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,REPS)
-
+    
+    @jsonapi_error_handling
     def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
         return models.serializer.get_resource(db,query,model_name,submission_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_many_submissions_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,SUBMISSIONS_TABLE)
-
+    
+    @jsonapi_error_handling
     def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,manuf_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,MANUFACTURERS)
-
+    
+    @jsonapi_error_handling
     def get_commission_data_by_id_jsonapi(self, db: Session, row_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
         return models.serializer.get_resource(db,query,model_name,row_id, obj_only=True)
-
+    
+    @jsonapi_error_handling
     def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE)
-   
+    
+    @jsonapi_error_handling   
     def get_all_customer_name_mappings(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,CUSTOMER_NAME_MAP)
-
+    
+    @jsonapi_error_handling
     def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
         return models.serializer.get_resource(db,query,model_name,mapping_id, obj_only=True)
 
+    @jsonapi_error_handling
     def get_many_branches_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,BRANCHES)
 
+    @jsonapi_error_handling
     def create_customer_name_mapping(self, db: Session, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
@@ -602,6 +623,7 @@ class ApiAdapter:
         event.post_event("New Record", CUSTOMER_NAME_MAP)
         return result
 
+    @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data

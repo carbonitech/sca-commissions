@@ -1,3 +1,4 @@
+from random import randint
 from app.main import app
 from fastapi.testclient import TestClient
 from tests.pytest_fixtures import set_overrides, clear_overrides, database
@@ -45,6 +46,28 @@ def test_get_customers_with_filter_parameter(database: database):
     for data_obj in response.json().get("data"):
         assert filter_field in data_obj["attributes"].keys(), f"Attribute \"{filter_field}\" is not present in object with id {data_obj['id']}"
         assert filter_value in data_obj["attributes"].get(filter_field), f"Filter value \"{filter_value}\" is not present in object with id {data_obj['id']}"
+
+def test_get_cities_with_filter_parameter(database: database):
+    set_overrides()
+    filter_field = "name"
+    filter_value = "FOR"
+    filter_param = 'filter={"'+filter_field+'": "'+filter_value+'"}'
+    response = test_client.get(f"/cities?{filter_param}")
+    clear_overrides()
+    
+    for data_obj in response.json().get("data"):
+        assert filter_field in data_obj["attributes"].keys(), f"Attribute \"{filter_field}\" is not present in object with id {data_obj['id']}"
+        assert filter_value in data_obj["attributes"].get(filter_field), f"Filter value \"{filter_value}\" is not present in object with id {data_obj['id']}"
+
+def test_get_city_by_id(database: database):
+    set_overrides()
+    id_ = randint(1,100)
+    response = test_client.get(f"/cities/{id_}")
+    hit = False
+    match response.status_code, response.json():
+        case 200, {"jsonapi": version, "meta": metadata, "data": jsonapi_obj}:
+            hit = True
+    assert hit
 
 def test_jsonapi_param_handling(database: database):
     set_overrides()

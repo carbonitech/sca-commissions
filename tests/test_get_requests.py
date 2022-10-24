@@ -4,7 +4,7 @@ from tests.pytest_fixtures import set_overrides, clear_overrides, database
 
 test_client = TestClient(app)
 
-def test_jsonapi_object_response_from_all_top_level(database: database):
+def all_resources() -> set:
     openapi: dict[str,dict|str] = test_client.get("/openapi.json").json()
     resources = set(
         [
@@ -17,6 +17,11 @@ def test_jsonapi_object_response_from_all_top_level(database: database):
                 or path == "/")
         ]
     )
+    return resources
+
+
+def test_jsonapi_object_response_from_all_top_level(database: database):
+    resources = all_resources()
     for resource in resources:
         set_overrides()
         response = test_client.get(f"/{resource}")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
@@ -9,18 +9,12 @@ router = APIRouter(prefix="/representatives", route_class=JSONAPIRoute)
 
 @router.get("", tags=["reps"])
 async def all_reps(query: Query=Depends(), db: Session=Depends(get_db)):
-    try:
-        jsonapi_query = convert_to_jsonapi(query)
-    except Exception as err:
-        raise HTTPException(status_code=400,detail=str(err))
+    jsonapi_query = convert_to_jsonapi(query)
     return api.get_many_reps_jsonapi(db,jsonapi_query)
 
 @router.get("/{rep_id}", tags=["reps"])
 async def rep_by_id(rep_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
-    try:
-        jsonapi_query = convert_to_jsonapi(query)
-    except Exception as err:
-        raise HTTPException(status_code=400,detail=str(err))
+    jsonapi_query = convert_to_jsonapi(query)
     return api.get_rep_jsonapi(db, rep_id, jsonapi_query)
 
 

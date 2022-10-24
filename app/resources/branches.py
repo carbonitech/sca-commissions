@@ -14,13 +14,8 @@ class Branch(BaseModel):
 
 @router.get("", tags=["branches"])
 async def all_branches(query: Query=Depends(), db: Session = Depends(get_db)):
-    try:
-        jsonapi_query = convert_to_jsonapi(query)
-        return api.get_many_branches_jsonapi(db,jsonapi_query)
-    except BaseError as err:
-        raise HTTPException(**format_error(err))
-    except Exception as err:
-        raise HTTPException(status_code=400,detail=str(err))
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_many_branches_jsonapi(db,jsonapi_query)
 
 
 @router.post("", tags=['branches'])

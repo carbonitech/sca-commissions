@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.jsonapi import JSONAPIRoute, NewCustomerNameMappingRequest, Query, convert_to_jsonapi, format_error, BaseError
 

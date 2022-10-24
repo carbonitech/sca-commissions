@@ -608,6 +608,10 @@ class ApiAdapter:
         event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
         return result
 
+    def delete_map_customer_name(self, db: Session, id_: int):
+        model_name = hyphenated_name(CUSTOMER_NAME_MAP)
+        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
+
     def set_customer_name_mapping(self, db: Session, **kwargs):
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
         try:

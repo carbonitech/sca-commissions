@@ -309,7 +309,7 @@ class ReportProcessor:
         self.staged_data["recorded_at"] = datetime.now()
         return self
 
-    def process_and_commit(self) -> None:
+    def process_and_commit(self) -> int|None:
         """
         Taking preprocessed data, use reference tables from the database
         to map customer names, city names, state names, and reps

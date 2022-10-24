@@ -56,7 +56,7 @@ async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
         raise HTTPException(status_code=400,detail=str(err))
     return api.get_all_commission_data_jsonapi(db,jsonapi_query)
 
-@router.get("/{row_id}")
+@router.get("/{row_id}", tags=['commissions'])
 async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
     try:
         jsonapi_query = convert_to_jsonapi(query)

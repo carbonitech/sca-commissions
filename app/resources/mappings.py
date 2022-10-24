@@ -39,7 +39,7 @@ async def new_map_customer_name(name_mapping: NewCustomerNameMappingRequest, db:
     except Exception as err:
         raise HTTPException(status_code=400,detail=str(err))
 
-@router_customers.delete("/{id}")
+@router_customers.delete("/{id}", tags=['mappings'])
 async def delete_map_customer_name(id: int, db: Session=Depends(get_db)):
     try:
         return api.delete_map_customer_name(db=db, id_=id)

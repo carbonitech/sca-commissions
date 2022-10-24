@@ -29,9 +29,6 @@ class Query(BaseModel):
 class JSONAPIBaseModification(BaseModel):
     type: str
 
-class JSONAPIBaseRelationship(BaseModel):
-    type: str
-    id: int
 
 class Customer(BaseModel):
     name: str
@@ -47,6 +44,9 @@ class CustomerModificationRequest(BaseModel):
 class CustomerNameMapping(BaseModel):
     recorded_name: str
 
+class JSONAPIBaseRelationship(BaseModel):
+    type: str
+    id: int
 
 class JSONAPIRelationshipObject(BaseModel):
     data: JSONAPIBaseRelationship

@@ -36,11 +36,35 @@ def set_overrides():
 def clear_overrides():
     app.dependency_overrides = {}
 
+
+class RequestBodyRelationship:
+    def __init__(self, resource_name: str):
+        self.resource_name = resource_name
+        setattr(self,resource_name,{"data": {"type": resource_name, "id": 0}})
+
+    def keys(self) -> list:
+        return list(self.__dict__.keys())
+
+    def set_id(self, value: int):
+        attr = self.__getitem__(self.resource_name)
+        attr["data"]["id"] = value
+    
+    def __getitem__(self, key):
+        return getattr(self, key, None)
+
+    def dict(self) -> dict:
+        return {k:self.__getitem__(k) for k in self.keys() if self.__getitem__(k)}
+
+
 class RequestBody:
-    def __init__(self, resource_type: str, attributes: dict):
+    def __init__(self, resource_type: str, attributes: dict, relationships: RequestBodyRelationship=None):
         self.id = randint(1,50)
         self.type = resource_type
         self.attributes = attributes
+        self.relationships = relationships
+        if relationships:
+            self.relationships.set_id(self.id)
+            self.relationships = self.relationships.dict()
     
     def keys(self) -> list:
         return list(self.__dict__.keys())

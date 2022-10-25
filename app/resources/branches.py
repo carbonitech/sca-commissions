@@ -25,5 +25,6 @@ async def new_branch_by_customer_id(new_branch):
     ...
 
 @router.delete("/{branch_id}", tags=['branches'])
-async def delete_branch_by_id(branch_id: int):
-    return api.delete_a_branch_by_id(branch_id=branch_id)
+async def delete_branch_by_id(branch_id: int, db: Session=Depends(get_db)):
+    # soft delete
+    return api.delete_a_branch(db, branch_id=branch_id)

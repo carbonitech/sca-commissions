@@ -90,15 +90,6 @@ class ApiAdapter:
         event.post_event("Record Updated", CUSTOMERS, customer_id, **kwargs)
         return
 
-    def delete_a_branch_by_id(self, branch_id: int):
-        sql = sqlalchemy.update(BRANCHES) \
-            .values(deleted = datetime.now()) \
-            .where(BRANCHES.id == branch_id)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        return
-
     def get_all_manufacturers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(MANUFACTURERS)
         result = pd.read_sql(sql, con=self.engine)
@@ -647,9 +638,17 @@ class ApiAdapter:
         hyphenate_attribute_keys(json_data)
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
+    @jsonapi_error_handling
     def delete_map_customer_name(self, db: Session, id_: int):
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
+    
+    @jsonapi_error_handling
+    def delete_a_branch(self, db: Session, branch_id: int):
+        _now = datetime.utcnow()
+        db.execute("UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id", {"branch_id": branch_id, "current_time": _now})
+        db.commit()
+        return
 
     def set_customer_name_mapping(self, db: Session, **kwargs):
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)

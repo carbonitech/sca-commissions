@@ -35,11 +35,11 @@ async def handle_400_range(response: Response) -> Response:
     
     if response.status_code == 422:
         for err in resp_body["detail"]:
-            err_detail: str = err["msg"]
+            err_detail: str = str(err["msg"])
             if len(err["loc"]) > 1:
-                err_field: str = err["loc"][-1]
+                err_field: str = str(err["loc"][-1])
             else:
-                err_field: str = err["loc"][0]
+                err_field: str = str(err["loc"][0])
             err_detail = err_detail.replace("value", err_field)
             err_title = err["type"]
             jsonapi_err_response_content["errors"].append(

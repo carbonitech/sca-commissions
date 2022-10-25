@@ -45,6 +45,11 @@ def hyphenate_name(table_name: str) -> str:
 def hyphenated_name(table_obj) -> str:
     return table_obj.__tablename__.replace("_","-")
 
+def hyphenate_attribute_keys(json_data: dict) -> dict:
+    json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
+    return json_data
+
+
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
@@ -609,16 +614,21 @@ class ApiAdapter:
     @jsonapi_error_handling
     def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict) -> JSONAPIResponse:
         model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,mapping_id, obj_only=True)
+        return models.serializer.get_resource(db,query,model_name,mapping_id,obj_only=True)
 
     @jsonapi_error_handling
     def get_many_branches_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,BRANCHES)
+    
+    @jsonapi_error_handling
+    def get_branch(self, db: Session, branch_id: int, query: dict) -> JSONAPIResponse:
+        model_name = hyphenated_name(BRANCHES)
+        return models.serializer.get_resource(db,query,model_name,branch_id,obj_only=True)
 
     @jsonapi_error_handling
     def create_customer_name_mapping(self, db: Session, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
-        json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
+        hyphenate_attribute_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name).data
         event.post_event("New Record", CUSTOMER_NAME_MAP)
         return result
@@ -626,9 +636,16 @@ class ApiAdapter:
     @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
+        hyphenate_attribute_keys(json_data)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
         event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
         return result
+
+    @jsonapi_error_handling
+    def modify_branch(self, db: Session, branch_id: int, json_data: dict) -> JSONAPIResponse:
+        model_name = hyphenated_name(BRANCHES)
+        hyphenate_attribute_keys(json_data)
+        return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     def delete_map_customer_name(self, db: Session, id_: int):
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)

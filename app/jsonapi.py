@@ -1,3 +1,4 @@
+from datetime import datetime
 import functools
 import re
 import json
@@ -16,7 +17,6 @@ from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 
-
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
 
@@ -27,12 +27,17 @@ class Query(BaseModel):
     filter: str|None = None
     page: str|None = None
 
+
+### nested objects ###
 class JSONAPIBaseModification(BaseModel):
     type: str
 
-
 class Customer(BaseModel):
     name: str
+
+class Branch(BaseModel):
+    deleted: datetime|None = None
+    store_number: int|None = None
 
 class CustomerModification(JSONAPIBaseModification):
     id: int
@@ -40,7 +45,6 @@ class CustomerModification(JSONAPIBaseModification):
 
 class CustomerModificationRequest(BaseModel):
     data: CustomerModification
-
 
 class CustomerNameMapping(BaseModel):
     recorded_name: str
@@ -55,6 +59,10 @@ class JSONAPIRelationshipObject(BaseModel):
 class CustomerRelationship(BaseModel):
     customers: JSONAPIRelationshipObject
 
+class BranchRelationship(BaseModel):
+    representative: JSONAPIRelationshipObject
+
+### top level objects ###
 class NewCustomerNameMapping(JSONAPIBaseModification):
     attributes: CustomerNameMapping
     relationships: CustomerRelationship
@@ -62,6 +70,13 @@ class NewCustomerNameMapping(JSONAPIBaseModification):
 class NewCustomerNameMappingRequest(BaseModel):
     data: NewCustomerNameMapping
     
+class BranchModification(JSONAPIBaseModification):
+    id: int
+    attributes: Branch|dict|None = {}
+    relationships: BranchRelationship|dict|None = {}
+
+class BranchModificationRequest(BaseModel):
+    data: BranchModification
 
 
 def convert_to_jsonapi(query: dict) -> dict:

@@ -45,6 +45,7 @@ class ReportProcessor:
         self.skip = False
         self.reintegration = False
         self.use_store_numbers = False
+        self.inter_warehouse_transfer = False
         
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
@@ -74,9 +75,6 @@ class ReportProcessor:
 
     def reset_branch_ref(self):
         self.branches = self.database.get_branches()
-
-    def premapped_data_by_indices(self, indices: list) -> pd.DataFrame:
-        return self.ppdata.data.iloc[indices]
 
     def total_commissions(self) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
@@ -249,7 +247,17 @@ class ReportProcessor:
         self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
         return self
 
-
+    def add_branch_by_transfer_direction(self):
+        """
+        Needs to set up a merge with customer_branches based on store_number, customer name, and in_territory status
+        1.) If the warehouse is not found: register the branch with null rep_id and null in_territory flag (either sending or receiving side), and push row to errors table
+        2.) If warehouses are found but in_territory is not set to True or False, throw it to the errors table like case #1
+        3.) If warehouses found and in_territory set, use the following:
+            A.) recieve in territory, sender is out of territory (+)
+            B.) receive out of territory, sender is in territory (-)
+            C.) recieve in territory and send in territory (+receive -send)
+        
+        """
 
     def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
         mask = self.staged_data.loc[:,~self.staged_data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
@@ -284,14 +292,18 @@ class ReportProcessor:
         sub_id = self.submission_id
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
+
         try:
             ppdata = preprocessor.preprocess()
         except Exception:
             raise FileProcessingError("There was an error while we attempted to process the file", submission_id=sub_id)
-        # send events from preprocessing using the manufacturuer (domain obj)
+        
         match ppdata.data.columns.to_list():
             case ["store_number", *other_cols]:
                 self.use_store_numbers = True
+            case ["receiving","sending", *other_cols]:
+                self.inter_warehouse_transfer = True
+
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
                 event.post_event(*event_arg_tuple,start_step=1)
@@ -335,14 +347,16 @@ class ReportProcessor:
         self.fill_customer_ids()        \
             .filter_out_any_rows_unmapped()
             
-        if not self.use_store_numbers:
+        if self.use_store_numbers:
+            self.add_branch_id_by_store_number()
+        elif self.inter_warehouse_transfer:
+            self.add_branch_by_transfer_direction()
+        else:
             self.fill_city_ids()            \
             .filter_out_any_rows_unmapped() \
             .fill_state_ids()               \
             .filter_out_any_rows_unmapped() \
             .add_branch_id()
-        else:
-            self.add_branch_id_by_store_number()
             
         self.filter_out_any_rows_unmapped() \
             .drop_extra_columns()           \

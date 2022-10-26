@@ -136,7 +136,7 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(axis=1, how='all')
         events.append(("Formatting","removed columns with no values",self.submission_id))
 
-        data.loc[:,"store_number"] = data.pop("Branch#").astype(int)
+        data.loc[:,"store_number"] = data.pop("Branch#").astype(str)
         data.loc[:,"inv_amt"] = data.pop("Cost")*0.75*100
         events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",
             self.submission_id))
@@ -153,7 +153,25 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, events)
         
 
-    def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData: ...
+    def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+        
+        events = []
+        default_customer_name = "LENNOX"
+
+        data = data.dropna(subset=data.columns.tolist()[0])
+        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+
+        data.loc[:,"receiving"] = data.pop("Plnt")
+        data.loc[:,"sending"] = data.pop("SPlt")
+        data.loc[:,"inv_amt"] = data.pop("Ext Price")*100
+        data.loc[:,"comm_amt"] = data.pop["Commission"]*100
+        data.loc[:,"customer"] = default_customer_name
+        events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
+            self.submission_id))
+
+        result = data.loc[:,["receiving", "sending", "customer", "inv_amt", "comm_amt"]]
+        return PreProcessedData(result, events)
+
 
     def preprocess(self) -> PreProcessedData:
         method_by_name = {

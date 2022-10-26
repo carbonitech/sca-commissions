@@ -161,15 +161,17 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns.tolist()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
 
-        data.loc[:,"receiving"] = data.pop("Plnt")
-        data.loc[:,"sending"] = data.pop("SPlt")
-        data.loc[:,"inv_amt"] = data.pop("Ext Price")*100
-        data.loc[:,"comm_amt"] = data.pop["Commission"]*100
+        data.loc[:,"receiving"] = data["Plnt"]
+        data.loc[:,"sending"] = data["SPlt"]
+        data.loc[:,"inv_amt"] = data["Ext Price"]*100
+        data.loc[:,"comm_amt"] = data["Commission"]*100
         data.loc[:,"customer"] = default_customer_name
         events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
             self.submission_id))
-
-        result = data.loc[:,["receiving", "sending", "customer", "inv_amt", "comm_amt"]]
+        result_cols = ["receiving", "sending", "customer", "inv_amt", "comm_amt"]
+        result = data.loc[:,result_cols]
+        # unpivot sending and receiving into "direction" (sending/receiving) and warehosue code (i.e. A300)
+        result = pd.melt(result,id_vars=result_cols[-3:],var_name="direction",value_name="warehouse")
         return PreProcessedData(result, events)
 
 
@@ -185,3 +187,4 @@ class PreProcessor(AbstractPreProcessor):
             return preprocess_method(self.file.to_df())
         else:
             return
+

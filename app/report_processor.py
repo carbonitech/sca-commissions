@@ -249,14 +249,11 @@ class ReportProcessor:
 
     def add_branch_by_transfer_direction(self):
         """
-        Needs to set up a merge with customer_branches based on store_number, customer name, and in_territory status
-        1.) If the warehouse is not found: register the branch with null rep_id and null in_territory flag (either sending or receiving side), and push row to errors table
-        2.) If warehouses are found but in_territory is not set to True or False, throw it to the errors table like case #1
-        3.) If warehouses found and in_territory set, use the following:
-            A.) recieve in territory, sender is out of territory (+)
-            B.) receive out of territory, sender is in territory (-)
-            C.) recieve in territory and send in territory (+receive -send)
-        
+        if receiver in territory (+)
+        if sender in territory (-)
+        if receiver not in territory (drop)
+        if sender not in territory (drop)
+        if sender or receiver not found (add to branches or errors?)
         """
 
     def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
@@ -301,7 +298,7 @@ class ReportProcessor:
         match ppdata.data.columns.to_list():
             case ["store_number", *other_cols]:
                 self.use_store_numbers = True
-            case ["receiving","sending", *other_cols]:
+            case [*other_cols, "direction", "warehouse"]:
                 self.inter_warehouse_transfer = True
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):

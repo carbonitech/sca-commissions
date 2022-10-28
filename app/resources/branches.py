@@ -20,9 +20,9 @@ async def branch_by_id(branch_id: int, query: Query=Depends(), db: Session=Depen
 async def modify_branch(branch_id: int, branch: BranchModificationRequest, db: Session=Depends(get_db)):
     return api.modify_branch(db, branch_id, branch.dict())
 
-@router.post("", tags=['branches'])
-async def new_branch_by_customer_id(new_branch):
-    ...
+@router.post("", tags=['branches'], status_code=204)
+async def new_branch_by_customer_id():
+    return
 
 @router.delete("/{branch_id}", tags=['branches'])
 async def delete_branch_by_id(branch_id: int, db: Session=Depends(get_db)):

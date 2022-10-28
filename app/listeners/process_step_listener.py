@@ -1,10 +1,12 @@
 from typing import List
 from pandas import DataFrame
+from sqlalchemy.orm import Session
 from app import event
 from entities import error
 from entities.processing_step import ProcessingStep
-from db.db_services import DatabaseServices
-from entities.error import ErrorType
+from services.api_adapter import ApiAdapter
+
+api = ApiAdapter()
 
 def handle_errors_recorded(error_list: List[error.Error], submission_id: int, *args, **kwargs) -> None:
     num_rows = len(error_list)
@@ -12,14 +14,13 @@ def handle_errors_recorded(error_list: List[error.Error], submission_id: int, *a
     if start_step := kwargs.get("start_step"):
         ProcessingStep.set_total_step_num(start_step)
         
-    db = DatabaseServices()
-    db.record_processing_step(ProcessingStep(desc_str, sub_id=submission_id))
+    session: Session = kwargs.get("session")
+    api.record_processing_step(session,ProcessingStep(desc_str, sub_id=submission_id))
 
 
 def handle_rows_removed(data_removed: DataFrame, submission_id: int, *args, **kwargs) -> None:
     if data_removed.empty: return
     num_rows = len(data_removed)
-    row_index_list = data_removed.index.to_list()
     sum_inv_removed = data_removed.loc[:,"inv_amt"].sum()/100
     sum_comm_removed = data_removed.loc[:,"comm_amt"].sum()/100
 
@@ -29,16 +30,16 @@ def handle_rows_removed(data_removed: DataFrame, submission_id: int, *args, **kw
     if start_step := kwargs.get("start_step"):
         ProcessingStep.set_total_step_num(start_step)
 
-    db = DatabaseServices()
-    db.record_processing_step(ProcessingStep(desc_str,submission_id))
+    session: Session = kwargs.get("session")
+    api.record_processing_step(session,ProcessingStep(desc_str,submission_id))
 
 
 def handle_data_formatting(msg: str, submission_id: int, *args, **kwargs) -> None:
     if start_step := kwargs.get("start_step"):
         ProcessingStep.set_total_step_num(start_step)
     
-    db = DatabaseServices()
-    db.record_processing_step(ProcessingStep(msg,submission_id))
+    session: Session = kwargs.get("session")
+    api.record_processing_step(session,ProcessingStep(msg,submission_id))
 
 
 def handle_comm_data_recorded(data: DataFrame, submission_id: int, *args, **kwargs) -> None:
@@ -53,15 +54,15 @@ def handle_comm_data_recorded(data: DataFrame, submission_id: int, *args, **kwar
     if start_step := kwargs.get("start_step"):
         ProcessingStep.set_total_step_num(start_step)
         
-    db = DatabaseServices()
-    db.record_processing_step(ProcessingStep(desc_str,submission_id))
+    session: Session = kwargs.get("session")
+    api.record_processing_step(session,ProcessingStep(desc_str,submission_id))
 
 
 def handle_mapping_table_updated(data, submission_id, *args, **kwargs) -> None:
     if start_step := kwargs.get("start_step"):
         ProcessingStep.set_total_step_num(start_step)
-    db = DatabaseServices()
-    db.record_processing_step(ProcessingStep(data,submission_id))
+    session: Session = kwargs.get("session")
+    api.record_processing_step(session,ProcessingStep(data,submission_id))
 
 
 def setup_processing_step_handlers():

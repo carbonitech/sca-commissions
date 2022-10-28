@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Hashable
 import pandas as pd
+from sqlalchemy.orm import Session
 
 from app import event
-from db.db_services import DatabaseServices
 from entities.preprocessor import AbstractPreProcessor
 from entities.submission import NewSubmission
 from entities.error import ErrorType
@@ -35,7 +35,7 @@ class ReportProcessor:
     """
     def __init__(
             self,
-            database: DatabaseServices,
+            session: Session,
             preprocessor: AbstractPreProcessor = None, # a class obj, not an instance
             submission: NewSubmission = None,
             target_err: ErrorType = None,
@@ -66,15 +66,15 @@ class ReportProcessor:
             self.skip = True
             return
 
-        self.database = database
-        self.map_customer_names = database.get_mappings("map_customer_names")
-        self.map_city_names = database.get_mappings("map_city_names")
-        self.map_state_names = database.get_mappings("map_state_names")
-        self.branches = database.get_branches()
+        self.session = session
         self.api = api_adapter.ApiAdapter()
+        self.map_customer_names = self.api.get_mappings(session, "map_customer_names")
+        self.map_city_names = self.api.get_mappings(session, "map_city_names")
+        self.map_state_names = self.api.get_mappings(session, "map_state_names")
+        self.branches = self.api.get_branches(session)
 
     def reset_branch_ref(self):
-        self.branches = self.database.get_branches()
+        self.branches = self.api.get_branches(db=self.session)
 
     def total_commissions(self) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
@@ -102,14 +102,16 @@ class ReportProcessor:
                     event_,
                     msg,
                     submission_id=sub_id,
-                    start_step=self.database.last_step_num(sub_id)+1
+                    start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
+                    session=self.session
                 )
             else:
                 event.post_event(
                     event_,
                     sub_id_table,
                     submission_id=sub_id,
-                    start_step=self.database.last_step_num(sub_id)+1
+                    start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
+                    session=self.session
                 )
 
 
@@ -127,12 +129,13 @@ class ReportProcessor:
                 "Reprocessing",
                 data_ = msg,
                 submission_id = sub_id,
-                start_step=self.database.last_step_num(sub_id)+1
+                start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
+                session=self.session
             )
         return self
 
     def remove_error_db_entries(self) -> 'ReportProcessor':
-        self.database.delete_errors(self.staged_data["id"].to_list())
+        self.api.delete_errors(db=self.session, record_ids=self.staged_data["id"].to_list())
         return self
 
     def fill_customer_ids(self) -> 'ReportProcessor':
@@ -211,7 +214,7 @@ class ReportProcessor:
         if not no_match_table.empty:
             no_match_table.columns = ["customer_id","city_id","state_id"]
             no_match_records = no_match_table.drop_duplicates()
-            self.api.create_new_customer_branch_bulk(no_match_records.to_dict(orient="records"))
+            self.api.create_new_customer_branch_bulk(self.session,no_match_records.to_dict(orient="records"))
             self._send_event_by_submission(
                 no_match_records.index.to_list(),
                 "Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment"
@@ -230,9 +233,16 @@ class ReportProcessor:
         """
         new_column: str = "customer_branch_id"
         left_on_list = ["store_number", "customer"]
+        data_copy = self.staged_data.copy()
+        try:
+            # for int-like store numbers -> remove the float-like representation from the string
+            data_copy["store_number"] = data_copy["store_number"].astype(float).astype(int).astype(str)
+        except:
+            # store number is likely alphanumeric and will match properly
+            pass
 
         merged_with_branches = pd.merge(
-                self.staged_data, self.branches,
+                data_copy, self.branches,
                 how="left", left_on=left_on_list,
                 right_on=["store_number", "customer_id"],
                 suffixes=(None,"_ref_table")
@@ -266,7 +276,7 @@ class ReportProcessor:
 
     def register_submission(self) -> 'ReportProcessor':
         """reigsters a new submission to the database and returns the id number of that submission"""
-        self.submission_id = self.database.record_submission(self.submission)
+        self.submission_id = self.api.record_submission(db=self.session, submission=self.submission)
         return self
 
     def drop_extra_columns(self) -> 'ReportProcessor':
@@ -280,12 +290,12 @@ class ReportProcessor:
             return self
         else:
             self.staged_data = self.staged_data.dropna() # just in case
-        self.database.record_final_data(self.staged_data)
+        self.api.record_final_data(db=self.session, data=self.staged_data)
         self._send_event_by_submission(self.staged_data.index.to_list(), "Data Recorded")
         return self
 
     def preprocess(self) -> 'ReportProcessor':
-        report_name = self.database.get_report_name_by_id(self.submission.report_id)
+        report_name = self.api.get_report_name_by_id(db=self.session, report_id=self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
@@ -303,9 +313,9 @@ class ReportProcessor:
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
-                event.post_event(*event_arg_tuple,start_step=1)
+                event.post_event(*event_arg_tuple, start_step=1, session=self.session)
             else:
-                event.post_event(*event_arg_tuple)
+                event.post_event(*event_arg_tuple, session=self.session)
         self.staged_data = ppdata.data.copy()
         self.ppdata = ppdata
         return self

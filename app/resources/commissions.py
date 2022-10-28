@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
 from fastapi import APIRouter, HTTPException, File, Depends, Form
 
-from db import db_services
 from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
@@ -20,7 +19,6 @@ from app.resources.pydantic_form import as_form
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
 load_dotenv()
-db = db_services.DatabaseServices()
 api = ApiAdapter()
 router = APIRouter(prefix="/commission-data", route_class=JSONAPIRoute)
 
@@ -80,7 +78,14 @@ async def commission_data_file_link(
     return {"downloadLink": f"/download?file={hash_}"}
 
 
-async def process_commissions_file(file: bytes, report_id: int, reporting_month: int, reporting_year: int, manufacturer_id: int):
+async def process_commissions_file(
+        file: bytes,
+        report_id: int,
+        reporting_month: int,
+        reporting_year: int,
+        manufacturer_id: int,
+        session: Session
+    ):
     try:
         file_obj = CommissionFile(file)
     except AssertionError as e:
@@ -95,7 +100,7 @@ async def process_commissions_file(file: bytes, report_id: int, reporting_month:
     mfg_report_processor = report_processor.ReportProcessor(
         preprocessor=mfg_preprocessor,
         submission=new_sub,
-        database=db
+        session=session
     )
 
     try:
@@ -137,7 +142,7 @@ async def process_data_from_a_file(
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
 
-    new_submission_id = await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id)
+    new_submission_id = await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id, db)
     return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={})
 
 @router.post("/{submission_id}", tags=['commissions'])

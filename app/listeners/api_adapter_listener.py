@@ -1,8 +1,7 @@
-from app import event, report_processor
-from entities import error
 import db.models as model
-from db.db_services import DatabaseServices
+from app import event, report_processor
 from services.api_adapter import ApiAdapter
+from entities import error
 
 api = ApiAdapter()
 
@@ -25,6 +24,7 @@ def entity_default_name_mapping(table: model.Base, *args, **kwargs):
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     error_type = None
+    session = kwargs.get("session")
     if table == model.MapCustomerName:
         error_type = error.ErrorType(1)
     elif table == model.MapCityName:
@@ -35,9 +35,8 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
         error_type = error.ErrorType(4)
     
     if error_type:
-        errors = api.get_errors()
-        db = DatabaseServices()
-        processor = report_processor.ReportProcessor(database=db,target_err=error_type, error_table=errors)
+        errors = api.get_errors(session)
+        processor = report_processor.ReportProcessor(session=session,target_err=error_type, error_table=errors)
         processor.process_and_commit()
     return
 

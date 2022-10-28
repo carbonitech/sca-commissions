@@ -14,6 +14,9 @@ from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app import event
 from app.jsonapi import jsonapi_error_handling
 from db import models
+from entities.submission import NewSubmission
+from entities.processing_step import ProcessingStep
+from entities.error import Error
 
 CUSTOMERS = models.Customer
 BRANCHES = models.CustomerBranch
@@ -60,16 +63,6 @@ class ApiAdapter:
         result = pd.read_sql(sql, con=self.engine)
         return result
 
-    def new_customer(self, customer_fastapi: str) -> int:
-        with Session(bind=self.engine) as session:
-            sql = sqlalchemy.insert(CUSTOMERS).values(name=customer_fastapi) \
-                .returning(CUSTOMERS.id)
-            new_id = session.execute(sql).fetchone()[0]
-            session.commit()
-        kwargs = {"id": new_id, "name": customer_fastapi}
-        event.post_event("New Record", CUSTOMERS, **kwargs)
-        return new_id
-
     def get_customer(self,cust_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(CUSTOMERS) \
                 .where(CUSTOMERS.id == cust_id)
@@ -81,14 +74,6 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             result = session.execute(sql).fetchone()
         return True if result else False
-
-    def modify_customer(self, customer_id: int, *args, **kwargs) -> None:
-        sql = sqlalchemy.update(CUSTOMERS).values(**kwargs).where(CUSTOMERS.id == customer_id)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("Record Updated", CUSTOMERS, customer_id, **kwargs)
-        return
 
     def get_all_manufacturers(self) -> pd.DataFrame:
         sql = sqlalchemy.select(MANUFACTURERS)
@@ -146,27 +131,6 @@ class ApiAdapter:
         sql = sqlalchemy.select(BRANCHES).where(BRANCHES.customer_id == customer_id)
         return pd.read_sql(sql, con=self.engine)
     
-    def set_new_customer_branch_raw(self, customer_id: int, city_id: int, state_id: int):
-        values = {
-            "customer_id": customer_id,
-            "city_id": city_id,
-            "state_id": state_id
-        }
-        sql = sqlalchemy.insert(BRANCHES).values(**values)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New Record", BRANCHES, **values)
-        return
-    
-    def create_new_customer_branch_bulk(self, records=list[dict]):
-        sql = sqlalchemy.insert(BRANCHES)
-        with Session(bind=self.engine) as session:
-            session.execute(sql, records)
-            session.commit()
-        return
-
-
 
     def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
         sql = sqlalchemy.select(CITIES,CITY_NAME_MAP)\
@@ -194,24 +158,6 @@ class ApiAdapter:
             sql = sql.where(CITIES.id==city_id)
         return pd.read_sql(sql, con=self.engine)
 
-    def new_city(self,**kwargs):
-        sql = sqlalchemy.insert(CITIES) \
-            .values(**kwargs).returning(CITIES.id)
-        with Session(bind=self.engine) as session:
-            new_id = session.execute(sql).one()[0]
-            session.commit()
-        kwargs.update({"id": new_id})
-        event.post_event("New Record", CITIES, **kwargs)
-
-    def modify_city(self, city_id:int, **kwargs):
-        sql = sqlalchemy.update(CITIES).values(**kwargs) \
-            .where(CITIES.id == city_id)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        kwargs.update({"id": city_id})
-        event.post_event("Record Updated", CITIES, **kwargs)
-
     def delete_city_by_id(self, city_id: int):
         sql = sqlalchemy.update(CITIES).values(deleted=datetime.now().isoformat())\
             .where(CITIES.id == city_id)
@@ -231,21 +177,21 @@ class ApiAdapter:
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Record", CITY_NAME_MAP, **kwargs)
+        event.post_event("New Record", CITY_NAME_MAP, **kwargs, session=kwargs.get("db"))
  
     def set_state_name_mapping(self, **kwargs):
         sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Record", STATE_NAME_MAP, **kwargs)
+        event.post_event("New Record", STATE_NAME_MAP, **kwargs, session=kwargs.get("db"))
 
     def set_rep_to_customer_mapping(self, **kwargs):
         sql = sqlalchemy.insert(REPS_CUSTOMERS_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
             session.commit()
-        event.post_event("New Record", REPS_CUSTOMERS_MAP, **kwargs)
+        event.post_event("New Record", REPS_CUSTOMERS_MAP, **kwargs, session=kwargs.get("db"))
 
     def get_processing_steps(self, submission_id: int) -> pd.DataFrame:
         """get all report processing steps for a commission report submission"""
@@ -255,16 +201,7 @@ class ApiAdapter:
         )
         return result
 
-    def get_errors(self, submission_id: int=0) -> pd.DataFrame:
-        """get all report processing errors for a commission report submission"""
-        sql = sqlalchemy.select(ERRORS_TABLE)
-        if submission_id:
-            sql = sql.where(ERRORS_TABLE.submission_id == submission_id)
-        result = pd.read_sql(sql, con=self.engine)
-        if result.empty:
-            return result
-        result.loc[:,'row_data'] = result.loc[:,'row_data'].apply(lambda json_str: json.loads(json_str))
-        return result
+
 
 
     def set_new_commission_data_entry(self, **kwargs) -> int:
@@ -427,23 +364,6 @@ class ApiAdapter:
             new_id = conn.execute(sql).one()[0]
         return new_id
 
-    def set_new_state(self, **kwargs) -> int:
-        sql = sqlalchemy.insert(STATES).values(**kwargs)\
-            .returning(STATES.id)
-        with self.engine.begin() as conn:
-            new_id = conn.execute(sql).one()[0]
-        kwargs.update({"id": new_id})
-        event.post_event("New Record", STATES, **kwargs)
-        return new_id
-
-    def modify_state(self, state_id:int, **kwargs):
-        sql = sqlalchemy.update(STATES) \
-                .values(**kwargs).where(STATES.id == state_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        event.post_event("Record Updated", STATES, state_id, **kwargs)
-        return
-
     def delete_state(self, state_id:int):
         sql = sqlalchemy.update(STATES)\
             .values(deleted = datetime.now())\
@@ -466,18 +386,6 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             conn.execute(sql)
         return
-
-    def modify_city_name_mapping(self, mapping_id: int, **kwargs):
-        sql = sqlalchemy.update(CITY_NAME_MAP).values(**kwargs).where(CITY_NAME_MAP.id == mapping_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        event.post_event("Record Updated", CITY_NAME_MAP, **kwargs)
-        
-    def modify_state_name_mapping(self, mapping_id: int, **kwargs):
-        sql = sqlalchemy.update(STATE_NAME_MAP).values(**kwargs).where(STATE_NAME_MAP.id == mapping_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        event.post_event("Record Updated", STATE_NAME_MAP, **kwargs)
 
     def delete_submission(self, submission_id: int):
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
@@ -504,6 +412,72 @@ class ApiAdapter:
         sql = sqlalchemy.update(CITIES).values(deleted=None).where(CITIES.id == city_id)
         with self.engine.begin() as conn:
             conn.execute(sql)
+
+    def get_mappings(self, db: Session, table: str) -> pd.DataFrame:
+        return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),db.get_bind())
+
+    def get_all_manufacturers(self, db: Session) -> dict:
+        sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
+        query_result = db.execute(sql).fetchall()
+        return {id_: name_.lower() for id_, name_ in query_result}
+
+    def get_branches(self, db: Session) -> pd.DataFrame:
+        sql = sqlalchemy.select(BRANCHES)
+        return pd.read_sql(sql,con=db.get_bind())
+
+    def record_final_data(self, db: Session, data: pd.DataFrame) -> None:
+        data_records = data.to_dict(orient="records")
+        sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)
+        db.execute(sql, data_records) # for bulk insert per SQLAlchemy docs
+        db.commit()
+        return
+
+    def record_submission(self, db: Session, submission: NewSubmission) -> int:
+        sql = sqlalchemy.insert(SUBMISSIONS_TABLE).returning(SUBMISSIONS_TABLE.id)\
+                .values(**submission)
+        result = db.execute(sql).fetchone()[0]
+        db.commit()
+        return result
+
+
+    def record_processing_step(self, db: Session, step_obj: ProcessingStep) -> bool:
+        """commit all report processing stesp for a commission report submission"""
+        sql = sqlalchemy.insert(PROCESS_STEPS_LOG).values(**step_obj)
+        db.execute(sql)
+        db.commit()
+        return True
+
+    def last_step_num(self, db: Session, submission_id: int) -> int:
+        sql = sqlalchemy.select(sqlalchemy.func.max(PROCESS_STEPS_LOG.step_num))\
+            .where(PROCESS_STEPS_LOG.submission_id == submission_id)
+        if result := db.execute(sql).one()[0]:
+            return result
+        else:
+            return 0
+
+    def record_error(self, db: Session, error_obj: Error) -> None:
+        """record errors into the current_errors table"""
+        sql = sqlalchemy.insert(ERRORS_TABLE).values(**error_obj)
+        db.execute(sql)
+        db.commit()
+        return
+
+    def delete_errors(self, db: Session, record_ids: int|list):
+        if isinstance(record_ids, int):
+            record_ids = [record_ids]
+        for record_id in record_ids:
+            record_id = int(record_id)
+            sql = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.id == record_id)
+            db.execute(sql)
+        db.commit()
+
+        
+    def get_report_name_by_id(self, db: Session, report_id: int) -> str:
+        sql = sqlalchemy.select(REPORTS.report_name).where(REPORTS.id == report_id)
+        result = db.execute(sql).one_or_none()
+        if result:
+            return result[0]
+        
 
     # JSON:API implementation - passing in a db session instead of creating one
 
@@ -621,7 +595,7 @@ class ApiAdapter:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         hyphenate_attribute_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name).data
-        event.post_event("New Record", CUSTOMER_NAME_MAP)
+        event.post_event("New Record", CUSTOMER_NAME_MAP, session=db)
         return result
 
     @jsonapi_error_handling
@@ -629,7 +603,7 @@ class ApiAdapter:
         model_name = hyphenated_name(CUSTOMERS)
         hyphenate_attribute_keys(json_data)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
-        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"])
+        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"], session=db)
         return result
 
     @jsonapi_error_handling
@@ -658,8 +632,25 @@ class ApiAdapter:
             db.rollback()
         else:
             db.commit()
-            event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs)
+            event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs, session=db)
 
+    def create_new_customer_branch_bulk(self, db: Session, records: list[dict]):
+        sql = sqlalchemy.insert(BRANCHES)
+        with Session(bind=self.engine) as session:
+            session.execute(sql, records)
+            session.commit()
+        return
+
+    def get_errors(self, db: Session, submission_id: int=0) -> pd.DataFrame:
+        """get all report processing errors for a commission report submission"""
+        sql = sqlalchemy.select(ERRORS_TABLE)
+        if submission_id:
+            sql = sql.where(ERRORS_TABLE.submission_id == submission_id)
+        result = pd.read_sql(sql, con=db.get_bind())
+        if result.empty:
+            return result
+        result.loc[:,'row_data'] = result.loc[:,'row_data'].apply(lambda json_str: json.loads(json_str))
+        return result
 
 def get_db():
     db = ApiAdapter().SessionLocal()

@@ -162,16 +162,26 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
 
         data.loc[:,"receiving"] = data["Plnt"]
+        data.loc[:,"receiving_city"] = data["City"]
+        data.loc[:,"receiving_state"] = data["Rg"]
         data.loc[:,"sending"] = data["SPlt"]
+        data = data.merge(
+            data["Warehouse"].apply(
+                lambda value: pd.Series({"sending_city": value.split(", ")[0], "sending_state": value.split(", ")[1]})
+            ),
+            left_index=True,
+            right_index=True
+        )
         data.loc[:,"inv_amt"] = data["Ext Price"]*100
         data.loc[:,"comm_amt"] = data["Commission"]*100
         data.loc[:,"customer"] = default_customer_name
         events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
             self.submission_id))
-        result_cols = ["receiving", "sending", "customer", "inv_amt", "comm_amt"]
+        result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state", "customer", "inv_amt", "comm_amt","receiving", "sending"]
         result = data.loc[:,result_cols]
+        
         # unpivot sending and receiving into "direction" (sending/receiving) and warehosue code (i.e. A300)
-        result = pd.melt(result,id_vars=result_cols[-3:],var_name="direction",value_name="warehouse")
+        result = pd.melt(result,id_vars=result_cols[:-2],var_name="direction",value_name="warehouse")
         return PreProcessedData(result, events)
 
 

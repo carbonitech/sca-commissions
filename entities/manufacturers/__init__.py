@@ -1,10 +1,11 @@
 import os
 from importlib import import_module
-from db.db_services import DatabaseServices
+from services.api_adapter import ApiAdapter, get_db
 
-db = DatabaseServices()
+api = ApiAdapter()
+db = next(get_db())
 
-all_manufacturers_in_db = db.get_all_manufacturers()
+all_manufacturers_in_db = api.get_all_manufacturers(db)
 all_manufacturers_in_dir = [
         manuf.split('.')[0] 
         for manuf in os.listdir("./entities/manufacturers") 
@@ -32,7 +33,7 @@ else:
 
 del os
 del import_module
-del DatabaseServices
+del api
 del db
 del all_manufacturers_in_db
 del all_manufacturers_in_dir

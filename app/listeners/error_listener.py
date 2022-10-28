@@ -3,7 +3,7 @@ from pandas import DataFrame
 
 from app import event
 from entities import error
-from db import db_services
+from services.api_adapter import ApiAdapter
 
 
 def error_factory(error_data: DataFrame, type_: int, submission_id: int) -> List[error.Error]:
@@ -20,60 +20,32 @@ def error_factory(error_data: DataFrame, type_: int, submission_id: int) -> List
     return result_list
 
 def no_customer_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if not isinstance(data_affected, DataFrame):
-        return
-    if data_affected.empty:
-        return
-    errors = error_factory(data_affected,1,submission_id)
-    db = db_services.DatabaseServices()
-    for error in errors:
-        db.record_error(error)
-    event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
-
+    return error_handler(data_affected, submission_id, *args, error_type=1, **kwargs)
 
 def no_city_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if not isinstance(data_affected, DataFrame):
-        return
-    if data_affected.empty:
-        return
-    errors = error_factory(data_affected,2,submission_id)
-    db = db_services.DatabaseServices()
-    for error in errors:
-        db.record_error(error)
-    event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
+    return error_handler(data_affected, submission_id, *args, error_type=2, **kwargs)
 
 def no_state_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if not isinstance(data_affected, DataFrame):
-        return
-    if data_affected.empty:
-        return
-    errors = error_factory(data_affected,3,submission_id)
-    db = db_services.DatabaseServices()
-    for error in errors:
-        db.record_error(error)
-    event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
+    return error_handler(data_affected, submission_id, *args, error_type=3, **kwargs)
 
 def no_branch_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    if not isinstance(data_affected, DataFrame):
-        return
-    if data_affected.empty:
-        return
-    errors = error_factory(data_affected,4,submission_id)
-    db = db_services.DatabaseServices()
-    for error in errors:
-        db.record_error(error)
-    event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
+    return error_handler(data_affected, submission_id, *args, error_type=4, **kwargs)
 
 def no_rep_assigned_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
+    return error_handler(data_affected, submission_id, *args, error_type=5, **kwargs)
+
+def error_handler(data_affected: DataFrame, submission_id: int, *args, **kwargs):
     if not isinstance(data_affected, DataFrame):
         return
     if data_affected.empty:
         return
-    errors = error_factory(data_affected,5,submission_id)
-    db = db_services.DatabaseServices()
+    errors = error_factory(data_affected,kwargs.get("error_type"),submission_id)
+    session = kwargs.get("session")
+    api = ApiAdapter()
     for error in errors:
-        db.record_error(error)
+        api.record_error(session, error)
     event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
+    
 
 
 def setup_error_event_handlers():

@@ -91,14 +91,6 @@ def database():
                 'manufacturers': models.Manufacturer,
                 'manufacturers_reports': models.ManufacturersReport,
                 'representatives': models.Representative,
-                'map_customer_name': models.MapCustomerName,
-                'map_city_names': models.MapCityName,
-                'map_state_names': models.MapStateName,
-                'report_submissions_log': models.Submission,
-                'report_processing_steps_log': models.ProcessingStep,
-                'current_errors': models.Error,
-                'final_commission_data': models.CommissionData,
-                'file_downloads': models.FileDownloads
         }
     # load csv files
     tables_dir = './tests/db_tables'

@@ -123,7 +123,7 @@ async def process_data_from_a_file(
         db: Session=Depends(get_db)
     ):
 
-    existing_submissions = api.get_all_submissions()
+    existing_submissions = api.get_all_submissions(db=db)
     existing_submission = existing_submissions.loc[
         (existing_submissions["reporting_month"] == reporting_month)
         & (existing_submissions["reporting_year"] == reporting_year)

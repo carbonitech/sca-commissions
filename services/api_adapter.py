@@ -52,116 +52,23 @@ def hyphenate_attribute_keys(json_data: dict) -> dict:
     json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
     return json_data
 
+def get_db():
+    db = ApiAdapter().SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    def get_customers(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS)
-        result = pd.read_sql(sql, con=self.engine)
-        return result
-
-    def get_customer(self,cust_id: int) -> pd.DataFrame:
-        sql = sqlalchemy.select(CUSTOMERS) \
-                .where(CUSTOMERS.id == cust_id)
-        result = pd.read_sql(sql, con=self.engine)
-        return result
-
-    def check_customer_exists_by_name(self, name: str) -> bool:
-        sql = sqlalchemy.select(CUSTOMERS).where(CUSTOMERS.name == name)
-        with Session(bind=self.engine) as session:
-            result = session.execute(sql).fetchone()
-        return True if result else False
-
-    def get_all_manufacturers(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(MANUFACTURERS)
-        result = pd.read_sql(sql, con=self.engine)
-        return result
-
-    def get_manufacturer_by_id(self, manuf_id: int):
-        manuf_sql = sqlalchemy.select(MANUFACTURERS).where(MANUFACTURERS.id == manuf_id)
-        submissions_sql = sqlalchemy.select(SUBMISSIONS_TABLE)\
-            .join(REPORTS).where(REPORTS.manufacturer_id == manuf_id)
-        manuf = pd.read_sql(manuf_sql, con=self.engine)
-        submissions = pd.read_sql(submissions_sql, con=self.engine)
-        return manuf, submissions
-
-    def get_all_reps(self) -> pd.DataFrame:
-        sql = sqlalchemy.select(REPS)
-        return pd.read_sql(sql, con=self.engine)
-
-    def get_a_rep(self, rep_id: int) -> pd.DataFrame:
-        sql = sqlalchemy.select(REPS).where(REPS.id == rep_id)
-        return pd.read_sql(sql, con=self.engine)
-
-
-
-    def get_submission_by_id(self, submission_id: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        subs = SUBMISSIONS_TABLE
-        reports = REPORTS
-        manufs = MANUFACTURERS
-        steps = PROCESS_STEPS_LOG
-        submission_sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
-                reports.report_name,reports.yearly_frequency, reports.POS_report,
-                manufs.name).select_from(subs).join(reports).join(manufs).where(subs.id == submission_id)
-        process_steps_sql = sqlalchemy.select(steps).where(steps.submission_id == submission_id)
-        submission_data = pd.read_sql(submission_sql, con=self.engine)
-        process_steps = pd.read_sql(process_steps_sql, con=self.engine)
-        current_errors = self.get_errors(submission_id)
-
-        return submission_data, process_steps, current_errors
-
     def submission_exists(self, submission_id: int) -> bool:
         sql = sqlalchemy.select(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
         with self.engine.begin() as conn:
             result = conn.execute(sql).fetchone()
         return True if result else False
-
-    def get_customer_branches_raw(self, customer_id: int) -> pd.DataFrame:
-        sql = sqlalchemy.select(BRANCHES).where(BRANCHES.customer_id == customer_id)
-        return pd.read_sql(sql, con=self.engine)
-    
-
-    def get_all_city_name_mappings(self, city_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(CITIES,CITY_NAME_MAP)\
-                .select_from(CITIES).join(CITY_NAME_MAP)
-        if city_id:
-            sql = sql.where(CITIES.id == city_id)
-
-        table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["city_id", "city", "_", "mapping_id", "alias", "_"] # deleted, customer_id
-        return table.loc[:,~table.columns.isin(["_"])]
-
-    def get_all_state_name_mappings(self, state_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(STATES,STATE_NAME_MAP)\
-                .select_from(STATES).join(STATE_NAME_MAP)
-        if state_id:
-            sql = sql.where(STATES.id == state_id)
-
-        table = pd.read_sql(sql, con=self.engine)
-        table.columns = ["state_id", "state", "_", "mapping_id", "alias", "_"] # deleted, customer_id
-        return table.loc[:,~table.columns.isin(["_"])]
-
-    def get_cities(self,city_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(CITIES)
-        if city_id:
-            sql = sql.where(CITIES.id==city_id)
-        return pd.read_sql(sql, con=self.engine)
-
-    def delete_city_by_id(self, city_id: int):
-        sql = sqlalchemy.update(CITIES).values(deleted=datetime.now().isoformat())\
-            .where(CITIES.id == city_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-
-    def get_states(self,state_id: int=0) -> pd.DataFrame:
-        sql = sqlalchemy.select(STATES)
-        if state_id:
-            sql = sql.where(STATES.id==state_id)
-        return pd.read_sql(sql, con=self.engine)
-
 
 
     def set_city_name_mapping(self, **kwargs):
@@ -177,23 +84,6 @@ class ApiAdapter:
             session.execute(sql)
             session.commit()
         event.post_event("New Record", STATE_NAME_MAP, **kwargs, session=kwargs.get("db"))
-
-    def set_rep_to_customer_mapping(self, **kwargs):
-        sql = sqlalchemy.insert(REPS_CUSTOMERS_MAP).values(**kwargs)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New Record", REPS_CUSTOMERS_MAP, **kwargs, session=kwargs.get("db"))
-
-    def get_processing_steps(self, submission_id: int) -> pd.DataFrame:
-        """get all report processing steps for a commission report submission"""
-        result = pd.read_sql(
-            sqlalchemy.select(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id),
-            con=self.engine
-        )
-        return result
-
-
 
 
     def set_new_commission_data_entry(self, **kwargs) -> int:
@@ -311,73 +201,6 @@ class ApiAdapter:
             conn.execute(sql)
         return
 
-    def delete_customer(self, customer_id: int):
-        sql = sqlalchemy.update(CUSTOMERS)\
-            .values(deleted = datetime.now())\
-            .where(CUSTOMERS.id==customer_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-    def delete_manufacturer(self, manufacturer_id: int):
-        sql = sqlalchemy.update(MANUFACTURERS)\
-            .values(deleted = datetime.now())\
-            .where(MANUFACTURERS.id==manufacturer_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-    def set_new_manufacturer(self, **kwargs) -> int:  
-        sql = sqlalchemy.insert(MANUFACTURERS).values(**kwargs)\
-            .returning(MANUFACTURERS.id)
-        with self.engine.begin() as conn:
-            new_id = conn.execute(sql).one()[0]
-        return new_id
-
-    def delete_rep(self, rep_id:int):
-        sql = sqlalchemy.update(REPS)\
-            .values(deleted = datetime.now())\
-            .where(REPS.id==rep_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-    def modify_rep(self, rep_id:int, **kwargs):
-        sql = sqlalchemy.update(REPS) \
-                .values(**kwargs).where(REPS.id == rep_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-    def set_new_rep(self, **kwargs) -> int:
-        sql = sqlalchemy.insert(REPS).values(**kwargs)\
-            .returning(REPS.id)
-        with self.engine.begin() as conn:
-            new_id = conn.execute(sql).one()[0]
-        return new_id
-
-    def delete_state(self, state_id:int):
-        sql = sqlalchemy.update(STATES)\
-            .values(deleted = datetime.now())\
-            .where(STATES.id==state_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-    def delete_customer_name_mapping(self, mapping_id: int):
-        sql = sqlalchemy.delete(CUSTOMER_NAME_MAP).where(CUSTOMER_NAME_MAP.id == mapping_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
-
-
-    def delete_customer_rep_mapping(self, mapping_id: int):
-        sql = sqlalchemy.update(REPS_CUSTOMERS_MAP)\
-            .values(orphaned = datetime.now())\
-            .where(REPS_CUSTOMERS_MAP.id == mapping_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
 
     def delete_submission(self, submission_id: int):
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
@@ -390,21 +213,6 @@ class ApiAdapter:
             conn.execute(sql_errors)
             conn.execute(sql_submission)
         
-    def modify_submission_metadata(self, submission_id:int, **kwargs):
-        sql = sqlalchemy.update(SUBMISSIONS_TABLE).values(**kwargs).where(SUBMISSIONS_TABLE.id == submission_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)  
-
-    def reactivate_branch(self, branch_id: int):
-        sql = sqlalchemy.update(BRANCHES).values(deleted=None).where(BRANCHES.id == branch_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-
-    def reactivate_city(self, city_id: int):
-        sql = sqlalchemy.update(CITIES).values(deleted=None).where(CITIES.id == city_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-
     def get_mappings(self, db: Session, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),db.get_bind())
 
@@ -654,9 +462,3 @@ class ApiAdapter:
                 manufs.name).select_from(subs).join(reports).join(manufs)
         return pd.read_sql(sql, con=db.get_bind())
 
-def get_db():
-    db = ApiAdapter().SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

@@ -1,6 +1,6 @@
 customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
-25,28,1,,,,True
-25,28,47,,,,True
+25,28,1,,,5,True
+25,28,47,,,5,True
 26,50,11,,,1,True
 26,51,12,,A300,3,True
 27,52,47,,,2,True
@@ -27,7 +27,7 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 33,88,1,,,2,True
 27,121,47,,,4,True
 27,63,47,,,4,True
-33,28,47,,,,True
+33,28,47,,,5,True
 34,12,47,,,4,True
 35,68,12,,,3,True
 36,69,27,,,2,True
@@ -40,9 +40,9 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 39,72,27,,,2,True
 39,73,12,,,3,True
 39,74,12,,,3,True
-42,28,12,,,,True
-42,28,47,,,,True
-238,28,58,,,,True
+42,28,12,,,5,True
+42,28,47,,,5,True
+238,28,58,,,5,True
 1,1,11,,,1,True
 2,2,11,,,1,True
 3,3,11,,,2,True

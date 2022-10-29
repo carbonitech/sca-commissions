@@ -217,7 +217,7 @@ class ReportProcessor:
             self.api.create_new_customer_branch_bulk(self.session,no_match_records.to_dict(orient="records"))
             self._send_event_by_submission(
                 no_match_records.index.to_list(),
-                "Formatting",f"added {len(no_match_records)} branches to the branches table without a rep assignment"
+                "Formatting",f"added {len(no_match_records)} branches to the branches table"
             )
             self.reset_branch_ref()
             self.add_branch_id()

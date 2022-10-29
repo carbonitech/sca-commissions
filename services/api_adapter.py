@@ -435,10 +435,13 @@ class ApiAdapter:
             event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs, session=db)
 
     def create_new_customer_branch_bulk(self, db: Session, records: list[dict]):
-        sql = sqlalchemy.insert(BRANCHES)
-        with Session(bind=self.engine) as session:
-            session.execute(sql, records)
-            session.commit()
+        sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca")
+        default_rep = db.execute(sql_default_rep).scalar()
+        for record in records:
+            record["rep_id"]=default_rep
+            record["in_territory"]=True
+            db.add(BRANCHES(**record))
+        db.commit()
         return
 
     def get_errors(self, db: Session, submission_id: int=0) -> pd.DataFrame:

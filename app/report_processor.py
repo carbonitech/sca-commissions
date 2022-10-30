@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Hashable
+from typing import Hashable, Union
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -138,67 +138,110 @@ class ReportProcessor:
         self.api.delete_errors(db=self.session, record_ids=self.staged_data["id"].to_list())
         return self
 
-    def fill_customer_ids(self) -> 'ReportProcessor':
+    def fill_customer_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
         """converts customer column customer id #s using the map_customer_name reference table"""
         left_on_name = "customer"
-            
+        if not pipe:
+            operating_data = data
+        else:
+            operating_data = self.staged_data
+
+        if operating_data.empty:
+            return self if pipe else operating_data
+
         merged_with_name_map = pd.merge(
-                self.staged_data, self.map_customer_names,
+                operating_data, self.map_customer_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
             )
         
         # customer column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
+        operating_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
 
-        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
         self._send_event_by_submission(no_match_indices,ErrorType(1))
-        return self
+        operating_data = self._filter_out_any_rows_unmapped(operating_data)
+        if pipe:
+            self.staged_data = operating_data
+            return self
+        return operating_data
 
 
-    def fill_city_ids(self) -> 'ReportProcessor':
+    def fill_city_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
         """converts city column city id #s using the map_city_names reference table"""
         left_on_name = "city"
-            
+        if not pipe:
+            operating_data = data
+        else:
+            operating_data = self.staged_data
+
+        if operating_data.empty:
+            return self if pipe else operating_data
+
         merged_w_cities_map = pd.merge(
-                self.staged_data, self.map_city_names,
+                operating_data, self.map_city_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
         )
 
         # city column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
-        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        operating_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
+        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
         self._send_event_by_submission(no_match_indices,ErrorType(2))
-        return self
+        operating_data = self._filter_out_any_rows_unmapped(operating_data)
+        if pipe:
+            self.staged_data = operating_data
+            return self
+        return operating_data
 
 
-    def fill_state_ids(self) -> 'ReportProcessor':
+    def fill_state_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
         """converts column supplied in the args to id #s using the map_state_names reference table"""
         left_on_name = "state"
+        if not pipe:
+            operating_data = data
+        else:
+            operating_data = self.staged_data
+
+        if operating_data.empty:
+            return self if pipe else operating_data
 
         merged_w_states_map = pd.merge(
-                self.staged_data, self.map_state_names,
+                operating_data, self.map_state_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
             )
 
         # state column is going from a name string to an id integer
-        self.staged_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
+        operating_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
         
-        no_match_indices = self.staged_data.loc[self.staged_data[left_on_name] == 0].index.to_list()
+        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
         self._send_event_by_submission(no_match_indices,ErrorType(3))
-        return self
+        operating_data = self._filter_out_any_rows_unmapped(operating_data)
+        if pipe:
+            self.staged_data = operating_data
+            return self
+        return operating_data
 
 
-    def add_branch_id(self) -> 'ReportProcessor':
+    def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
         """
         Adds the customer's branch id, if the assignment exists.
-        Un-matched rows are added to the customer_branches table without a rep assigned
+        Un-matched rows are added to the customer_branches table
 
         """
         new_column: str = "customer_branch_id"
         left_on_list = ["customer","city","state"]
 
+        if not pipe:
+            operating_data = data
+        else:
+            operating_data = self.staged_data
+
+        if operating_data.empty:
+            operating_data["customer_branch_id"] = None
+            operating_data["in_territory"] = None
+            return self if pipe else operating_data
+
         merged_with_branches = pd.merge(
-                self.staged_data, self.branches,
+                operating_data, self.branches,
                 how="left", left_on=left_on_list,
                 right_on=["customer_id","city_id","state_id"],
                 suffixes=(None,"_ref_table")
@@ -208,11 +251,19 @@ class ReportProcessor:
         except KeyError:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
-        self.staged_data.loc[:, new_column] = new_col_values
+        in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
 
-        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,left_on_list]
+        operating_data.loc[:, new_column] = new_col_values
+        operating_data.loc[:, "in_territory"] = in_territory
+
+        if "store_number" in operating_data.columns.to_list():
+            no_match_table = operating_data.loc[operating_data[new_column]==0,left_on_list+["store_number"]]
+            no_match_table.columns = ["customer_id", "city_id", "state_id", "store_number"]
+        else:
+            no_match_table = operating_data.loc[operating_data[new_column]==0,left_on_list]
+            no_match_table.columns = ["customer_id", "city_id", "state_id"]
+
         if not no_match_table.empty:
-            no_match_table.columns = ["customer_id","city_id","state_id"]
             no_match_records = no_match_table.drop_duplicates()
             self.api.create_new_customer_branch_bulk(self.session,no_match_records.to_dict(orient="records"))
             self._send_event_by_submission(
@@ -221,13 +272,20 @@ class ReportProcessor:
             )
             self.reset_branch_ref()
             self.add_branch_id()
-        return self
+        operating_data = self._filter_out_any_rows_unmapped(operating_data)
+        if pipe:
+            self.staged_data = operating_data
+            return self
+        return operating_data
+
 
     def add_branch_id_by_store_number(self) -> 'ReportProcessor':
         """
         if branch numbers are in the preprocessed data in place of customer info, 
             this method replaces matching by customer name, 
-            city name, and state name seperately
+            city name, and state name seperately.
+        However, if there's unmatched data and there are customer, city, and state columns in the data
+            attempt to use individual name mappings
             
         Unmatched data is put into the errors table
         """
@@ -246,32 +304,62 @@ class ReportProcessor:
                 how="left", left_on=left_on_list,
                 right_on=["store_number", "customer_id"],
                 suffixes=(None,"_ref_table")
-        ) 
+        )
+
         try:
             new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
         except KeyError:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
+        in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
+
         self.staged_data.loc[:, new_column] = new_col_values
-        no_match_table = self.staged_data.loc[self.staged_data[new_column]==0,left_on_list]
-        self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
+        self.staged_data.loc[:, "in_territory"] = in_territory
+
+        # if city and state are present, try going with mapping those and concatentating what you can get
+        table_columns = set(data_copy.columns.to_list())
+        core_columns = ["city", "state"]
+        if set(core_columns).issubset(table_columns):
+            no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, ["submission_id"] + left_on_list + core_columns]
+            if not no_match_table.empty:
+                    retry_result = self.fill_city_ids(no_match_table, pipe=False)
+                    retry_result = self._filter_out_any_rows_unmapped(retry_result)
+                    retry_result = self.fill_state_ids(retry_result, pipe=False)
+                    retry_result = self._filter_out_any_rows_unmapped(retry_result)
+                    self.staged_data = pd.concat([self.staged_data, self.add_branch_id(retry_result, pipe=False)])
+        else:   # otherwise just send these match failures to errors table
+            no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
+            self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
+        self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
         return self
 
-    def add_branch_by_transfer_direction(self):
+    def assign_value_by_transfer_direction(self) -> 'ReportProcessor':
         """
-        if receiver in territory (+)
-        if sender in territory (-)
-        if receiver not in territory (drop)
-        if sender not in territory (drop)
-        if sender or receiver not found (add to branches or errors?)
+        if receiver (+)
+        if sender (-)
         """
+        for money_col in ["inv_amt", "comm_amt"]:
+            self.staged_data.loc[:,money_col] = self.staged_data.apply(
+                lambda row: row[money_col] if row["direction"] == "receiving" else -row[money_col],
+                axis=1
+            )
+        self._send_event_by_submission(self.staged_data.index.to_list(),"Formatting", "assigned negative dollars to sender warehouses")
+        return self
 
-    def filter_out_any_rows_unmapped(self) -> 'ReportProcessor':
-        mask = self.staged_data.loc[:,~self.staged_data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
-        data_dropped = self.staged_data[~mask].index.to_list()
-        self.staged_data = self.staged_data[mask]
+
+    def remove_out_of_territory_branches(self) -> 'ReportProcessor':
+        self.staged_data = self.staged_data[self.staged_data["in_territory"]]
+        return self
+        
+
+    def _filter_out_any_rows_unmapped(self, data: pd.DataFrame) -> pd.DataFrame:
+        if data.empty:
+            return data
+        mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
+        data_dropped = data[~mask].index.to_list()
+        data = data[mask]
         self._send_event_by_submission(data_dropped, "Rows Removed")
-        return self
+        return data
 
 
     def register_submission(self) -> 'ReportProcessor':
@@ -308,7 +396,8 @@ class ReportProcessor:
         match ppdata.data.columns.to_list():
             case ["store_number", *other_cols]:
                 self.use_store_numbers = True
-            case [*other_cols, "direction", "warehouse"]:
+            case [*other_cols, "direction", "store_number"]:
+                self.use_store_numbers = True
                 self.inter_warehouse_transfer = True
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):
@@ -325,7 +414,7 @@ class ReportProcessor:
         return self
 
     def insert_recorded_at_column(self) -> 'ReportProcessor':
-        self.staged_data["recorded_at"] = datetime.now()
+        self.staged_data["recorded_at"] = datetime.utcnow()
         return self
 
     def process_and_commit(self) -> int|None:
@@ -350,24 +439,19 @@ class ReportProcessor:
                     .remove_error_db_entries()
             except EmptyTableException:
                 return
-        
-        self.fill_customer_ids()        \
-            .filter_out_any_rows_unmapped()
-            
+        self.fill_customer_ids()
+        if self.inter_warehouse_transfer:
+            self.assign_value_by_transfer_direction()
         if self.use_store_numbers:
             self.add_branch_id_by_store_number()
-        elif self.inter_warehouse_transfer:
-            self.add_branch_by_transfer_direction()
         else:
             self.fill_city_ids()            \
-            .filter_out_any_rows_unmapped() \
             .fill_state_ids()               \
-            .filter_out_any_rows_unmapped() \
             .add_branch_id()
             
-        self.filter_out_any_rows_unmapped() \
-            .drop_extra_columns()           \
-            .insert_recorded_at_column()    \
-            .register_commission_data()     
+        self.remove_out_of_territory_branches() \
+        .drop_extra_columns()               \
+        .insert_recorded_at_column()        \
+        .register_commission_data()     
 
         return self.submission_id if not self.reintegration else None

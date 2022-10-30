@@ -5,9 +5,10 @@ import pandas as pd
 class CommissionFile:
     file_data: bytes
 
-    def __post_init__(self):
-        with pd.ExcelFile(self.file_data) as excel_file:
-            excel_file: pd.ExcelFile
-            assert len(excel_file.sheet_names) == 1, "Uploaded Excel file is expected to have 1 sheet only"
-    def to_df(self) -> pd.DataFrame:
+    def to_df(self, combine_sheets=False) -> pd.DataFrame:
+        if combine_sheets:
+            with pd.ExcelFile(self.file_data) as excel_file:
+                excel_file: pd.ExcelFile
+                data = [excel_file.parse(sheet) for sheet in excel_file.sheet_names]
+                return pd.concat(data, ignore_index=True)
         return pd.read_excel(self.file_data)

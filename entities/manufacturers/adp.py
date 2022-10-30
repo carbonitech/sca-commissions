@@ -177,11 +177,25 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,"customer"] = default_customer_name
         events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
             self.submission_id))
-        result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state", "customer", "inv_amt", "comm_amt","receiving", "sending"]
+        result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state", "customer", "inv_amt", "comm_amt", "receiving", "sending"]
         result = data.loc[:,result_cols]
         
-        # unpivot sending and receiving into "direction" (sending/receiving) and warehosue code (i.e. A300)
-        result = pd.melt(result,id_vars=result_cols[:-2],var_name="direction",value_name="warehouse")
+        # unpivot sending and receiving (trailing columns) into "direction" (sending/receiving) and warehouse code (i.e. A300)
+        result = pd.melt(result,id_vars=result_cols[:-2],var_name="direction",value_name="store_number")
+        # sending table only
+        sending_table = result.loc[
+            result["direction"] == "sending", 
+            ["sending_city", "sending_state", "customer", "inv_amt", "comm_amt", "direction", "store_number"]
+        ]
+        sending_table = sending_table.rename(columns={"sending_city": "city", "sending_state": "state"})
+        # receiving table only
+        receiving_table = result.loc[
+            result["direction"] == "receiving", 
+            ["receiving_city", "receiving_state", "customer", "inv_amt", "comm_amt", "direction", "store_number"]
+        ]
+        receiving_table = receiving_table.rename(columns={"receiving_city": "city", "receiving_state": "state"})
+        # recombine (city, state, customer, inv_amt, comm_amt, direction, store_number)
+        result = pd.concat([sending_table,receiving_table], ignore_index=True)
         return PreProcessedData(result, events)
 
 
@@ -194,6 +208,8 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
+            if self.report_name == "lennox_pos":
+                return preprocess_method(self.file.to_df(combine_sheets=True))
             return preprocess_method(self.file.to_df())
         else:
             return

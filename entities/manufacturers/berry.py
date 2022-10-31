@@ -16,7 +16,7 @@ class PreProcessor(AbstractPreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _stanard_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+    def _standard_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
         
         events = []
         customer_name_col: str = "BILL TO NAME"
@@ -37,7 +37,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def preprocess(self) -> PreProcessedData:
         method_by_name = {
-            "standard": self._stanard_report_preprocessing,
+            "standard": self._standard_report_preprocessing,
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

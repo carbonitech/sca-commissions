@@ -171,7 +171,7 @@ class JSONAPI_(JSONAPI):
         size = MAX_PAGE_SIZE
         offset = 0
 
-        row_count: int = len(db.execute(sa_query).all())
+        row_count: int = len(db.execute(sa_query.statement).all())
         if row_count == 0:
             return query, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}

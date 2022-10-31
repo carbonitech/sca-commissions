@@ -12,10 +12,11 @@ from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
 from fastapi import Request, Response, HTTPException
 from fastapi.routing import APIRoute
-from sqlalchemy import or_, select, func
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
+
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
@@ -166,14 +167,11 @@ class JSONAPI_(JSONAPI):
 
 
 
-    def _add_pagination(self, query: dict, db: Session, resource) -> tuple[dict, dict]:
-        resource_name: str = resource.__jsonapi_type__
+    def _add_pagination(self, query: dict, db: Session, resource_name: str, sa_query: sqlQuery) -> tuple[dict, dict]:
         size = MAX_PAGE_SIZE
         offset = 0
-        row_cnt_sql = select([func.count()]).select_from(resource)
-        row_cnt_sql = self._apply_filter(resource,row_cnt_sql,query)
 
-        row_count: int = db.execute(row_cnt_sql).scalar()
+        row_count: int = len(db.execute(sa_query).all())
         if row_count == 0:
             return query, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
@@ -263,7 +261,6 @@ class JSONAPI_(JSONAPI):
         """
 
         query = self._coerce_dict(query)
-        query, pagination_meta_and_links = self._add_pagination(query,session,model_obj)
         model = self._fetch_model(self.hyphenate_name(model_obj.__tablename__))
         include = self._parse_include(query.get('include', '').split(','))
         fields = self._parse_fields(query)
@@ -277,6 +274,7 @@ class JSONAPI_(JSONAPI):
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
         collection = self._filter_deleted(model, collection)
+        query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection)
 
         for attr in sorts:
             if attr == '':

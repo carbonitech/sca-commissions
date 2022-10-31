@@ -59,11 +59,9 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting",r"added commissions column by calculating "+str(commission_rate*100)+r"% of the inv_amt",
             self.submission_id))
         data["customer"] = default_customer_name
-        print(data)
 
         result = data.iloc[:,[store_number_col, customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result.columns = ["store_number"] + self.result_columns
-        print(result)
         return PreProcessedData(result,events)
 
 

@@ -82,7 +82,7 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting","removed columns with no values",self.submission_id))
         data[store_number_col] = data[store_number_col].astype(str)
         
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda val: re.match(r"JS\s?(\w*\s?\S*)\s?-\s?\d{2,3}",val).group(1))
+        data.loc[:,city_name_col] = data[city_name_col].apply(lambda val: re.match(r"JS\s?(\w*\s?\S*)\s?-\s?\d{2,3}",val).group(1).strip())
         events.append(("Formatting",f"extracted city names contained between 'JS' and '-' in the column {city_name_col}",
             self.submission_id)) 
         data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars

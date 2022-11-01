@@ -12,6 +12,7 @@ class NewSubmission:
     report_id: int
     manufacturer_id: int
     submission_date: datetime = field(default_factory=datetime.today, init=False)
+    total_commission_amount: float|None
 
     def keys(self):
         unpackable_attrs = list(self.__dict__.keys())

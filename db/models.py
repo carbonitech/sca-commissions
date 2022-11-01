@@ -108,6 +108,7 @@ class Submission(Base):
     reporting_month = Column(Integer)
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    total_commission_amount = Column(Float)
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
     errors = relationship("Error", back_populates="submission")

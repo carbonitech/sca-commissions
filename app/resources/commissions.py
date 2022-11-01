@@ -84,18 +84,18 @@ async def process_commissions_file(
         reporting_month: int,
         reporting_year: int,
         manufacturer_id: int,
-        session: Session
+        total_commission_amount: float|None,
+        session: Session,
     ):
-    try:
-        file_obj = CommissionFile(file)
-    except AssertionError as e:
-        raise HTTPException(400, detail="There was an error processing the file. Make sure the file has only 1 sheet")
+    file_obj = CommissionFile(file)
     new_sub = submission.NewSubmission(
             file_obj,
             reporting_month,
             reporting_year,
             report_id,
-            manufacturer_id)
+            manufacturer_id,
+            total_commission_amount
+        )
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     mfg_report_processor = report_processor.ReportProcessor(
         preprocessor=mfg_preprocessor,
@@ -108,7 +108,7 @@ async def process_commissions_file(
     except report_processor.FileProcessingError as err:
         api.delete_submission(err.submission_id)
         status_code = 400
-        detail = "There was an error processing the file. Make sure the correct report is selected and that there are no blank rows before the table headings"
+        detail = "There was an error processing the file. Make sure the correct report is selected and that there are table headings on the first row"
         error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error"}]}
         raise HTTPException(status_code, detail=error_obj)
 
@@ -120,9 +120,11 @@ async def process_data_from_a_file(
         reporting_month: int = Form(),
         reporting_year: int = Form(),
         manufacturer_id: int = Form(),
+        total_commission_amount: Optional[float] = Form(None),
         db: Session=Depends(get_db)
     ):
 
+    # TODO: should I do this check?
     existing_submissions = api.get_all_submissions(db=db)
     existing_submission = existing_submissions.loc[
         (existing_submissions["reporting_month"] == reporting_month)
@@ -142,7 +144,15 @@ async def process_data_from_a_file(
             f"{date_} with id {id_}"
         raise HTTPException(400, detail=msg)
 
-    new_submission_id = await process_commissions_file(file, report_id, reporting_month, reporting_year, manufacturer_id, db)
+    new_submission_id = await process_commissions_file(
+            file,
+            report_id,
+            reporting_month,
+            reporting_year,
+            manufacturer_id,
+            total_commission_amount,
+            db,
+        )
     return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={})
 
 @router.post("/{submission_id}", tags=['commissions'])

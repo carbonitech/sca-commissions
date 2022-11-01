@@ -68,7 +68,7 @@ class PreProcessor(AbstractPreProcessor):
     def preprocess(self) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
-            "re_michel_POS": self._re_michel_report_preprocessing
+            "re_michel_pos": self._re_michel_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

@@ -76,19 +76,24 @@ class ReportProcessor:
     def reset_branch_ref(self):
         self.branches = self.api.get_branches(db=self.session)
 
-    def total_commissions(self) -> int:
+    def total_commissions(self, dataset: str=None) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
         return round(total_comm)
 
-    def total_sales(self) -> int:
-        total_sales = self.staged_data.loc[:,"inv_amt"].sum()
+    def total_sales(self, dataset: str=None) -> int:
+        if dataset == "ppdata":
+            data = self.ppdata.data
+        else:
+            data = self.staged_data
+
+        total_sales = data.loc[:,"inv_amt"].sum()
         return round(total_sales)
 
     def _send_event_by_submission(self, indecies: list, event_: Hashable, msg: str=None) -> None:
         if self.reintegration:
-            table = self.error_table.iloc[indecies,:]
+            table = self.error_table.loc[indecies,:]
         else:
-            table = self.ppdata.data.iloc[indecies,:]
+            table = self.ppdata.data.loc[indecies,:]
             table.insert(0,"submission_id",self.submission_id)
 
         for sub_id in table["submission_id"].unique().tolist():
@@ -391,7 +396,7 @@ class ReportProcessor:
         try:
             ppdata = preprocessor.preprocess()
         except Exception:
-            raise FileProcessingError("There was an error while we attempted to process the file", submission_id=sub_id)
+            raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
         
         match ppdata.data.columns.to_list():
             case ["store_number", *other_cols]:
@@ -405,8 +410,25 @@ class ReportProcessor:
                 event.post_event(*event_arg_tuple, start_step=1, session=self.session)
             else:
                 event.post_event(*event_arg_tuple, session=self.session)
-        self.staged_data = ppdata.data.copy()
+
+
         self.ppdata = ppdata
+
+        if self.ppdata.data.loc[:,"comm_amt"].eq(0).all():
+            if self.submission.total_commission_amount:
+                total_sales = self.total_sales("ppdata")/100 # back from cents to dollars
+                comm_rate = self.submission.total_commission_amount/total_sales
+                self.ppdata.data.loc[:,"comm_amt"] = self.ppdata.data["inv_amt"]*comm_rate
+                event.post_event(
+                    "Formatting",
+                    f"filled comm_amt column by applying the commission rate {comm_rate*100:.2f}% to inv_amt, "\
+                    f"derived from total commissions divided by total sales: "\
+                    f"${self.submission.total_commission_amount:,.2f} / ${total_sales:,.2f} = {comm_rate*100:.2f}%",
+                    self.submission_id,
+                    session=self.session
+                )
+                
+        self.staged_data = ppdata.data.copy()
         return self
 
     def insert_submission_id(self) -> 'ReportProcessor':

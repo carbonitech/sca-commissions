@@ -329,15 +329,15 @@ class ReportProcessor:
         if set(core_columns).issubset(table_columns):
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, ["submission_id"] + left_on_list + core_columns]
             if not no_match_table.empty:
-                    retry_result = self.fill_city_ids(no_match_table, pipe=False)
-                    retry_result = self._filter_out_any_rows_unmapped(retry_result)
-                    retry_result = self.fill_state_ids(retry_result, pipe=False)
-                    retry_result = self._filter_out_any_rows_unmapped(retry_result)
-                    self.staged_data = pd.concat([self.staged_data, self.add_branch_id(retry_result, pipe=False)])
+                retry_result = self.fill_city_ids(no_match_table, pipe=False)
+                retry_result = self.fill_state_ids(retry_result, pipe=False)
+                self.staged_data = pd.concat([self.staged_data, self.add_branch_id(retry_result, pipe=False)])
+            else:
+                self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
         else:   # otherwise just send these match failures to errors table
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
             self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
-        self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
+            self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
         return self
 
     def assign_value_by_transfer_direction(self) -> 'ReportProcessor':

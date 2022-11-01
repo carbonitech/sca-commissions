@@ -1812,13 +1812,11 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 56,150,20,,,4,True
 84,183,12,,,3,True
 13,37,12,,,3,True
-25,439,12,,,3,True
 3,101,1,,,2,True
 15,35,47,,,4,True
 20,104,12,,,3,True
 244,311,11,,,1,True
 84,440,11,,,1,True
-75,441,11,,,1,True
 25,368,11,,,1,True
 375,12,47,,,4,True
 49,6,11,,,1,True

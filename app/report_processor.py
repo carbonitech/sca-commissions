@@ -144,7 +144,7 @@ class ReportProcessor:
         return self
 
     def fill_customer_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
-        """converts customer column customer id #s using the map_customer_name reference table"""
+        """converts customer column customer id #s using the map_customer_names reference table"""
         left_on_name = "customer"
         if not pipe:
             operating_data = data
@@ -165,6 +165,8 @@ class ReportProcessor:
         no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
         self._send_event_by_submission(no_match_indices,ErrorType(1))
         operating_data = self._filter_out_any_rows_unmapped(operating_data)
+        if operating_data.empty:
+            raise EmptyTableException
         if pipe:
             self.staged_data = operating_data
             return self
@@ -320,7 +322,7 @@ class ReportProcessor:
 
         self.staged_data.loc[:, new_column] = new_col_values
         self.staged_data.loc[:, "in_territory"] = in_territory
-
+        
         # if city and state are present, try going with mapping those and concatentating what you can get
         table_columns = set(data_copy.columns.to_list())
         core_columns = ["city", "state"]

@@ -258,7 +258,10 @@ class ReportProcessor:
         except KeyError:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
-        in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
+        try:
+            in_territory = merged_with_branches.loc[:,"in_territory_ref_table"].fillna(0).to_list()
+        except KeyError:
+            in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
 
         operating_data.loc[:, new_column] = new_col_values
         operating_data.loc[:, "in_territory"] = in_territory
@@ -278,12 +281,15 @@ class ReportProcessor:
                 "Formatting",f"added {len(no_match_records)} branches to the branches table"
             )
             self.reset_branch_ref()
-            self.add_branch_id()
-        operating_data = self._filter_out_any_rows_unmapped(operating_data)
-        if pipe:
-            self.staged_data = operating_data
-            return self
-        return operating_data
+            result = self.add_branch_id(data=self.staged_data, pipe=pipe)
+            return result
+        else:
+            if pipe:
+                operating_data = self._filter_out_any_rows_unmapped(operating_data)
+                self.staged_data = operating_data
+                return self
+            else:
+                return operating_data
 
 
     def add_branch_id_by_store_number(self) -> 'ReportProcessor':
@@ -331,9 +337,11 @@ class ReportProcessor:
             if not no_match_table.empty:
                 retry_result = self.fill_city_ids(no_match_table, pipe=False)
                 retry_result = self.fill_state_ids(retry_result, pipe=False)
-                self.staged_data = pd.concat([self.staged_data, self.add_branch_id(retry_result, pipe=False)])
-            else:
-                self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
+                retry_result = self.add_branch_id(retry_result, pipe=False)
+                self.staged_data.loc[:,new_column] = retry_result[new_column]
+                self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
+                self.staged_data.loc[:,"in_territory"] = retry_result["in_territory"].fillna(False)
+                self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data, suppress_event=True) # will duplicate all drops made implicitly above if not suppressed
         else:   # otherwise just send these match failures to errors table
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
             self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
@@ -359,13 +367,14 @@ class ReportProcessor:
         return self
         
 
-    def _filter_out_any_rows_unmapped(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, suppress_event: bool=False) -> pd.DataFrame:
         if data.empty:
             return data
         mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
         data_dropped = data[~mask].index.to_list()
         data = data[mask]
-        self._send_event_by_submission(data_dropped, "Rows Removed")
+        if not suppress_event:
+            self._send_event_by_submission(data_dropped, "Rows Removed")
         return data
 
 

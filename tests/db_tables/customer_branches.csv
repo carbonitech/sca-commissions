@@ -1177,7 +1177,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 248,26,12,,,3,True
 44,128,1,,,2,True
 30,112,12,,,3,True
-258,44,1,,,2,True
 27,117,47,,,4,True
 240,308,47,,,4,True
 71,309,47,,,4,True
@@ -1392,7 +1391,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 296,28,58,,,4,True
 297,28,58,,,2,True
 181,44,1,,,2,True
-258,14,27,,,2,True
 123,97,1,,,2,True
 298,28,58,,,5,True
 39,46,1,,,2,True
@@ -1433,7 +1431,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 19,291,11,,,1,True
 310,347,11,,,1,True
 25,180,11,,,1,True
-258,150,20,,,4,True
 69,275,47,,,4,True
 212,44,1,,,2,True
 19,50,11,,,1,True
@@ -1465,7 +1462,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 6,28,47,,,5,True
 6,173,11,,,2,True
 318,182,11,,,1,True
-258,104,12,,,3,True
 25,92,47,,,2,True
 319,10,47,,,4,True
 6,351,11,,,1,True
@@ -1597,7 +1593,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 337,19,47,,,4,True
 19,380,20,,,4,True
 25,381,11,,,1,True
-258,49,1,,,2,True
 338,150,20,,,4,True
 339,207,11,,,1,True
 264,313,11,,,1,True
@@ -1728,11 +1723,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 75,6,11,,,1,True
 75,421,11,,,1,True
 75,316,11,,,1,True
-258,179,11,,,1,True
-258,80,11,,,1,True
-258,6,11,,,1,True
-258,311,11,,,1,True
-258,66,11,,,1,True
 364,339,11,,,1,True
 365,207,11,,,1,True
 42,422,11,,,1,True
@@ -1759,9 +1749,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 75,184,11,,,1,True
 75,313,11,,,1,True
 310,66,11,,,1,True
-258,330,11,,,1,True
-258,180,11,,,1,True
-258,310,11,,,1,True
 49,256,11,,,1,True
 49,80,11,,,1,True
 49,184,11,,,1,True
@@ -1832,10 +1819,7 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 244,311,11,,,1,True
 84,440,11,,,1,True
 75,441,11,,,1,True
-258,300,11,,,1,True
-258,67,11,,,1,True
-258,313,11,,,1,True
-258,368,11,,,1,True
+25,368,11,,,1,True
 375,12,47,,,4,True
 49,6,11,,,1,True
 384,138,27,,,2,True
@@ -1915,7 +1899,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 84,311,11,,,1,True
 84,444,11,,,1,True
 75,273,11,,,1,True
-258,221,11,,,1,True
 100,85,1,,,2,True
 399,52,47,,,2,True
 400,9,47,,,5,True
@@ -1941,8 +1924,7 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 410,28,47,,,5,True
 411,28,47,,,5,True
 3,455,1,,,2,True
-258,456,11,,,1,True
-258,312,11,,,1,True
+25,456,11,,,1,True
 406,376,11,,,1,True
 8,119,12,,,3,True
 412,66,11,,,1,True
@@ -1965,7 +1947,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 420,28,47,,,5,True
 71,129,47,,,4,True
 421,9,47,,,4,True
-258,184,11,,,1,True
 181,83,20,,,4,True
 422,458,12,,,3,True
 423,54,12,,,3,True
@@ -1992,8 +1973,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 30,79,1,,,2,True
 73,12,47,,,4,True
 428,10,47,,,4,True
-258,12,47,,,4,True
-258,10,47,,,4,True
 422,137,1,,,2,True
 429,462,47,,,4,True
 301,26,12,,,3,True
@@ -2015,10 +1994,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 86,58,47,,,4,True
 355,467,47,,,5,True
 84,221,11,,,1,True
-258,90,47,,,4,True
-258,286,11,,,1,True
-258,255,11,,,1,True
-258,182,11,,,1,True
 434,468,47,,,5,True
 435,469,11,,,1,True
 435,470,12,,,3,True
@@ -2054,11 +2029,6 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 442,468,47,,,5,True
 443,240,47,,,4,True
 84,395,11,,,1,True
-258,395,11,,,1,True
-258,25,11,,,1,True
-258,183,11,,,1,True
-258,11,1,,,2,True
-258,173,11,,,2,True
 33,7,11,,,1,True
 19,92,47,,,2,True
 19,442,12,,,3,True

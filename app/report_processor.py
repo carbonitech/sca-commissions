@@ -7,8 +7,8 @@ from app import event
 from entities.preprocessor import AbstractPreProcessor
 from entities.submission import NewSubmission
 from entities.error import ErrorType
-
 from services import api_adapter
+
 
 class EmptyTableException(Exception):
     pass
@@ -32,6 +32,8 @@ class ReportProcessor:
     another as a branch, a new branch is added to the database without a rep assignment. (While this 
     does need user attention to add a rep assignment, it's not going to the error's table)
 
+
+    TODO: refactor branch id handling. There's a lot of retrying/redirecting, even recursion. This area of the code is confusing.
     """
     def __init__(
             self,
@@ -158,7 +160,6 @@ class ReportProcessor:
                 operating_data, self.map_customer_names,
                 how="left", left_on=left_on_name, right_on="recorded_name"
             )
-        
         # customer column is going from a name string to an id integer
         operating_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
 
@@ -318,7 +319,6 @@ class ReportProcessor:
                 right_on=["store_number", "customer_id"],
                 suffixes=(None,"_ref_table")
         )
-
         try:
             new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
         except KeyError:
@@ -328,19 +328,22 @@ class ReportProcessor:
 
         self.staged_data.loc[:, new_column] = new_col_values
         self.staged_data.loc[:, "in_territory"] = in_territory
-        
+
         # if city and state are present, try going with mapping those and concatentating what you can get
         table_columns = set(data_copy.columns.to_list())
         core_columns = ["city", "state"]
         if set(core_columns).issubset(table_columns):
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, ["submission_id"] + left_on_list + core_columns]
+            msg = f"Using store numbers, {str(len(no_match_table))} rows failed to match. City and State columns are present. Attempting to map customers by mapping cities and states instead."
+            self._send_event_by_submission(no_match_table.index.to_list(),"Formatting",msg=msg)
             if not no_match_table.empty:
                 retry_result = self.fill_city_ids(no_match_table, pipe=False)
                 retry_result = self.fill_state_ids(retry_result, pipe=False)
                 retry_result = self.add_branch_id(retry_result, pipe=False)
-                self.staged_data.loc[:,new_column] = retry_result[new_column]
-                self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
-                self.staged_data.loc[:,"in_territory"] = retry_result["in_territory"].fillna(False)
+                if not retry_result.empty:
+                    self.staged_data.loc[:,new_column] = retry_result[new_column]
+                    self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
+                    self.staged_data.loc[:,"in_territory"] = retry_result["in_territory"].fillna(False)
                 self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data, suppress_event=True) # will duplicate all drops made implicitly above if not suppressed
         else:   # otherwise just send these match failures to errors table
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
@@ -364,6 +367,8 @@ class ReportProcessor:
 
     def remove_out_of_territory_branches(self) -> 'ReportProcessor':
         self.staged_data = self.staged_data[self.staged_data["in_territory"]]
+        if self.staged_data.empty:
+            raise EmptyTableException
         return self
         
 
@@ -462,29 +467,41 @@ class ReportProcessor:
         if self.skip:
             return
 
-        if not self.reintegration:
-            self.register_submission()      \
-            .preprocess()                   \
-            .insert_submission_id()
-        else:
-            try:             
-                self._filter_for_existing_records_with_target_error_type() \
+        try:
+            if not self.reintegration:
+                (
+                    self
+                    .register_submission()
+                    .preprocess()
+                    .insert_submission_id()
+                )
+            else:
+                (
+                    self
+                    ._filter_for_existing_records_with_target_error_type()
                     .remove_error_db_entries()
-            except EmptyTableException:
-                return
-        self.fill_customer_ids()
-        if self.inter_warehouse_transfer:
-            self.assign_value_by_transfer_direction()
-        if self.use_store_numbers:
-            self.add_branch_id_by_store_number()
+                )
+            self.fill_customer_ids()
+            if self.inter_warehouse_transfer:
+                self.assign_value_by_transfer_direction()
+            if self.use_store_numbers:
+                self.add_branch_id_by_store_number()
+            else:
+                (
+                    self
+                    .fill_city_ids()
+                    .fill_state_ids()
+                    .add_branch_id()
+                )
+            self.remove_out_of_territory_branches()
+        except EmptyTableException:
+            pass
+        except Exception as err:
+            raise FileProcessingError(err)
         else:
-            self.fill_city_ids()            \
-            .fill_state_ids()               \
-            .add_branch_id()
-            
-        self.remove_out_of_territory_branches() \
-        .drop_extra_columns()               \
-        .insert_recorded_at_column()        \
-        .register_commission_data()     
+            self\
+            .drop_extra_columns()\
+            .insert_recorded_at_column()\
+            .register_commission_data()
 
         return self.submission_id if not self.reintegration else None

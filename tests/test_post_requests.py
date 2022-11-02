@@ -22,4 +22,4 @@ def test_new_customer_name_mapping(database: database):
         case {"jsonapi": a, "meta": b, "data": c}:
             successful_response = True
 
-    assert successful_response
+    assert successful_response, f"{response.json()}"

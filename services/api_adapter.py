@@ -202,16 +202,16 @@ class ApiAdapter:
         return
 
 
-    def delete_submission(self, submission_id: int):
+    def delete_submission(self, submission_id: int, session: Session):
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
-        sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
         sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.submission_id == submission_id)
         sql_processing_steps = sqlalchemy.delete(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql_commission)
-            conn.execute(sql_processing_steps)
-            conn.execute(sql_errors)
-            conn.execute(sql_submission)
+        sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
+        session.execute(sql_commission)
+        session.execute(sql_processing_steps)
+        session.execute(sql_errors)
+        session.execute(sql_submission)
+        session.commit()
         
     def get_mappings(self, db: Session, table: str) -> pd.DataFrame:
         return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),db.get_bind())

@@ -99,7 +99,7 @@ class ManufacturersReport(Base):
     deleted = Column(DateTime)
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
-    report_form_field = relationship("ReportFormFields", back_populates='manufacturers_report')
+    report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
 
 
 class Submission(Base):
@@ -168,7 +168,7 @@ class ReportFormFields(Base):
     max_value = Column(Integer)
     options = Column(TEXT)
     required = Column(Boolean)
-    manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_field")
+    manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
 
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

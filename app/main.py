@@ -57,6 +57,7 @@ app.include_router(resources.manufacturers, dependencies=PROTECTED)
 app.include_router(resources.customer_names, dependencies=PROTECTED)
 app.include_router(resources.downloads)
 app.include_router(resources.resetdb, dependencies=PROTECTED)
+app.include_router(resources.reports, dependencies=PROTECTED)
 
 error_listener.setup_error_event_handlers()
 process_step_listener.setup_processing_step_handlers()

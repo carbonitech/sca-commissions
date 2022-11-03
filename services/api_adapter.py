@@ -26,7 +26,6 @@ REPS = models.Representative
 CUSTOMER_NAME_MAP = models.MapCustomerName
 CITY_NAME_MAP = models.MapCityName
 STATE_NAME_MAP = models.MapStateName
-REPS_CUSTOMERS_MAP = None
 MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
@@ -39,6 +38,7 @@ MAPPING_TABLES = {
     "map_state_names": models.MapStateName
 }
 DOWNLOADS = models.FileDownloads
+FORM_FIELDS = models.ReportFormFields
 
 load_dotenv()
 
@@ -317,6 +317,13 @@ class ApiAdapter:
     @jsonapi_error_handling
     def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
         return models.serializer.get_collection(db,query,CUSTOMERS)
+
+    @jsonapi_error_handling
+    def get_reports(self, db: Session, query: dict, report_id: int=0) -> JSONAPIResponse:
+        if report_id:
+            return models.serializer.get_resource(db, query, hyphenated_name(REPORTS), report_id, obj_only=True)
+        else:
+            return models.serializer.get_collection(db, query, REPORTS)
     
     @jsonapi_error_handling
     def get_many_cities_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:

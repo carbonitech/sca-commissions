@@ -461,7 +461,7 @@ class ApiAdapter:
         reports = REPORTS
         manufs = MANUFACTURERS
         sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
-                reports.id.label("report_id"),reports.report_name,reports.yearly_frequency, reports.POS_report,
+                reports.id.label("report_id"),reports.report_name,reports.yearly_frequency, reports.pos_report,
                 manufs.name).select_from(subs).join(reports).join(manufs)
         return pd.read_sql(sql, con=db.get_bind())
 

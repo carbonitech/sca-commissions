@@ -95,10 +95,11 @@ class ManufacturersReport(Base):
     manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
     report_name = Column(String)
     yearly_frequency = Column(Integer)
-    POS_report = Column(Boolean)
+    pos_report = Column(Boolean)
     deleted = Column(DateTime)
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
+    report_form_field = relationship("ReportFormFields", back_populates='manufacturers_report')
 
 
 class Submission(Base):
@@ -154,6 +155,20 @@ class FileDownloads(Base):
     created_at = Column(DateTime)
     expires_at = Column(DateTime)
     downloaded = Column(Boolean, default=False)
+
+class ReportFormFields(Base):
+    __tablename__ = "report_form_fields"
+    id = Column(Integer,primary_key=True)
+    report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    label = Column(String)
+    name = Column(String)
+    input_type = Column(Integer)
+    default_value = Column(Integer)
+    min_value = Column(Integer)
+    max_value = Column(Integer)
+    options = Column(TEXT)
+    required = Column(Boolean)
+    manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_field")
 
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

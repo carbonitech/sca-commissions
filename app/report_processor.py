@@ -248,8 +248,12 @@ class ReportProcessor:
             operating_data["in_territory"] = None
             return self if pipe else operating_data
 
+        # some customers have two stores in the same geo differentiated only by store numbers.
+        # if a seperate canonical city name is used, dedup isn't needed, but it doesn't hurt
+        deduped_branches = self.branches.drop_duplicates(subset=["customer_id", "city_id", "state_id"])
+
         merged_with_branches = pd.merge(
-                operating_data, self.branches,
+                operating_data, deduped_branches,
                 how="left", left_on=left_on_list,
                 right_on=["customer_id","city_id","state_id"],
                 suffixes=(None,"_ref_table")
@@ -497,7 +501,7 @@ class ReportProcessor:
         except EmptyTableException:
             pass
         except Exception as err:
-            raise FileProcessingError(err)
+            raise FileProcessingError(err, submission_id=self.submission_id)
         else:
             self\
             .drop_extra_columns()\

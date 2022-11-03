@@ -1,4 +1,4 @@
-manufacturer_id,report_name,yearly_frequency,POS_report,deleted
+manufacturer_id,report_name,yearly_frequency,pos_report,deleted
 1,detail,12,False,
 1,coburn_pos,12,True,
 1,lennox_pos,12,True,
@@ -10,3 +10,4 @@ manufacturer_id,report_name,yearly_frequency,POS_report,deleted
 6,johnstone_pos,4,True,
 6,re_michel_pos,4,True,
 6,united_refrigeration_pos,4,True,
+6,winsupply_pos,4,True,

@@ -1,6 +1,7 @@
 import os
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.session import close_all_sessions
 import pandas as pd
 from numpy import nan
 from fastapi import APIRouter, Depends
@@ -16,6 +17,7 @@ async def delete_db(engine):
     return {"message": "tables deleted"}
 
 async def create_db(engine, session: Session):
+    close_all_sessions() # !!!! Only became a need when I added ReportFormFields, over a certain number of columns. adding 1 col at a time worked fine
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     DB_TABLES = {
@@ -26,16 +28,9 @@ async def create_db(engine, session: Session):
             'manufacturers': models.Manufacturer,
             'manufacturers_reports': models.ManufacturersReport,
             'representatives': models.Representative,
-            'map_customer_names': models.MapCustomerName,
-            'map_city_names': models.MapCityName,
-            'map_state_names': models.MapStateName,
-            'report_submissions_log': models.Submission,
-            'report_processing_steps_log': models.ProcessingStep,
-            'current_errors': models.Error,
-            'final_commission_data': models.CommissionData,
-            'file_downloads': models.FileDownloads
+            'report_form_fields': models.ReportFormFields
     }
-    # load csv files
+    # load csv files 
     tables_dir = './tests/db_tables'
     files = os.listdir(tables_dir)[::-1] # not sure why the ordering changed
     tables = {

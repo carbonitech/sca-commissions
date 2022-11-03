@@ -91,6 +91,7 @@ def database():
                 'manufacturers': models.Manufacturer,
                 'manufacturers_reports': models.ManufacturersReport,
                 'representatives': models.Representative,
+                "report_form_fields": models.ReportFormFields
         }
     # load csv files
     tables_dir = './tests/db_tables'

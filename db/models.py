@@ -1,8 +1,10 @@
 """Database Table Models / Data Transfer Objects"""
 
+import uuid
 from datetime import datetime
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi import JSONAPI_
 
 Base = declarative_base()
@@ -169,6 +171,14 @@ class ReportFormFields(Base):
     options = Column(TEXT)
     required = Column(Boolean)
     manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
+
+class Failures(Base):
+    __tablename__ = "failures"
+    id = Column(UUID(as_uuid=True),primary_key=True, default=uuid.uuid4)
+    occurred_at = Column(DateTime, default=datetime.utcnow)
+    request = Column(TEXT)
+    response = Column(TEXT)
+    traceback = Column(TEXT)
 
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

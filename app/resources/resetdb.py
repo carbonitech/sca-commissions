@@ -12,10 +12,6 @@ from services.api_adapter import get_db, ApiAdapter
 
 router = APIRouter(prefix="/resetdb")
 
-async def delete_db(engine):
-    Base.metadata.drop_all(engine)
-    return {"message": "tables deleted"}
-
 async def create_db(engine, session: Session):
     close_all_sessions() # !!!! Only became a need when I added ReportFormFields, over a certain number of columns. adding 1 col at a time worked fine
     Base.metadata.drop_all(engine)
@@ -28,7 +24,7 @@ async def create_db(engine, session: Session):
             'manufacturers': models.Manufacturer,
             'manufacturers_reports': models.ManufacturersReport,
             'representatives': models.Representative,
-            'report_form_fields': models.ReportFormFields
+            'report_form_fields': models.ReportFormFields,
     }
     # load csv files 
     tables_dir = './tests/db_tables'
@@ -56,6 +52,5 @@ async def create_db(engine, session: Session):
 @router.get("")
 async def reset_database(db: Session=Depends(get_db)):
     engine = ApiAdapter.engine
-    # result_del = await delete_db(engine)
     result_make = await create_db(engine,db)
     return result_make

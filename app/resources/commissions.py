@@ -107,11 +107,11 @@ async def process_commissions_file(
         return mfg_report_processor.process_and_commit()
     except report_processor.FileProcessingError as err:
         import traceback
-        print(traceback.format_exc()) # I've had to add this in here too many times to debug. Leaving it in for now
+        tb = traceback.format_exc()
         api.delete_submission(err.submission_id, session=session)
         status_code = 400
-        detail = "There was an error processing the file. Make sure the correct report is selected and that there are table headings on the first row"
-        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error"}]}
+        detail = "There was an error processing the file. Please contact joe@carbonitech.com with the id number {id_}"
+        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
         raise HTTPException(status_code, detail=error_obj)
 
 

@@ -34,7 +34,7 @@ async def format_responses_to_jsonapi_spec(request: Request, call_next):
     if response.status_code >= 500:
         return await middleware_handlers.handle_500_range(response)
     elif response.status_code >= 400:
-        return await middleware_handlers.handle_400_range(response)
+        return await middleware_handlers.handle_400_range(request, response)
     elif response.status_code >= 300:
         return await middleware_handlers.handle_300_range(response)
     elif response.status_code >= 200:

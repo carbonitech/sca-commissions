@@ -1986,7 +1986,7 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 6,108,12,,574,3,True
 42,37,12,,0I3,3,True
 25,129,47,,319,4,True
-42,123,12,,94,3,True
+42,123,12,,094,3,True
 33,12,47,,223,4,True
 6,105,12,,520,3,True
 6,99,12,,304,3,True
@@ -2047,7 +2047,7 @@ customer_id,city_id,state_id,deleted,store_number,rep_id,in_territory
 25,116,12,,398,3,True
 42,99,12,,506,3,True
 6,102,12,,503,3,True
-42,23,12,,93,3,True
+42,23,12,,093,3,True
 33,10,47,,232,4,True
 6,51,12,,521,3,True
 33,63,47,,256,4,True

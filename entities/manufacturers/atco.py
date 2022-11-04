@@ -2,7 +2,6 @@
 Manufacturer report preprocessing definition
 for Atco Flex
 """
-import re
 import pandas as pd
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor

@@ -35,3 +35,6 @@ report_id,label,name,input_type,default_value,min_value,max_value,options,requir
 12,Reporting Month,reporting_month,2,,1,12,,True
 12,Reporting Year,reporting_year,2,,1970,2300,,True
 12,Total Commissions,total_commission_amount,2,0,0,9999999,,True
+13,Reporting Month,reporting_month,2,,1,12,,True
+13,Reporting Year,reporting_year,2,,1970,2300,,True
+13,Total Commissions,total_commission_amount,2,0,0,9999999,,False

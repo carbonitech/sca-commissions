@@ -11,3 +11,4 @@ manufacturer_id,report_name,yearly_frequency,pos_report,deleted
 6,re_michel_pos,4,True,
 6,united_refrigeration_pos,4,True,
 6,winsupply_pos,4,True,
+11,standard,12,False,

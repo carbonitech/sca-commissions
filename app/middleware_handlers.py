@@ -25,45 +25,44 @@ async def handle_400_range(request: Request, response: Response) -> Response:
     resp_body = await read_response_body(response.body_iterator)
     resp_body.update({"status":response.status_code})
     jsonapi_err_response_content = {"errors":[]}
-    # output of patch requests errors is already to spec
-    # here it's extracted from the detail field supplied to HTTPException
+    failures_table_insert_sql = "INSERT INTO failures "\
+                "VALUES(:uuid,:now,:request,:response,:traceback);"
+    session = next(get_db())
+    request_headers = [(key.decode(), value.decode()) for key,value in request.headers.raw]
+    request_query = str(request.query_params)
+
     match resp_body:
-        case {"detail":{"errors": [{"traceback": tb, **error_obj}]}}:
-            request_headers = [(key.decode(), value.decode()) for key,value in request.headers.raw]
-            id_ = uuid4()
-            params = {
-                "uuid": id_,
-                "now": datetime.utcnow(),
-                "request": json.dumps({"headers": request_headers, "query": str(request.query_params)}),
-                "response": json.dumps(error_obj),
-                "traceback": tb
-            }
-            session = next(get_db())
-            session.execute(
-                "INSERT INTO failures "\
-                "VALUES(:uuid,:now,:request,:response,:traceback);", params)
+        case {"detail":{"errors": [*error_objs]}}:
+            result = []
+            for error in error_objs:
+                error: dict
+                id_alt = uuid4()
+                params = {
+                    "uuid": error.get("id", str(id_alt)),
+                    "now": datetime.utcnow(),
+                    "request": json.dumps({"headers": request_headers, "query": request_query}),
+                    "response": json.dumps(error),
+                    "traceback": error.get("traceback", None)
+                }
+                if error.get("traceback", None):
+                    error.pop("traceback")
+                if not error.get("id",None):
+                    error.update({"id": str(id_alt)})
+                error["detail"] = error["detail"].format(id_=str(params["uuid"]))
+                result.append(error)
+                session.execute(failures_table_insert_sql, params)
             session.commit()
 
+            # error object response
             jsonapi_err_response_content = resp_body["detail"]
-            jsonapi_err_response_content["errors"][0].pop("traceback")
-            jsonapi_err_response_content["errors"][0].update({"id": str(id_)})
-            msg: str = jsonapi_err_response_content["errors"][0]["detail"]
-            jsonapi_err_response_content["errors"][0]["detail"] = msg.format(id_ = id_)
-            
+            jsonapi_err_response_content["errors"] = result
+                
             return JSONResponse(
                 content=jsonapi_err_response_content,
                 status_code=response.status_code,
                 media_type="application/json"
             )
 
-        case {"detail":{"errors": [*error_objs]}}:
-            # error object response
-            jsonapi_err_response_content = resp_body["detail"]
-            return JSONResponse(
-                content=jsonapi_err_response_content,
-                status_code=response.status_code,
-                media_type="application/json"
-            )
     
     if response.status_code == 422:
         for err in resp_body["detail"]:

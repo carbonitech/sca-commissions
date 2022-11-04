@@ -93,11 +93,12 @@ def convert_to_jsonapi(query: dict) -> dict:
             jsonapi_query[param_name] = param_value
     return jsonapi_query
 
-def format_error(error: BaseError) -> dict:
+def format_error(error: BaseError, tb: str) -> dict:
     """format the error for raises an HTTPException so FastAPI can handle it properly"""
     data: dict = error.data
     status_code: int = error.status_code #subclass of BaseError actually raised will have this attr
     data["errors"][0]["id"] = str(data["errors"][0]["id"])
+    data["errors"][0]["traceback"] = tb
     return {"status_code": status_code, "detail": data}
 
 class JSONAPI_(JSONAPI):
@@ -414,7 +415,8 @@ def jsonapi_error_handling(route_function):
         try:
             return route_function(*args, **kwargs)
         except BaseError as err:
-            raise HTTPException(**format_error(err))
+            import traceback
+            raise HTTPException(**format_error(err, traceback.format_exc()))
         except Exception as err:
             raise HTTPException(status_code=400,detail=str(err))
     return error_handling

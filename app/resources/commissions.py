@@ -113,6 +113,13 @@ async def process_commissions_file(
         detail = "There was an error processing the file. Please contact joe@carbonitech.com with the id number {id_}"
         error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
         raise HTTPException(status_code, detail=error_obj)
+    except Exception as err:
+        import traceback
+        tb = traceback.format_exc()
+        status_code = 400
+        detail = "Please contact joe@carbonitech.com with the id number {id_}"
+        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
+        raise HTTPException(status_code, detail=error_obj)
 
 
 @router.post("", tags=['commissions'])

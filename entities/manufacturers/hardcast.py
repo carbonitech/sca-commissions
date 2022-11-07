@@ -3,7 +3,6 @@ Manufacturer report preprocessing definition
 for Hardcast
 """
 import pandas as pd
-import numpy as np
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
 

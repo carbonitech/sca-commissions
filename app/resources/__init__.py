@@ -9,5 +9,4 @@ from app.resources.cities import router as cities
 from app.resources.states import router as states
 from app.resources.relationships import router as relationships
 from app.resources.download import router as downloads
-from app.resources.resetdb import router as resetdb
 from app.resources.reports import router as reports

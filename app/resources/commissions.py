@@ -46,38 +46,6 @@ class CommissionDataDownloadParameters(BaseModel):
     state_id: int|None = None
     representative_id: int|None = None
 
-@router.get("", tags=['commissions'])
-async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
-    jsonapi_query = convert_to_jsonapi(query)
-    return api.get_all_commission_data_jsonapi(db,jsonapi_query)
-
-@router.get("/{row_id}", tags=['commissions'])
-async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
-    jsonapi_query = convert_to_jsonapi(query)
-    return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query)
-
-@router.post("/download", tags=['commissions'])
-async def commission_data_file_link(
-        query_params: Optional[CommissionDataDownloadParameters] = None,
-        db: Session=Depends(get_db)
-    ):
-    """
-    Generates a download link for the commission data
-    """
-    duration = float(getenv('FILE_LINK_DURATION'))
-    _now = datetime.now()
-    hash_ = secrets.token_urlsafe()
-    record = {
-        "hash": hash_,
-        "type": "commission_data",
-        "query_args": json.dumps(query_params.dict(exclude_none=True)) if query_params else json.dumps({"filename": "commissions"}),
-        "created_at": _now,
-        "expires_at": _now + timedelta(seconds=60*duration)
-    }
-    api.generate_file_record(db, record)
-    return {"downloadLink": f"/download?file={hash_}"}
-
-
 async def process_commissions_file(
         file: bytes,
         report_id: int,
@@ -120,6 +88,39 @@ async def process_commissions_file(
         detail = "Please contact joe@carbonitech.com with the id number {id_}"
         error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
         raise HTTPException(status_code, detail=error_obj)
+
+
+@router.get("", tags=['commissions'])
+async def commission_data(query: Query=Depends(), db: Session=Depends(get_db)):
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_all_commission_data_jsonapi(db,jsonapi_query)
+
+@router.get("/{row_id}", tags=['commissions'])
+async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query)
+
+@router.post("/download", tags=['commissions'])
+async def commission_data_file_link(
+        query_params: Optional[CommissionDataDownloadParameters] = None,
+        db: Session=Depends(get_db)
+    ):
+    """
+    Generates a download link for the commission data
+    """
+    duration = float(getenv('FILE_LINK_DURATION'))
+    _now = datetime.now()
+    hash_ = secrets.token_urlsafe()
+    record = {
+        "hash": hash_,
+        "type": "commission_data",
+        "query_args": json.dumps(query_params.dict(exclude_none=True)) if query_params else json.dumps({"filename": "commissions"}),
+        "created_at": _now,
+        "expires_at": _now + timedelta(seconds=60*duration)
+    }
+    api.generate_file_record(db, record)
+    return {"downloadLink": f"/download?file={hash_}"}
+
 
 
 @router.post("", tags=['commissions'])

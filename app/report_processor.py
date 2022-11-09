@@ -414,7 +414,12 @@ class ReportProcessor:
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
 
         try:
-            ppdata = preprocessor.preprocess()
+            if self.submission.total_commission_amount:
+                ppdata = preprocessor.preprocess(total_commission_amount=self.submission.total_commission_amount)
+            elif self.submission.total_frieght_amount:
+                ppdata = preprocessor.preprocess(total_frieght_amount=self.submission.total_frieght_amount)
+            else:
+                ppdata = preprocessor.preprocess()
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
         
@@ -447,6 +452,13 @@ class ReportProcessor:
                     self.submission_id,
                     session=self.session
                 )
+            elif total_frieght := self.submission.total_frieght_amount:
+                # only for Glasfloss
+                total_sales = self.total_sales("ppdata")/100 # back from cents to dollars
+                discount_rate = total_frieght/total_sales
+                self.ppdata.data.loc[:,"inv_amt"] = total_sales*(1-discount_rate)*100 # dollars to cents
+                self.ppdata.data.loc[:,"comm_amt"] = self.ppdata.data["inv_amt"]*0.03
+
                 
         self.staged_data = ppdata.data.copy()
         return self

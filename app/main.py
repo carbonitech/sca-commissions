@@ -6,10 +6,14 @@ from starlette.responses import StreamingResponse, RedirectResponse
 
 from app import resources, middleware_handlers, auth
 from app.listeners import api_adapter_listener, error_listener, process_step_listener
+from db.models import Base
+from services.api_adapter import ApiAdapter
 
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')
 ORIGINS_REGEX = os.getenv('ORIGINS_REGEX')
+
+Base.metadata.create_all(bind=ApiAdapter.engine)
 
 app.add_middleware(
     CORSMiddleware,

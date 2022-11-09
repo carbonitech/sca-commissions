@@ -18,7 +18,7 @@ class PreProcessor(AbstractPreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _standard_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
+    def _standard_report_preprocessing(self,data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
         events = []
 
@@ -60,7 +60,7 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, events)
 
 
-    def _coburn_report_preprocessing(self,data: pd.DataFrame) -> PreProcessedData:
+    def _coburn_report_preprocessing(self,data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """
         Process any tab of the report for Coburn's.
         Only the the sums of sales and commissions are used, 
@@ -114,7 +114,7 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, events)
 
 
-    def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+    def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """
         Process any tab of the report for RE Michel
         The data provides branch numbers as well as locations
@@ -129,6 +129,8 @@ class PreProcessor(AbstractPreProcessor):
         """
         events = []
         default_customer_name = "RE MICHEL"
+        split: float = kwargs.get("split", 1.0)
+        comm_rate: float = kwargs.get("standard_commission_rate",0)
 
         data = data.dropna(subset=data.columns.tolist()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
@@ -137,12 +139,12 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting","removed columns with no values",self.submission_id))
 
         data.loc[:,"store_number"] = data.pop("Branch#").astype(str)
-        data.loc[:,"inv_amt"] = data.pop("Cost")*0.75*100
-        events.append(("Formatting",r"replaced 'Cost' column with 75% of the value, renamed as 'inv_amt'",
+        data.loc[:,"inv_amt"] = data.pop("Cost")*split*100
+        events.append(("Formatting",f"replaced 'Cost' column with {split*100:,.2f}% of the value, renamed as 'inv_amt'",
             self.submission_id))
 
-        data.loc[:,"comm_amt"] = data["inv_amt"]*0.03
-        events.append(("Formatting",r"added commissions column by calculating 3% of the inv_amt",
+        data.loc[:,"comm_amt"] = data["inv_amt"]*comm_rate
+        events.append(("Formatting",f"added commissions column by calculating {comm_rate*100:,.2f}% of the inv_amt",
             self.submission_id))
 
         data.loc[:,"customer"] = default_customer_name
@@ -153,7 +155,7 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, events)
         
 
-    def _lennox_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+    def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         events = []
         default_customer_name = "LENNOX"
@@ -209,8 +211,8 @@ class PreProcessor(AbstractPreProcessor):
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
             if self.report_name == "lennox_pos":
-                return preprocess_method(self.file.to_df(combine_sheets=True))
-            return preprocess_method(self.file.to_df())
+                return preprocess_method(self.file.to_df(combine_sheets=True), **kwargs)
+            return preprocess_method(self.file.to_df(), **kwargs)
         else:
             return
 

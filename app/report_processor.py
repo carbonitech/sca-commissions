@@ -48,6 +48,8 @@ class ReportProcessor:
         self.reintegration = False
         self.use_store_numbers = False
         self.inter_warehouse_transfer = False
+        self.session = session
+        self.api = api_adapter.ApiAdapter()
         USER_ID = 1 #TODO MAKE A METHOD HERE TO RETRIEVE USING THE USERNAME
         
         if preprocessor and submission:
@@ -55,6 +57,7 @@ class ReportProcessor:
                 self.submission = submission
                 self.preprocessor = preprocessor
                 self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=USER_ID)
+                self.split = self.api.get_split(session, submission.report_id, user_id=USER_ID)
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -70,8 +73,6 @@ class ReportProcessor:
             self.skip = True
             return
 
-        self.session = session
-        self.api = api_adapter.ApiAdapter()
         self.map_customer_names = self.api.get_mappings(session, "map_customer_names")
         self.map_city_names = self.api.get_mappings(session, "map_city_names")
         self.map_state_names = self.api.get_mappings(session, "map_state_names")
@@ -420,6 +421,10 @@ class ReportProcessor:
         }
         if comm_rate := self.standard_commission_rate:
             optional_params["standard_commission_rate"] = comm_rate
+
+        if self.split:
+            optional_params["split"] = self.split
+
         try:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:

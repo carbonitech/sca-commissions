@@ -199,7 +199,7 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result, events)
 
 
-    def preprocess(self) -> PreProcessedData:
+    def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "detail": self._standard_report_preprocessing,
             "coburn_pos": self._coburn_report_preprocessing,

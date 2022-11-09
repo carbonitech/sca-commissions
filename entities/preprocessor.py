@@ -13,5 +13,5 @@ class AbstractPreProcessor(ABC):
         self.file = file
         
     @abstractmethod
-    def preprocess(self)-> PreProcessedData:
+    def preprocess(self, **kwargs)-> PreProcessedData:
         pass

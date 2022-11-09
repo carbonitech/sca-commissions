@@ -64,7 +64,7 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result,events)
 
 
-    def preprocess(self) -> PreProcessedData:
+    def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
             "re_michel_pos": self._re_michel_report_preprocessing

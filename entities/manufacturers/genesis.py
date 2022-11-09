@@ -79,7 +79,7 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
         return PreProcessedData(result,events)
 
-    def preprocess(self) -> PreProcessedData:
+    def preprocess(self,**kwargs) -> PreProcessedData:
         method_by_name = {
             "sales_detail": self._standard_report_preprocessing,
             "baker_pos": self._baker_report_preprocessing,

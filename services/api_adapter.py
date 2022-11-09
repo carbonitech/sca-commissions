@@ -39,6 +39,8 @@ MAPPING_TABLES = {
 }
 DOWNLOADS = models.FileDownloads
 FORM_FIELDS = models.ReportFormFields
+USERS = models.User
+USER_COMMISSIONS = models.UserCommissionRate
 
 load_dotenv()
 
@@ -471,4 +473,16 @@ class ApiAdapter:
                 reports.id.label("report_id"),reports.report_name,reports.yearly_frequency, reports.pos_report,
                 manufs.name).select_from(subs).join(reports).join(manufs)
         return pd.read_sql(sql, con=db.get_bind())
+
+
+    def get_commission_rate(self, db: Session, manufacturer_id: int, user_id: int) -> float:
+        sql = sqlalchemy.select(USER_COMMISSIONS.commission_rate)\
+            .where(
+                sqlalchemy.and_(
+                    USER_COMMISSIONS.manufacturer_id == manufacturer_id,
+                    USER_COMMISSIONS.user_id == user_id
+            ))
+        result = db.execute(sql).scalar()
+        return result
+
 

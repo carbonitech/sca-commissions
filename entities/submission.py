@@ -13,11 +13,13 @@ class NewSubmission:
     manufacturer_id: int
     submission_date: datetime = field(default_factory=datetime.today, init=False)
     total_commission_amount: float|None
+    total_frieght_amount: float|None
 
     def keys(self):
         unpackable_attrs = list(self.__dict__.keys())
         unpackable_attrs.remove("file")
         unpackable_attrs.remove("manufacturer_id")
+        unpackable_attrs.remove("total_frieght_amount")
         return unpackable_attrs
         
     def __getitem__(self,key):

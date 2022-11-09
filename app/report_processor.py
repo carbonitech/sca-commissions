@@ -74,6 +74,8 @@ class ReportProcessor:
         self.map_city_names = self.api.get_mappings(session, "map_city_names")
         self.map_state_names = self.api.get_mappings(session, "map_state_names")
         self.branches = self.api.get_branches(session)
+        USER_ID = 1 #TODO MAKE A METHOD HERE TO RETRIEVE USING THE USERNAME
+        self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=USER_ID)
 
     def reset_branch_ref(self):
         self.branches = self.api.get_branches(db=self.session)
@@ -415,8 +417,9 @@ class ReportProcessor:
         optional_params = {
             "total_freight_amount": self.submission.total_freight_amount,
             "total_commission_amount": self.submission.total_commission_amount
-
         }
+        if comm_rate := self.standard_commission_rate:
+            optional_params["standard_commission_rate"] = comm_rate
         try:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:

@@ -90,6 +90,7 @@ class Manufacturer(Base):
     name = Column(String)
     deleted = Column(DateTime)
     manufacturers_reports = relationship("ManufacturersReport", back_populates="manufacturer")
+    commission_rates = relationship("UserCommissionRate")
 
 class ManufacturersReport(Base):
     __tablename__ = 'manufacturers_reports'
@@ -179,6 +180,19 @@ class Failures(Base):
     request = Column(TEXT)
     response = Column(TEXT)
     traceback = Column(TEXT)
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer,primary_key=True)
+    username = Column(String)
+    commission_rates = relationship("UserCommissionRate")
+
+class UserCommissionRate(Base):
+    __tablename__ = "user_commission_rates"
+    id = Column(Integer,primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
+    commission_rate = Column(Float)
 
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

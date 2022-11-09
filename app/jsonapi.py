@@ -418,5 +418,7 @@ def jsonapi_error_handling(route_function):
             import traceback
             raise HTTPException(**format_error(err, traceback.format_exc()))
         except Exception as err:
-            raise HTTPException(status_code=400,detail=str(err))
+            import traceback
+            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":""}]}
+            raise HTTPException(status_code=400,detail=detail_obj)
     return error_handling

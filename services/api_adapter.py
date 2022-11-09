@@ -41,6 +41,7 @@ DOWNLOADS = models.FileDownloads
 FORM_FIELDS = models.ReportFormFields
 USERS = models.User
 USER_COMMISSIONS = models.UserCommissionRate
+COMMISSION_SPLITS = models.CommissionSplit
 
 load_dotenv()
 
@@ -481,6 +482,17 @@ class ApiAdapter:
                 sqlalchemy.and_(
                     USER_COMMISSIONS.manufacturer_id == manufacturer_id,
                     USER_COMMISSIONS.user_id == user_id
+            ))
+        result = db.execute(sql).scalar()
+        return result
+
+    
+    def get_split(self, db: Session, report_id: int, user_id: int) -> float:
+        sql = sqlalchemy.select(COMMISSION_SPLITS.split_proportion)\
+            .where(
+                sqlalchemy.and_(
+                    COMMISSION_SPLITS.report_id == report_id,
+                    COMMISSION_SPLITS.user_id == user_id
             ))
         result = db.execute(sql).scalar()
         return result

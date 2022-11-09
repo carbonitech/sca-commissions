@@ -54,7 +54,7 @@ async def process_commissions_file(
         manufacturer_id: int,
         total_commission_amount: float|None,
         file_password: str|None,
-        total_frieght_amount: float|None,
+        total_freight_amount: float|None,
         session: Session,
     ):
     if file_password:
@@ -62,7 +62,7 @@ async def process_commissions_file(
         from io import BytesIO
         file_decrypted = BytesIO()
         decrypter = msoffcrypto.OfficeFile(BytesIO(file))
-        decrypter.load_key(password=file_password)
+        decrypter.load_key(password=str(file_password))
         decrypter.decrypt(file_decrypted)
         file = file_decrypted
 
@@ -74,7 +74,7 @@ async def process_commissions_file(
             report_id,
             manufacturer_id,
             total_commission_amount,
-            total_frieght_amount
+            total_freight_amount
         )
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     mfg_report_processor = report_processor.ReportProcessor(
@@ -144,7 +144,7 @@ async def process_data_from_a_file(
         manufacturer_id: int = Form(),
         total_commission_amount: Optional[float] = Form(None),
         file_password: Optional[str] = Form(None),
-        total_frieght_amount: Optional[float] = Form(None),
+        total_freight_amount: Optional[float] = Form(None),
         db: Session=Depends(get_db)
     ):
 
@@ -176,7 +176,7 @@ async def process_data_from_a_file(
             manufacturer_id,
             total_commission_amount,
             file_password,
-            total_frieght_amount,
+            total_freight_amount,
             db,
         )
     return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={})

@@ -412,14 +412,13 @@ class ReportProcessor:
         sub_id = self.submission_id
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
+        optional_params = {
+            "total_freight_amount": self.submission.total_freight_amount,
+            "total_commission_amount": self.submission.total_commission_amount
 
+        }
         try:
-            if self.submission.total_commission_amount:
-                ppdata = preprocessor.preprocess(total_commission_amount=self.submission.total_commission_amount)
-            elif self.submission.total_freight_amount:
-                ppdata = preprocessor.preprocess(total_freight_amount=self.submission.total_freight_amount)
-            else:
-                ppdata = preprocessor.preprocess()
+            ppdata = preprocessor.preprocess(**optional_params)
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
         

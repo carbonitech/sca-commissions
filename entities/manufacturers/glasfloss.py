@@ -18,7 +18,7 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "Sum of Sales"
         comm_col: str = "comm_amt"
         total_freight: float = kwargs.get("total_freight_amount", None)
-        comm_rate = 0.03    # TODO: HAVE THIS SUPPLIED AS AN ARGUMENT
+        comm_rate = kwargs.get("standard_commission_rate",0)
 
         data = data.dropna(subset=data.columns.to_list()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))

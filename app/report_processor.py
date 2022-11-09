@@ -48,11 +48,13 @@ class ReportProcessor:
         self.reintegration = False
         self.use_store_numbers = False
         self.inter_warehouse_transfer = False
+        USER_ID = 1 #TODO MAKE A METHOD HERE TO RETRIEVE USING THE USERNAME
         
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
                 self.submission = submission
                 self.preprocessor = preprocessor
+                self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=USER_ID)
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -74,8 +76,6 @@ class ReportProcessor:
         self.map_city_names = self.api.get_mappings(session, "map_city_names")
         self.map_state_names = self.api.get_mappings(session, "map_state_names")
         self.branches = self.api.get_branches(session)
-        USER_ID = 1 #TODO MAKE A METHOD HERE TO RETRIEVE USING THE USERNAME
-        self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=USER_ID)
 
     def reset_branch_ref(self):
         self.branches = self.api.get_branches(db=self.session)

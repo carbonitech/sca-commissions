@@ -103,6 +103,7 @@ class ManufacturersReport(Base):
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
+    commission_split = relationship("CommissionSplit")
 
 
 class Submission(Base):
@@ -186,6 +187,7 @@ class User(Base):
     id = Column(Integer,primary_key=True)
     username = Column(String)
     commission_rates = relationship("UserCommissionRate")
+    commission_splits = relationship("CommissionSplit")
 
 class UserCommissionRate(Base):
     __tablename__ = "user_commission_rates"
@@ -193,6 +195,15 @@ class UserCommissionRate(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
     commission_rate = Column(Float)
+
+class CommissionSplit(Base):
+    __tablename__ = "commission_splits"
+    id = Column(Integer,primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    split_proportion = Column(Float)
+    
+
 
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

@@ -32,10 +32,10 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
         return PreProcessedData(result,events)
 
-    def _re_michel_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+    def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         default_customer_name: str = "RE MICHEL"
-        commission_rate = 0.02
+        commission_rate = kwargs.get("standard_commission_rate", 0)
 
         events = []
         store_number_col: int = 0
@@ -55,7 +55,7 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting",f"isolated city name in column {str(city_name_col+1)} by keeping everything up to the state name",self.submission_id))
         data.iloc[:,inv_col] = data.iloc[:,inv_col]*100
         data["comm_amt"] = data.iloc[:,inv_col]*commission_rate
-        events.append(("Formatting",r"added commissions column by calculating "+str(commission_rate*100)+r"% of the inv_amt",
+        events.append(("Formatting",f"added commissions column by calculating {commission_rate*100:,.2f}% of the inv_amt",
             self.submission_id))
         data["customer"] = default_customer_name
 
@@ -71,6 +71,6 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df())
+            return preprocess_method(self.file.to_df(), **kwargs)
         else:
             return

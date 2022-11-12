@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db
+from services.api_adapter import ApiAdapter, get_db, get_user, User
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute, CustomerModificationRequest
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
 
 @router.get("", tags=["customers"])
-async def all_customers(query: Query=Depends(), db: Session=Depends(get_db)):
+async def all_customers(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_many_customers_jsonapi(db,jsonapi_query)
 

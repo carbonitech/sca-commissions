@@ -1,15 +1,19 @@
+import os
+import re
 import json
 import calendar
-from typing import Tuple
 from datetime import datetime
 from dotenv import load_dotenv
 from os import getenv
+import requests
+from dataclasses import dataclass
 
 import pandas as pd
 from sqlalchemy.exc import IntegrityError
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
+from fastapi import Request, HTTPException
 
 from app import event
 from app.jsonapi import jsonapi_error_handling
@@ -44,6 +48,33 @@ USER_COMMISSIONS = models.UserCommissionRate
 COMMISSION_SPLITS = models.CommissionSplit
 
 load_dotenv()
+
+@dataclass
+class User:
+    nickname: str
+    name: str
+    email: str
+    verified: bool
+
+    def domain(self) -> str:
+        return re.search(r"(.*)@(.*)",self.email)[2]
+
+
+def get_user(request: Request) -> User:
+    url = os.getenv("AUTH0_DOMAIN") + "/userinfo"
+    auth0_user_body: dict =  requests.get(url, headers={"Authorization": request.headers.get("Authorization")}).json()
+    match auth0_user_body:
+        case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
+            return User(
+                nickname=auth0_user_body.get("nickname"),
+                name=auth0_user_body.get("name"),
+                email=auth0_user_body.get("email"),
+                verified=auth0_user_body.get("email_verified")
+                )
+        case _:
+            raise HTTPException(status=400, detail={"user could not be verified"})
+
+
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")

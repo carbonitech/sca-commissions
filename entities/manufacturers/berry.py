@@ -38,7 +38,7 @@ class PreProcessor(AbstractPreProcessor):
             )
         return data, events
 
-    def _standard_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
+    def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         events = []
         customer_name_col: str = "BILL TO NAME"

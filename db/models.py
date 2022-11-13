@@ -14,6 +14,7 @@ class City(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String, unique=True)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     branch_cities = relationship("CustomerBranch", back_populates="city_name")
     map_city_names = relationship("MapCityName", back_populates="city_name")
 
@@ -30,6 +31,7 @@ class State(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String, unique=True)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     branch_states = relationship("CustomerBranch", back_populates="state_name")
     map_state_names = relationship("MapStateName", back_populates="state_name")
 
@@ -46,6 +48,7 @@ class Customer(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     customer_branches = relationship("CustomerBranch", back_populates="customers")
     map_customer_names = relationship("MapCustomerName", back_populates="customers")
 
@@ -81,6 +84,7 @@ class Representative(Base):
     initials = Column(String)
     date_joined = Column(DateTime)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     branch = relationship("CustomerBranch", back_populates="representative")
 
 
@@ -89,6 +93,7 @@ class Manufacturer(Base):
     id = Column(Integer,primary_key=True)
     name = Column(String)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     manufacturers_reports = relationship("ManufacturersReport", back_populates="manufacturer")
     commission_rates = relationship("UserCommissionRate")
 
@@ -114,6 +119,7 @@ class Submission(Base):
     reporting_year = Column(Integer)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     total_commission_amount = Column(Float)
+    user_id = Column(Integer, ForeignKey("users.id"))
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
     errors = relationship("Error", back_populates="submission")
@@ -185,9 +191,16 @@ class Failures(Base):
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer,primary_key=True)
-    username = Column(String)
+    company_domain = Column(String)
     commission_rates = relationship("UserCommissionRate")
     commission_splits = relationship("CommissionSplit")
+    customers = relationship("Customer")
+    cities = relationship("City")
+    states = relationship("State")
+    representatives = relationship("Representative")
+    manufacturers = relationship("Manufacturer")
+    submissions = relationship("Submission")
+
 
 class UserCommissionRate(Base):
     __tablename__ = "user_commission_rates"

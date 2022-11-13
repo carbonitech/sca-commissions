@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi import JSONAPI_
@@ -172,12 +172,12 @@ class ReportFormFields(Base):
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     label = Column(String)
     name = Column(String)
-    input_type = Column(Integer)
     default_value = Column(Integer)
     min_value = Column(Integer)
     max_value = Column(Integer)
     options = Column(TEXT)
     required = Column(Boolean)
+    input_type = Column(Enum('TEXT','NUMBER', name='input'))
     manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
 
 class Failures(Base):

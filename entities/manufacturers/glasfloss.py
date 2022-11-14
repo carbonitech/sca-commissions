@@ -31,7 +31,7 @@ class PreProcessor(AbstractPreProcessor):
             data.loc[:,comm_col] = data[inv_col]*comm_rate
             events.append(
                 ("Formatting",
-                f"reduced {inv_col} amounts proportional to ${total_freight:,.2f}/${total_sales:,.2f}, {discount_rate*100:,.2f}%",
+                f"reduced {inv_col} amounts proportional to ${total_freight:,.2f} / ${total_sales:,.2f}, {discount_rate*100:,.2f}%",
                 self.submission_id)
             )
             events.append(

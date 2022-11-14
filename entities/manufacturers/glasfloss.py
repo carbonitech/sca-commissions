@@ -20,8 +20,8 @@ class PreProcessor(AbstractPreProcessor):
         total_freight: float = kwargs.get("total_freight_amount", None)
         comm_rate = kwargs.get("standard_commission_rate",0)
 
-        data = data.dropna(subset=data.columns.to_list()[0])
-        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+        data = data.dropna(subset=data.columns.to_list()[1])
+        events.append(("Formatting","removed all rows with no values in the second column",self.submission_id))
 
         data.loc[:,inv_col] = data[inv_col]*100
         if total_freight:

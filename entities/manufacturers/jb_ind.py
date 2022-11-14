@@ -27,11 +27,11 @@ class PreProcessor(AbstractPreProcessor):
             f"and summed {inv_col} and {comm_col} values",
             self.submission_id
         ))
-        data.loc[:,inv_col] = data[inv_col]*100
-        data.loc[:,comm_col] = data[comm_col]*100
+        result.loc[:,inv_col] = result[inv_col]*100
+        result.loc[:,comm_col] = result[comm_col]*100
         for col in [customer_name_col,city_name_col,state_name_col]:
-            data.loc[:, col] = data[col].str.upper
-            data.loc[:, col] = data[col].str.strip
+            result.loc[:, col] = result[col].str.upper
+            result.loc[:, col] = result[col].str.strip
         result.columns = self.result_columns
         return PreProcessedData(result,events)
 

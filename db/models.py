@@ -178,6 +178,7 @@ class ReportFormFields(Base):
     options = Column(TEXT)
     required = Column(Boolean)
     input_type = Column(Enum('TEXT','NUMBER','OPTIONS', name='input'))
+    sort_order = Column(Integer)
     manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
 
 class Failures(Base):
@@ -216,8 +217,6 @@ class CommissionSplit(Base):
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     split_proportion = Column(Float)
     
-
-
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI_(Base)

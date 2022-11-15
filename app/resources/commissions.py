@@ -147,7 +147,7 @@ async def process_data_from_a_file(
         total_commission_amount: Optional[float] = Form(None),
         file_password: Optional[str] = Form(None),
         total_freight_amount: Optional[float] = Form(None),
-        additional_file_1: Optional[float] = Form(None),
+        additional_file_1: Optional[bytes] = Form(None),
         db: Session=Depends(get_db)
     ):
 

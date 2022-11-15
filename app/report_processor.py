@@ -417,7 +417,8 @@ class ReportProcessor:
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         optional_params = {
             "total_freight_amount": self.submission.total_freight_amount,
-            "total_commission_amount": self.submission.total_commission_amount
+            "total_commission_amount": self.submission.total_commission_amount,
+            "additional_file_1": self.submission.additional_file_1
         }
         if comm_rate := self.standard_commission_rate:
             optional_params["standard_commission_rate"] = comm_rate

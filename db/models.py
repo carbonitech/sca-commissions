@@ -177,7 +177,7 @@ class ReportFormFields(Base):
     max_value = Column(Integer)
     options = Column(TEXT)
     required = Column(Boolean)
-    input_type = Column(Enum('TEXT','NUMBER','OPTIONS', name='input'))
+    input_type = Column(Enum('TEXT','NUMBER','OPTIONS','FILE', name='input'))
     sort_order = Column(Integer)
     manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
 

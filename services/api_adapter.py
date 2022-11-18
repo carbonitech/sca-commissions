@@ -257,7 +257,14 @@ class ApiAdapter:
 
     def get_branches(self, db: Session) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES)
-        return pd.read_sql(sql,con=db.get_bind())
+        data = pd.read_sql(sql,con=db.get_bind())
+        def _try_convert_number(value: str) -> str:
+            try:
+                return str(int(float(value)))
+            except:
+                return value
+        data["store_number"] = data["store_number"].apply(_try_convert_number)
+        return data
 
     def record_final_data(self, db: Session, data: pd.DataFrame) -> None:
         data_records = data.to_dict(orient="records")

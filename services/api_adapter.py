@@ -36,11 +36,6 @@ COMMISSION_DATA_TABLE = models.CommissionData
 SUBMISSIONS_TABLE = models.Submission
 PROCESS_STEPS_LOG = models.ProcessingStep
 ERRORS_TABLE = models.Error
-MAPPING_TABLES = {
-    "map_customer_names": models.MapCustomerName,
-    "map_city_names": models.MapCityName,
-    "map_state_names": models.MapStateName
-}
 DOWNLOADS = models.FileDownloads
 FORM_FIELDS = models.ReportFormFields
 USERS = models.User
@@ -48,6 +43,9 @@ USER_COMMISSIONS = models.UserCommissionRate
 COMMISSION_SPLITS = models.CommissionSplit
 
 load_dotenv()
+
+class UserMisMatch(Exception):
+    pass
 
 @dataclass
 class User:
@@ -57,7 +55,10 @@ class User:
     verified: bool
 
     def domain(self) -> str:
-        return re.search(r"(.*)@(.*)",self.email)[2]
+        return re.search(r"(.*)@(.*)",self.email)[2] if self.verified else None
+
+    def id(self, db: Session) -> int:
+        return db.execute("SELECT id FROM users WHERE company_domain = :domain", {"domain": self.domain()}).scalar_one_or_none()
 
 
 def get_user(request: Request) -> User:
@@ -65,16 +66,9 @@ def get_user(request: Request) -> User:
     auth0_user_body: dict =  requests.get(url, headers={"Authorization": request.headers.get("Authorization")}).json()
     match auth0_user_body:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
-            return User(
-                nickname=auth0_user_body.get("nickname"),
-                name=auth0_user_body.get("name"),
-                email=auth0_user_body.get("email"),
-                verified=auth0_user_body.get("email_verified")
-                )
+            return User(nickname=a, name=b, email=c, verified=d)
         case _:
             raise HTTPException(status=400, detail={"user could not be verified"})
-
-
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")
@@ -247,16 +241,22 @@ class ApiAdapter:
         session.execute(sql_submission)
         session.commit()
         
-    def get_mappings(self, db: Session, table: str) -> pd.DataFrame:
-        return pd.read_sql(sqlalchemy.select(MAPPING_TABLES[table]),db.get_bind())
+    def get_mappings(self, db: Session, table: str, user_id: int) -> pd.DataFrame:
+        if table == "map_customer_names":
+            sql = sqlalchemy.select(CUSTOMER_NAME_MAP).join(CUSTOMERS).where(CUSTOMERS.user_id == user_id)
+        elif table == "map_city_names":
+            sql = sqlalchemy.select(CITY_NAME_MAP).join(CITIES).where(CITIES.user_id == user_id)
+        elif table == "map_state_names":
+            sql = sqlalchemy.select(STATE_NAME_MAP).join(STATES).where(STATES.user_id == user_id)
+        return pd.read_sql(sql,db.get_bind())
 
     def get_all_manufacturers(self, db: Session) -> dict:
         sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
         query_result = db.execute(sql).fetchall()
         return {id_: name_.lower().replace(" ","_") for id_, name_ in query_result}
 
-    def get_branches(self, db: Session) -> pd.DataFrame:
-        sql = sqlalchemy.select(BRANCHES)
+    def get_branches(self, db: Session, user_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(BRANCHES).join(CUSTOMERS).where(CUSTOMERS.user_id == user_id)
         data = pd.read_sql(sql,con=db.get_bind())
         def _try_convert_number(value: str) -> str:
             try:
@@ -341,6 +341,9 @@ class ApiAdapter:
             session.execute(sql)
             session.commit()
             
+    @staticmethod
+    def matched_user(user: User, model, reference_id: int, db: Session) -> bool:
+        return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
     
     @jsonapi_error_handling
     def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
@@ -350,14 +353,18 @@ class ApiAdapter:
     def get_relationship(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
     
+
     @jsonapi_error_handling
-    def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict) -> JSONAPIResponse:
+    def get_customer_jsonapi(self, db: Session, cust_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, CUSTOMERS, cust_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(CUSTOMERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,cust_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_many_customers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,CUSTOMERS)
+    def get_many_customers_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,CUSTOMERS,user_id)
 
     @jsonapi_error_handling
     def get_reports(self, db: Session, query: dict, report_id: int=0) -> JSONAPIResponse:
@@ -439,19 +446,29 @@ class ApiAdapter:
         return models.serializer.get_resource(db,query,model_name,branch_id,obj_only=True)
 
     @jsonapi_error_handling
-    def create_customer_name_mapping(self, db: Session, json_data: dict) -> JSONAPIResponse:
+    def create_customer_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        # TODO use user in actual post_collection
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         hyphenate_attribute_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name).data
-        event.post_event("New Record", CUSTOMER_NAME_MAP, session=db)
+        event.post_event("New Record", CUSTOMER_NAME_MAP, session=db, user=user)
         return result
 
     @jsonapi_error_handling
-    def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict) -> JSONAPIResponse:
+    def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, CUSTOMERS, customer_id, db):
+            raise UserMisMatch()
         model_name = hyphenated_name(CUSTOMERS)
         hyphenate_attribute_keys(json_data)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
-        event.post_event("Record Updated", CUSTOMERS, id_=customer_id, db=db,**json_data["data"]["attributes"], session=db)
+        event.post_event(
+            "Record Updated",
+            CUSTOMERS,
+            id_=customer_id,
+            db=db,
+            **json_data["data"]["attributes"],
+            session=db,
+            user=user)
         return result
 
     @jsonapi_error_handling

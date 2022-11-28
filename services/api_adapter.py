@@ -556,7 +556,7 @@ class ApiAdapter:
         manufs = MANUFACTURERS
         sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
                 reports.id.label("report_id"),reports.report_name,reports.yearly_frequency, reports.pos_report,
-                manufs.name).select_from(subs).join(reports).join(manufs).where(SUBMISSIONS_TABLE.user_id == user.id())
+                manufs.name).select_from(subs).join(reports).join(manufs).where(subs.user_id == user.id())
         return pd.read_sql(sql, con=db.get_bind())
 
 

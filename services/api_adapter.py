@@ -346,11 +346,13 @@ class ApiAdapter:
         return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
     
     @jsonapi_error_handling
-    def get_related(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
+    def get_related(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
         return models.serializer.get_related(db,{},primary,id_,secondary)
     
     @jsonapi_error_handling
-    def get_relationship(self, db: Session, primary: str, id_: int, secondary: str) -> JSONAPIResponse:
+    def get_relationship(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
     
 
@@ -367,81 +369,108 @@ class ApiAdapter:
         return models.serializer.get_collection(db,query,CUSTOMERS,user_id)
 
     @jsonapi_error_handling
-    def get_reports(self, db: Session, query: dict, report_id: int=0) -> JSONAPIResponse:
+    def get_reports(self, db: Session, query: dict, user: User, report_id: int=0) -> JSONAPIResponse:
         if report_id:
+            if not self.matched_user(user, REPORTS, report_id, db):
+                raise UserMisMatch()
             return models.serializer.get_resource(db, query, hyphenated_name(REPORTS), report_id, obj_only=True)
         else:
-            return models.serializer.get_collection(db, query, REPORTS)
+            user_id: int = user.id(db=db)
+            return models.serializer.get_collection(db, query, REPORTS, user_id)
     
     @jsonapi_error_handling
-    def get_many_cities_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,CITIES)
+    def get_many_cities_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,CITIES, user_id)
     
     @jsonapi_error_handling
-    def get_city_jsonapi(self, db: Session, city_id: int, query: dict) -> JSONAPIResponse:
+    def get_city_jsonapi(self, db: Session, city_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, CITIES, city_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(CITIES.__tablename__)
         return models.serializer.get_resource(db,query,model_name,city_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_state_jsonapi(self, db: Session, state_id: int, query: dict) -> JSONAPIResponse:
+    def get_state_jsonapi(self, db: Session, state_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, STATES, state_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(STATES.__tablename__)
         return models.serializer.get_resource(db,query,model_name,state_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_many_states_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,STATES)
+    def get_many_states_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,STATES, user_id)
     
     @jsonapi_error_handling
-    def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict) -> JSONAPIResponse:
+    def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, REPS, rep_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(REPS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,rep_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_many_reps_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,REPS)
+    def get_many_reps_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,REPS, user_id)
     
     @jsonapi_error_handling
-    def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict) -> JSONAPIResponse:
+    def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, SUBMISSIONS_TABLE, submission_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)
         return models.serializer.get_resource(db,query,model_name,submission_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_many_submissions_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,SUBMISSIONS_TABLE)
+    def get_many_submissions_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,SUBMISSIONS_TABLE, user_id)
     
     @jsonapi_error_handling
-    def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict) -> JSONAPIResponse:
+    def get_manufacturer_jsonapi(self, db: Session, manuf_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, MANUFACTURERS, manuf_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(MANUFACTURERS.__tablename__)
         return models.serializer.get_resource(db,query,model_name,manuf_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_many_manufacturers_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,MANUFACTURERS)
+    def get_many_manufacturers_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,MANUFACTURERS, user_id)
     
     @jsonapi_error_handling
-    def get_commission_data_by_id_jsonapi(self, db: Session, row_id: int, query: dict) -> JSONAPIResponse:
+    def get_commission_data_by_id_jsonapi(self, db: Session, row_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, COMMISSION_DATA_TABLE, row_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(COMMISSION_DATA_TABLE.__tablename__)
         return models.serializer.get_resource(db,query,model_name,row_id, obj_only=True)
     
     @jsonapi_error_handling
-    def get_all_commission_data_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE)
+    def get_all_commission_data_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE, user_id)
     
     @jsonapi_error_handling   
-    def get_all_customer_name_mappings(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,CUSTOMER_NAME_MAP)
+    def get_all_customer_name_mappings(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,CUSTOMER_NAME_MAP, user_id)
     
     @jsonapi_error_handling
-    def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict) -> JSONAPIResponse:
+    def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, CUSTOMER_NAME_MAP, mapping_id, db):
+            raise UserMisMatch()
         model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
         return models.serializer.get_resource(db,query,model_name,mapping_id,obj_only=True)
 
     @jsonapi_error_handling
-    def get_many_branches_jsonapi(self, db: Session, query: dict) -> JSONAPIResponse:
-        return models.serializer.get_collection(db,query,BRANCHES)
+    def get_many_branches_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
+        user_id: int = user.id(db=db)
+        return models.serializer.get_collection(db,query,BRANCHES, user_id)
     
     @jsonapi_error_handling
-    def get_branch(self, db: Session, branch_id: int, query: dict) -> JSONAPIResponse:
+    def get_branch(self, db: Session, branch_id: int, query: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, BRANCHES, branch_id, db):
+            raise UserMisMatch()
         model_name = hyphenated_name(BRANCHES)
         return models.serializer.get_resource(db,query,model_name,branch_id,obj_only=True)
 

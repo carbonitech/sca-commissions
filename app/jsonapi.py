@@ -249,7 +249,7 @@ class JSONAPI_(JSONAPI):
         }
         return query, result_addition
 
-    def get_collection(self, session: Session, query: QueryParams|dict, model_obj):
+    def get_collection(self, session: Session, query: QueryParams|dict, model_obj, user_id: int):
         """
         Fetch a collection of resources of a specified type.
 
@@ -275,6 +275,7 @@ class JSONAPI_(JSONAPI):
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
         collection = self._filter_deleted(model, collection)
+        collection = collection.filter(model.user_id == user_id)
         query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection)
 
         for attr in sorts:
@@ -419,6 +420,6 @@ def jsonapi_error_handling(route_function):
             raise HTTPException(**format_error(err, traceback.format_exc()))
         except Exception as err:
             import traceback
-            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":""}]}
+            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":"An error occurred. Contact joe@carbonitech.com with the id number"}]}
             raise HTTPException(status_code=400,detail=detail_obj)
     return error_handling

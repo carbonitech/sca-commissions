@@ -14,7 +14,7 @@ from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
-from services.api_adapter import ApiAdapter, get_db
+from services.api_adapter import ApiAdapter, get_db, User, get_user
 from app.resources.pydantic_form import as_form
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
@@ -57,6 +57,7 @@ async def process_commissions_file(
         total_freight_amount: float|None,
         additional_file_1: bytes|None,
         session: Session,
+        user: User
     ):
     if file_password:
         import msoffcrypto
@@ -74,6 +75,7 @@ async def process_commissions_file(
             reporting_year,
             report_id,
             manufacturer_id,
+            user.id(session),
             total_commission_amount,
             total_freight_amount,
             additional_file_1
@@ -82,7 +84,8 @@ async def process_commissions_file(
     mfg_report_processor = report_processor.ReportProcessor(
         preprocessor=mfg_preprocessor,
         submission=new_sub,
-        session=session
+        session=session,
+        user=user
     )
 
     try:
@@ -148,7 +151,8 @@ async def process_data_from_a_file(
         file_password: Optional[str] = Form(None),
         total_freight_amount: Optional[float] = Form(None),
         additional_file_1: Optional[bytes] = Form(None),
-        db: Session=Depends(get_db)
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
     ):
 
     # TODO: should I do this check?
@@ -182,6 +186,7 @@ async def process_data_from_a_file(
             total_freight_amount,
             additional_file_1,
             db,
+            user
         )
     return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={})
 

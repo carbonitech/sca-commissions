@@ -11,6 +11,7 @@ class NewSubmission:
     reporting_year: int
     report_id: int
     manufacturer_id: int
+    user_id: int
     submission_date: datetime = field(default_factory=datetime.today, init=False)
     total_commission_amount: float|None
     total_freight_amount: float|None

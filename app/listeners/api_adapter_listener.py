@@ -25,6 +25,7 @@ def entity_default_name_mapping(table: model.Base, *args, **kwargs):
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     error_type = None
     session = kwargs.get("session")
+    user = kwargs.get("user")
     if table == model.MapCustomerName:
         error_type = error.ErrorType(1)
     elif table == model.MapCityName:
@@ -36,7 +37,7 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     
     if error_type:
         errors = api.get_errors(session)
-        processor = report_processor.ReportProcessor(session=session,target_err=error_type, error_table=errors)
+        processor = report_processor.ReportProcessor(session=session,target_err=error_type, error_table=errors, user=user)
         processor.process_and_commit()
     return
 

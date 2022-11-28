@@ -38,6 +38,7 @@ class ReportProcessor:
     def __init__(
             self,
             session: Session,
+            user: api_adapter.User,
             preprocessor: AbstractPreProcessor = None, # a class obj, not an instance
             submission: NewSubmission = None,
             target_err: ErrorType = None,
@@ -50,14 +51,14 @@ class ReportProcessor:
         self.inter_warehouse_transfer = False
         self.session = session
         self.api = api_adapter.ApiAdapter()
-        USER_ID = 1 #TODO MAKE A METHOD HERE TO RETRIEVE USING THE USERNAME
+        self.user_id = user.id(self.session) if user.verified else None
         
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
                 self.submission = submission
                 self.preprocessor = preprocessor
-                self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=USER_ID)
-                self.split = self.api.get_split(session, submission.report_id, user_id=USER_ID)
+                self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
+                self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -73,13 +74,13 @@ class ReportProcessor:
             self.skip = True
             return
 
-        self.map_customer_names = self.api.get_mappings(session, "map_customer_names")
-        self.map_city_names = self.api.get_mappings(session, "map_city_names")
-        self.map_state_names = self.api.get_mappings(session, "map_state_names")
-        self.branches = self.api.get_branches(session)
+        self.map_customer_names = self.api.get_mappings(session, "map_customer_names", user_id=self.user_id)
+        self.map_city_names = self.api.get_mappings(session, "map_city_names", user_id=self.user_id)
+        self.map_state_names = self.api.get_mappings(session, "map_state_names", user_id=self.user_id)
+        self.branches = self.api.get_branches(session, user_id=self.user_id)
 
-    def reset_branch_ref(self):
-        self.branches = self.api.get_branches(db=self.session)
+    def reset_branch_ref(self, user_id: int):
+        self.branches = self.api.get_branches(db=self.session, user_id=user_id)
 
     def total_commissions(self, dataset: str=None) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
@@ -286,7 +287,7 @@ class ReportProcessor:
             self.api.create_new_customer_branch_bulk(self.session,no_match_records.to_dict(orient="records"))
             self._send_event_by_submission(
                 no_match_records.index.to_list(),
-                "Formatting",f"added {len(no_match_records)} branches to the branches table"
+                "Formatting",f"added {len(no_match_records)} branches to the branches table" #TODO if multiple submissions are part of this step in a reintegration, this same message shows up in processing steps for both, which is inaccurate for both and makes it appear as though a multiple of the actual number was added
             )
             self.reset_branch_ref()
             result = self.add_branch_id(data=self.staged_data, pipe=pipe)
@@ -456,6 +457,8 @@ class ReportProcessor:
     def insert_recorded_at_column(self) -> 'ReportProcessor':
         self.staged_data["recorded_at"] = datetime.utcnow()
         return self
+
+# TODO ADD METHOD FOR INSERTING USER ID BEFORE DATA COMMITTED
 
     def process_and_commit(self) -> int|None:
         """

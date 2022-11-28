@@ -2,6 +2,8 @@
 
 #(CUSTOM) ignore csvs for testing database
 tests/db_tables/
+#(CUSTOM) ignore script used for cron job
+tests/*.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

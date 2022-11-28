@@ -23,8 +23,8 @@ class MapCityName(Base):
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String, unique=True)
     city_id = Column(Integer, ForeignKey("cities.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     city_name = relationship("City", back_populates="map_city_names")
-
 
 class State(Base):
     __tablename__ = 'states'
@@ -40,8 +40,8 @@ class MapStateName(Base):
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String, unique=True)
     state_id = Column(Integer, ForeignKey("states.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     state_name = relationship("State", back_populates="map_state_names")
-
 
 class Customer(Base):
     __tablename__ = 'customers'
@@ -57,6 +57,7 @@ class MapCustomerName(Base):
     id = Column(Integer,primary_key=True)
     recorded_name = Column(String, unique=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     customers = relationship("Customer", back_populates="map_customer_names")
 
 class CustomerBranch(Base):
@@ -69,12 +70,12 @@ class CustomerBranch(Base):
     store_number = Column(String)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     in_territory = Column(Boolean)
+    user_id = Column(Integer, ForeignKey("users.id"))
     customers = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")
     state_name = relationship("State", back_populates="branch_states")
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")
-
 
 class Representative(Base):
     __tablename__ = 'representatives'
@@ -86,7 +87,6 @@ class Representative(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     branch = relationship("CustomerBranch", back_populates="representative")
-
 
 class Manufacturer(Base):
     __tablename__ = 'manufacturers'
@@ -105,11 +105,11 @@ class ManufacturersReport(Base):
     yearly_frequency = Column(Integer)
     pos_report = Column(Boolean)
     deleted = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
     commission_split = relationship("CommissionSplit")
-
 
 class Submission(Base):
     __tablename__ = 'submissions'
@@ -125,15 +125,14 @@ class Submission(Base):
     errors = relationship("Error", back_populates="submission")
     processing_steps = relationship("ProcessingStep", back_populates="submission")
 
-
 class ProcessingStep(Base):
     __tablename__ = 'processing_steps'
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
     step_num = Column(Integer)
     description = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
     submission = relationship("Submission", back_populates="processing_steps")
-    
 
 class Error(Base):
     __tablename__ = 'errors'
@@ -142,8 +141,8 @@ class Error(Base):
     row_index = Column(Integer)
     reason = Column(Integer)
     row_data = Column(TEXT)
+    user_id = Column(Integer, ForeignKey("users.id"))
     submission = relationship("Submission", back_populates="errors")
-
 
 class CommissionData(Base):
     __tablename__ = 'commission_data'
@@ -153,6 +152,7 @@ class CommissionData(Base):
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     inv_amt = Column(Float)
     comm_amt = Column(Float)
+    user_id = Column(Integer, ForeignKey("users.id"))
     branch = relationship("CustomerBranch", back_populates="commission_data")
     submission = relationship("Submission", back_populates="commission_data")
 
@@ -165,6 +165,7 @@ class FileDownloads(Base):
     created_at = Column(DateTime)
     expires_at = Column(DateTime)
     downloaded = Column(Boolean, default=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
 class ReportFormFields(Base):
     __tablename__ = "report_form_fields"
@@ -179,6 +180,7 @@ class ReportFormFields(Base):
     required = Column(Boolean)
     input_type = Column(Enum('TEXT','NUMBER','OPTIONS','FILE', name='input'))
     sort_order = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"))
     manufacturers_report = relationship("ManufacturersReport", back_populates="report_form_fields")
 
 class Failures(Base):
@@ -188,6 +190,7 @@ class Failures(Base):
     request = Column(TEXT)
     response = Column(TEXT)
     traceback = Column(TEXT)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
 class User(Base):
     __tablename__ = "users"
@@ -196,12 +199,22 @@ class User(Base):
     commission_rates = relationship("UserCommissionRate")
     commission_splits = relationship("CommissionSplit")
     customers = relationship("Customer")
+    map_customer_names = relationship("MapCustomerName")
     cities = relationship("City")
+    map_city_names = relationship("MapCityName")
     states = relationship("State")
+    map_state_names = relationship("MapStateName")
+    branches = relationship("CustomerBranch")
     representatives = relationship("Representative")
     manufacturers = relationship("Manufacturer")
+    manufacturers_reports = relationship("ManufacturersReport")
     submissions = relationship("Submission")
-
+    processing_steps = relationship("ProcessingStep")
+    errors = relationship("Error")
+    commission_data = relationship("CommissionData")
+    file_downloads = relationship("FileDownloads")
+    report_form_fields = relationship("ReportFormFields")
+    failures = relationship("Failures")
 
 class UserCommissionRate(Base):
     __tablename__ = "user_commission_rates"

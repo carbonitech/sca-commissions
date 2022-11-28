@@ -31,6 +31,7 @@ def skip_authentication():
 
 def set_overrides():
     app.dependency_overrides[authenticate_auth0_token] = skip_authentication
+    # TODO ALSO REPLACE GETTING THE USER ID
     app.dependency_overrides[get_db] = override_get_db
 
 def clear_overrides():
@@ -82,16 +83,24 @@ def database():
     This fixtures sets up the database in a postgres database called "testing" using CSV files.
     All table data is dropped after testing
     """
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     DB_TABLES = {
                 'cities': models.City,
-                'states': models.State,
-                'customers': models.Customer,
+                "commission_splits": models.CommissionSplit,
                 'customer_branches': models.CustomerBranch,
-                'manufacturers': models.Manufacturer,
+                'customers': models.Customer,
                 'manufacturers_reports': models.ManufacturersReport,
+                'manufacturers': models.Manufacturer,
+                'map_customer_names': models.MapCustomerName,
+                'map_city_names': models.MapCityName,
+                'map_state_names': models.MapStateName,
+                "report_form_fields": models.ReportFormFields,
                 'representatives': models.Representative,
-                "report_form_fields": models.ReportFormFields
+                'states': models.State,
+                'user_commission_rates': models.UserCommissionRate,
+                'users': models.User
+
         }
     # load csv files
     tables_dir = './tests/db_tables'
@@ -108,12 +117,6 @@ def database():
         for row in data.to_dict("records"):
             # col names in csv must match table schema
             session.add(DB_TABLES[table](**row)) 
-    session.commit()
-    map_customer_stmt = "INSERT INTO map_customer_names (recorded_name, customer_id) SELECT name,id FROM customers WHERE deleted IS NULL;"
-    map_city_stmt = "INSERT INTO map_city_names (recorded_name, city_id) SELECT name,id FROM cities WHERE deleted IS NULL;"
-    map_state_stmt = "INSERT INTO map_state_names (recorded_name, state_id) SELECT name,id FROM states WHERE deleted IS NULL;"
-    for map_fill_stmt in [map_customer_stmt, map_city_stmt, map_state_stmt]:
-        session.execute(map_fill_stmt)
     session.commit()
 
     yield session

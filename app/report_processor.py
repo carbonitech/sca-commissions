@@ -107,7 +107,7 @@ class ReportProcessor:
             sub_id_table = table.loc[mask,:]
             if "row_index" in table.columns.tolist():
                 sub_id_table = sub_id_table.set_index("row_index")
-            sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason'])]
+            sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason','user_id'])]
             if event_ == "Formatting" and msg:
                 event.post_event(
                     event_,

@@ -120,20 +120,28 @@ async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Sessi
 @router.post("/download", tags=['commissions'])
 async def commission_data_file_link(
         query_params: Optional[CommissionDataDownloadParameters] = None,
-        db: Session=Depends(get_db)
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
     ):
     """
     Generates a download link for the commission data
     """
+    user_id = user.id(db=db)
     duration = float(getenv('FILE_LINK_DURATION'))
     _now = datetime.now()
     hash_ = secrets.token_urlsafe()
+    default_query = {"filename": "commissions", "user_id": user_id}
     record = {
         "hash": hash_,
         "type": "commission_data",
-        "query_args": json.dumps(query_params.dict(exclude_none=True)) if query_params else json.dumps({"filename": "commissions"}),
+        "query_args": (
+            json.dumps(query_params.dict(exclude_none=True)|{"user_id": user_id})
+            if query_params 
+            else json.dumps(default_query)
+        ),
         "created_at": _now,
-        "expires_at": _now + timedelta(seconds=60*duration)
+        "expires_at": _now + timedelta(seconds=60*duration),
+        "user_id": user_id
     }
     api.generate_file_record(db, record)
     return {"downloadLink": f"/download?file={hash_}"}

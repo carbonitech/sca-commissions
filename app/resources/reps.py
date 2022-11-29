@@ -2,20 +2,20 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
-from services.api_adapter import ApiAdapter, get_db
+from services.api_adapter import ApiAdapter, get_db, User, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/representatives", route_class=JSONAPIRoute)
 
 @router.get("", tags=["reps"])
-async def all_reps(query: Query=Depends(), db: Session=Depends(get_db)):
+async def all_reps(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_many_reps_jsonapi(db,jsonapi_query)
+    return api.get_many_reps_jsonapi(db,jsonapi_query,user)
 
 @router.get("/{rep_id}", tags=["reps"])
-async def rep_by_id(rep_id: int, query: Query=Depends(), db: Session=Depends(get_db)):
+async def rep_by_id(rep_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_rep_jsonapi(db, rep_id, jsonapi_query)
+    return api.get_rep_jsonapi(db,rep_id,jsonapi_query,user)
 
 
 @router.post("", tags=["reps"])

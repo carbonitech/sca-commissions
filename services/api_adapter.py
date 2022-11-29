@@ -129,7 +129,7 @@ class ApiAdapter:
     def convert_month_from_number_to_name(month_num: int) -> str:
         return calendar.month_name[month_num]
 
-    def commission_data_with_all_names(self, submission_id:int = 0, **kwargs) -> pd.DataFrame:
+    def commission_data_with_all_names(self, submission_id: int=0, **kwargs) -> pd.DataFrame:
         """runs sql query to produce the commission table format used by SCA
         and converts month number to name and cents to dollars before return
         
@@ -143,6 +143,7 @@ class ApiAdapter:
         customers = CUSTOMERS
         cities = CITIES
         states = STATES
+        print(kwargs.get("user_id"))
         sql = sqlalchemy.select(commission_data_raw.id,
             submission_data.reporting_year, submission_data.reporting_month,
             manufacturers.name, reps.initials, customers.name,
@@ -157,6 +158,7 @@ class ApiAdapter:
             .join(customers)                   \
             .join(cities)                      \
             .join(states)                      \
+            .where(commission_data_raw.user_id == kwargs.get("user_id"))\
             .order_by(
                 submission_data.reporting_year.desc(),
                 submission_data.reporting_month.desc(),
@@ -230,7 +232,9 @@ class ApiAdapter:
         return
 
 
-    def delete_submission(self, submission_id: int, session: Session):
+    def delete_submission(self, submission_id: int, session: Session, user: User):
+        if not self.matched_user(user, SUBMISSIONS_TABLE, submission_id, session):
+            raise UserMisMatch()
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
         sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.submission_id == submission_id)
         sql_processing_steps = sqlalchemy.delete(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id)
@@ -501,13 +505,17 @@ class ApiAdapter:
         return result
 
     @jsonapi_error_handling
-    def modify_branch(self, db: Session, branch_id: int, json_data: dict) -> JSONAPIResponse:
+    def modify_branch(self, db: Session, branch_id: int, json_data: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, BRANCHES, branch_id, db):
+            raise UserMisMatch()
         model_name = hyphenated_name(BRANCHES)
         hyphenate_attribute_keys(json_data)
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling
-    def delete_map_customer_name(self, db: Session, id_: int):
+    def delete_map_customer_name(self, db: Session, id_: int, user: User):
+        if not self.matched_user(user, CUSTOMER_NAME_MAP, id_, db):
+            raise UserMisMatch()
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
     

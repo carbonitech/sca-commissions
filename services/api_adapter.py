@@ -468,6 +468,16 @@ class ApiAdapter:
         return models.serializer.get_resource(db,query,model_name,mapping_id,obj_only=True)
 
     @jsonapi_error_handling
+    def get_city_name_mappings(self, db: Session, query: dict, user: User, mapping_id=0) -> JSONAPIResponse:
+        if mapping_id:
+            if not self.matched_user(user, CITY_NAME_MAP, mapping_id, db):
+                raise UserMisMatch()
+            return models.serializer.get_resource(db, query, hyphenated_name(CITY_NAME_MAP), mapping_id, obj_only=True)
+        else:
+            user_id: int = user.id(db=db)
+            return models.serializer.get_collection(db, query, CITY_NAME_MAP, user_id)
+
+    @jsonapi_error_handling
     def get_many_branches_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
         user_id: int = user.id(db=db)
         return models.serializer.get_collection(db,query,BRANCHES, user_id)
@@ -481,11 +491,18 @@ class ApiAdapter:
 
     @jsonapi_error_handling
     def create_customer_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        # TODO use user in actual post_collection
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
         hyphenate_attribute_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name).data
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event("New Record", CUSTOMER_NAME_MAP, session=db, user=user)
+        return result
+
+    @jsonapi_error_handling
+    def create_city_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        model_name = hyphenated_name(CITY_NAME_MAP)
+        hyphenate_attribute_keys(json_data)
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
+        event.post_event("New Record", CITY_NAME_MAP, session=db, user=user)
         return result
 
     @jsonapi_error_handling

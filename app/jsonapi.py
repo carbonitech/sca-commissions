@@ -5,6 +5,7 @@ import json
 import warnings
 from typing import Any, Callable
 from urllib.parse import unquote
+from dataclasses import dataclass
 
 from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
@@ -30,54 +31,67 @@ class Query(BaseModel):
 
 
 ### nested objects ###
+
 class JSONAPIBaseModification(BaseModel):
     type: str
-
-class Customer(BaseModel):
-    name: str
-
-class Branch(BaseModel):
-    deleted: datetime|None = None
-    store_number: int|None = None
-
-class CustomerModification(JSONAPIBaseModification):
-    id: int
-    attributes: Customer
-
-class CustomerModificationRequest(BaseModel):
-    data: CustomerModification
-
-class CustomerNameMapping(BaseModel):
-    recorded_name: str
-
 class JSONAPIBaseRelationship(BaseModel):
     type: str
     id: int
-
 class JSONAPIRelationshipObject(BaseModel):
     data: JSONAPIBaseRelationship
 
-class CustomerRelationship(BaseModel):
-    customers: JSONAPIRelationshipObject
-
+## branch ##
+class Branch(BaseModel):
+    deleted: datetime|None = None
+    store_number: int|None = None
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
-
-### top level objects ###
-class NewCustomerNameMapping(JSONAPIBaseModification):
-    attributes: CustomerNameMapping
-    relationships: CustomerRelationship
-
-class NewCustomerNameMappingRequest(BaseModel):
-    data: NewCustomerNameMapping
-    
 class BranchModification(JSONAPIBaseModification):
     id: int
     attributes: Branch|dict|None = {}
     relationships: BranchRelationship|dict|None = {}
 
+## customer ##
+class Customer(BaseModel):
+    name: str
+class CustomerModification(JSONAPIBaseModification):
+    id: int
+    attributes: Customer
+class CustomerModificationRequest(BaseModel):
+    data: CustomerModification
+class CustomerNameMapping(BaseModel):
+    recorded_name: str
+class CustomerRelationship(BaseModel):
+    customers: JSONAPIRelationshipObject
+class NewCustomerNameMapping(JSONAPIBaseModification):
+    attributes: CustomerNameMapping
+    relationships: CustomerRelationship
+
+## city ##
+class CityNameMapping(BaseModel):
+    recorded_name: str
+class CityRelationship(BaseModel):
+    cities: JSONAPIRelationshipObject
+class NewCityNameMapping(JSONAPIBaseModification):
+    attributes: CityNameMapping
+    relationships: CityRelationship
+
+
+### top level objects ###
+class NewCustomerNameMappingRequest(BaseModel):
+    data: NewCustomerNameMapping
+    
 class BranchModificationRequest(BaseModel):
     data: BranchModification
+
+class NewCityNameMappingRequest(BaseModel):
+    data: NewCityNameMapping
+
+@dataclass
+class RequestModels:
+    new_customer_name_mapping = NewCustomerNameMappingRequest
+    new_city_name_mapping = NewCityNameMappingRequest
+    branch_modification = BranchModificationRequest
 
 
 def convert_to_jsonapi(query: dict) -> dict:
@@ -341,6 +355,10 @@ class JSONAPI_(JSONAPI):
 
     def get_related(self, session, query, api_type, obj_id, rel_key):
         return super().get_related(session, query, api_type, obj_id, rel_key).data
+
+    def post_collection(self, session, data, api_type, user_id):
+        data["data"]["attributes"]["user-id"] = user_id
+        return super().post_collection(session, data, api_type)
 
 
 class JSONAPIRequest(Request):

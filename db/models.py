@@ -16,7 +16,7 @@ class City(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     branch_cities = relationship("CustomerBranch", back_populates="city_name")
-    map_city_names = relationship("MapCityName", back_populates="city_name")
+    map_city_names = relationship("MapCityName", back_populates="cities")
     __table_args__ = (UniqueConstraint("name", "user_id"),)
 
 class MapCityName(Base):
@@ -25,7 +25,7 @@ class MapCityName(Base):
     recorded_name = Column(String)
     city_id = Column(Integer, ForeignKey("cities.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
-    city_name = relationship("City", back_populates="map_city_names")
+    cities = relationship("City", back_populates="map_city_names")
     __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class State(Base):

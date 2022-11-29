@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi import JSONAPI_
@@ -12,36 +12,40 @@ Base = declarative_base()
 class City(Base):
     __tablename__ = 'cities'
     id = Column(Integer,primary_key=True)
-    name = Column(String, unique=True)
+    name = Column(String)
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     branch_cities = relationship("CustomerBranch", back_populates="city_name")
     map_city_names = relationship("MapCityName", back_populates="city_name")
+    __table_args__ = (UniqueConstraint("name", "user_id"),)
 
 class MapCityName(Base):
     __tablename__ = 'map_city_names'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String, unique=True)
+    recorded_name = Column(String)
     city_id = Column(Integer, ForeignKey("cities.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     city_name = relationship("City", back_populates="map_city_names")
+    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class State(Base):
     __tablename__ = 'states'
     id = Column(Integer,primary_key=True)
-    name = Column(String, unique=True)
+    name = Column(String)
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     branch_states = relationship("CustomerBranch", back_populates="state_name")
     map_state_names = relationship("MapStateName", back_populates="state_name")
+    __table_args__ = (UniqueConstraint("name", "user_id"),)
 
 class MapStateName(Base):
     __tablename__ = 'map_state_names'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String, unique=True)
+    recorded_name = Column(String)
     state_id = Column(Integer, ForeignKey("states.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     state_name = relationship("State", back_populates="map_state_names")
+    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class Customer(Base):
     __tablename__ = 'customers'
@@ -55,10 +59,11 @@ class Customer(Base):
 class MapCustomerName(Base):
     __tablename__ = 'map_customer_names'
     id = Column(Integer,primary_key=True)
-    recorded_name = Column(String, unique=True)
+    recorded_name = Column(String)
     customer_id = Column(Integer, ForeignKey("customers.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     customers = relationship("Customer", back_populates="map_customer_names")
+    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'

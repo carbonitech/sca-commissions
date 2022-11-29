@@ -93,7 +93,7 @@ async def process_commissions_file(
     except report_processor.FileProcessingError as err:
         import traceback
         tb = traceback.format_exc()
-        api.delete_submission(err.submission_id, session=session)
+        api.delete_submission(err.submission_id, session=session, user=user)
         status_code = 400
         detail = "There was an error processing the file. Please contact joe@carbonitech.com with the id number {id_}"
         error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}

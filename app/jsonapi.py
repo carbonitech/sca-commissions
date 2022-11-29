@@ -174,6 +174,7 @@ class JSONAPI_(JSONAPI):
 
         row_count: int = len(db.execute(sa_query.statement).all())
         if row_count == 0:
+            query = {k:v for k,v in query.items() if not k.startswith("page")} # remove any pagination if there aren't any pages
             return query, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
         link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size

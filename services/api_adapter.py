@@ -143,7 +143,6 @@ class ApiAdapter:
         customers = CUSTOMERS
         cities = CITIES
         states = STATES
-        print(kwargs.get("user_id"))
         sql = sqlalchemy.select(commission_data_raw.id,
             submission_data.reporting_year, submission_data.reporting_month,
             manufacturers.name, reps.initials, customers.name,

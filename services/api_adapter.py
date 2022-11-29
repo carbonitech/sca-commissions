@@ -527,16 +527,16 @@ class ApiAdapter:
         db.commit()
         return
 
-    def set_customer_name_mapping(self, db: Session, **kwargs):
+    def set_customer_name_mapping(self, db: Session, user: User, **kwargs):
         # user_id is in kwargs
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
         try:
             db.execute(sql)
-        except IntegrityError:
+        except IntegrityError as e:
             db.rollback()
         else:
             db.commit()
-            event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs, session=db)
+            event.post_event("New Record", CUSTOMER_NAME_MAP, user=user, session=db, **kwargs)
 
     def create_new_customer_branch_bulk(self, db: Session, user_id: int, records: list[dict]):
         sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca") #    TODO use a user's default rep

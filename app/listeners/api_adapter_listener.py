@@ -5,25 +5,29 @@ from entities import error
 
 api = ApiAdapter()
 
+"""
+BUG: session is referred to as 'session' in one method and 'db' in the other
+"""
+
 def entity_default_name_mapping(table: model.Base, *args, **kwargs):
     """
     sets a default mapping for a new customer or a current customer with a modified name
     sets new mapping equal to the name
     """
-    db = kwargs.get("db")
-    user: User = kwargs.get("user")
-    user_id = user.id(db=db)
     if (new_name := kwargs.get("name")):
+        db = kwargs.get("db")
+        user: User = kwargs.get("user")
+        user_id = user.id(db=db)
         new_name: str
         if table == model.Customer:
             data = {"customer_id": kwargs["id_"], "recorded_name": new_name.upper().strip(), "user_id": user_id}
-            api.set_customer_name_mapping(db=kwargs.get("db"),**data)
+            api.set_customer_name_mapping(db=kwargs.get("db"),user=user, **data)
         elif table == model.City:
             data = {"city_id": kwargs["id_"], "recorded_name": new_name.upper().strip(), "user_id": user_id}
-            api.set_city_name_mapping(db=kwargs.get("db"),**data)
+            api.set_city_name_mapping(db=kwargs.get("db"),user=user, **data)
         elif table == model.State:
             data = {"state_id": kwargs["id_"], "recorded_name": new_name.upper().strip(), "user_id": user_id}
-            api.set_state_name_mapping(db=kwargs.get("db"), **data)
+            api.set_state_name_mapping(db=kwargs.get("db"),user=user, **data)
 
 def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     error_type = None

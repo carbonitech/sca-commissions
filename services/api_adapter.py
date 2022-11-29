@@ -100,6 +100,7 @@ class ApiAdapter:
 
 
     def set_city_name_mapping(self, **kwargs):
+        # user_id is in kwargs
         sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
@@ -107,6 +108,7 @@ class ApiAdapter:
         event.post_event("New Record", CITY_NAME_MAP, **kwargs, session=kwargs.get("db"))
  
     def set_state_name_mapping(self, **kwargs):
+        # user_id is in kwargs
         sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
         with Session(bind=self.engine) as session:
             session.execute(sql)
@@ -246,11 +248,11 @@ class ApiAdapter:
         
     def get_mappings(self, db: Session, table: str, user_id: int) -> pd.DataFrame:
         if table == "map_customer_names":
-            sql = sqlalchemy.select(CUSTOMER_NAME_MAP).join(CUSTOMERS).where(CUSTOMERS.user_id == user_id)
+            sql = sqlalchemy.select(CUSTOMER_NAME_MAP).where(CUSTOMER_NAME_MAP.user_id == user_id)
         elif table == "map_city_names":
-            sql = sqlalchemy.select(CITY_NAME_MAP).join(CITIES).where(CITIES.user_id == user_id)
+            sql = sqlalchemy.select(CITY_NAME_MAP).where(CITY_NAME_MAP.user_id == user_id)
         elif table == "map_state_names":
-            sql = sqlalchemy.select(STATE_NAME_MAP).join(STATES).where(STATES.user_id == user_id)
+            sql = sqlalchemy.select(STATE_NAME_MAP).where(STATE_NAME_MAP.user_id == user_id)
         return pd.read_sql(sql,db.get_bind())
 
     def get_all_manufacturers(self, db: Session) -> dict:
@@ -259,7 +261,7 @@ class ApiAdapter:
         return {id_: name_.lower().replace(" ","_") for id_, name_ in query_result}
 
     def get_branches(self, db: Session, user_id: int) -> pd.DataFrame:
-        sql = sqlalchemy.select(BRANCHES).join(CUSTOMERS).where(CUSTOMERS.user_id == user_id)
+        sql = sqlalchemy.select(BRANCHES).where(BRANCHES.user_id == user_id)
         data = pd.read_sql(sql,con=db.get_bind())
         def _try_convert_number(value: str) -> str:
             try:
@@ -526,6 +528,7 @@ class ApiAdapter:
         return
 
     def set_customer_name_mapping(self, db: Session, **kwargs):
+        # user_id is in kwargs
         sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
         try:
             db.execute(sql)
@@ -535,19 +538,20 @@ class ApiAdapter:
             db.commit()
             event.post_event("New Record", CUSTOMER_NAME_MAP, **kwargs, session=db)
 
-    def create_new_customer_branch_bulk(self, db: Session, records: list[dict]):
-        sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca")
+    def create_new_customer_branch_bulk(self, db: Session, user_id: int, records: list[dict]):
+        sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca") #    TODO use a user's default rep
         default_rep = db.execute(sql_default_rep).scalar()
         for record in records:
             record["rep_id"]=default_rep
             record["in_territory"]=True
+            record["user_id"]=user_id
             db.add(BRANCHES(**record))
         db.commit()
         return
 
-    def get_errors(self, db: Session, submission_id: int=0) -> pd.DataFrame:
-        """get all report processing errors for a commission report submission"""
-        sql = sqlalchemy.select(ERRORS_TABLE)
+    def get_errors(self, db: Session, user: User, submission_id: int=0) -> pd.DataFrame:
+        """get all report processing errors for all submissions by user, or a specific submission"""
+        sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.user_id == user.id(db=db))
         if submission_id:
             sql = sql.where(ERRORS_TABLE.submission_id == submission_id)
         result = pd.read_sql(sql, con=db.get_bind())
@@ -563,7 +567,7 @@ class ApiAdapter:
         manufs = MANUFACTURERS
         sql = sqlalchemy.select(subs.id,subs.submission_date,subs.reporting_month,subs.reporting_year,
                 reports.id.label("report_id"),reports.report_name,reports.yearly_frequency, reports.pos_report,
-                manufs.name).select_from(subs).join(reports).join(manufs).where(subs.user_id == user.id())
+                manufs.name).select_from(subs).join(reports).join(manufs).where(subs.user_id == user.id(db=db))
         return pd.read_sql(sql, con=db.get_bind())
 
 

@@ -17,6 +17,7 @@ class Error:
     row_index: int
     reason: ErrorType
     row_data: dict
+    user_id: int
 
     def keys(self):
         return list(self.__dict__.keys())

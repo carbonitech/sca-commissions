@@ -79,8 +79,8 @@ class ReportProcessor:
         self.map_state_names = self.api.get_mappings(session, "map_state_names", user_id=self.user_id)
         self.branches = self.api.get_branches(session, user_id=self.user_id)
 
-    def reset_branch_ref(self, user_id: int):
-        self.branches = self.api.get_branches(db=self.session, user_id=user_id)
+    def reset_branch_ref(self):
+        self.branches = self.api.get_branches(db=self.session, user_id=self.user_id)
 
     def total_commissions(self, dataset: str=None) -> int:
         total_comm = self.staged_data.loc[:,"comm_amt"].sum()
@@ -113,6 +113,7 @@ class ReportProcessor:
                     event_,
                     msg,
                     submission_id=sub_id,
+                    user_id=self.user_id,
                     start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
                     session=self.session
                 )
@@ -121,6 +122,7 @@ class ReportProcessor:
                     event_,
                     sub_id_table,
                     submission_id=sub_id,
+                    user_id=self.user_id,
                     start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
                     session=self.session
                 )
@@ -140,6 +142,7 @@ class ReportProcessor:
                 "Reprocessing",
                 data_ = msg,
                 submission_id = sub_id,
+                user_id=self.user_id,
                 start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
                 session=self.session
             )
@@ -284,7 +287,7 @@ class ReportProcessor:
 
         if not no_match_table.empty:
             no_match_records = no_match_table.drop_duplicates()
-            self.api.create_new_customer_branch_bulk(self.session,no_match_records.to_dict(orient="records"))
+            self.api.create_new_customer_branch_bulk(self.session,self.user_id,no_match_records.to_dict(orient="records"))
             self._send_event_by_submission(
                 no_match_records.index.to_list(),
                 "Formatting",f"added {len(no_match_records)} branches to the branches table" #TODO if multiple submissions are part of this step in a reintegration, this same message shows up in processing steps for both, which is inaccurate for both and makes it appear as though a multiple of the actual number was added
@@ -397,7 +400,8 @@ class ReportProcessor:
         return self
 
     def drop_extra_columns(self) -> 'ReportProcessor':
-        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt"]]
+        
+        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id"]]
         return self
 
     def register_commission_data(self) -> 'ReportProcessor':
@@ -441,9 +445,9 @@ class ReportProcessor:
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
-                event.post_event(*event_arg_tuple, start_step=1, session=self.session)
+                event.post_event(*event_arg_tuple, user_id=self.user_id, start_step=1, session=self.session)
             else:
-                event.post_event(*event_arg_tuple, session=self.session)
+                event.post_event(*event_arg_tuple, user_id=self.user_id, session=self.session)
 
 
         self.ppdata = ppdata
@@ -456,6 +460,10 @@ class ReportProcessor:
 
     def insert_recorded_at_column(self) -> 'ReportProcessor':
         self.staged_data["recorded_at"] = datetime.utcnow()
+        return self
+
+    def insert_user_id(self) -> 'ReportProcessor':
+        self.staged_data["user_id"] = self.user_id
         return self
 
 # TODO ADD METHOD FOR INSERTING USER ID BEFORE DATA COMMITTED
@@ -479,6 +487,7 @@ class ReportProcessor:
                     .register_submission()
                     .preprocess()
                     .insert_submission_id()
+                    .insert_user_id()
                 )
             else:
                 (

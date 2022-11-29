@@ -1,10 +1,11 @@
 class ProcessingStep:
     total_steps = 1 # overall processing step number is tracked by the class
 
-    def __init__(self, description: str, sub_id: int):
+    def __init__(self, description: str, sub_id: int, user_id: int):
         self.description = description
         self.step_num = self.total_steps
-        self.submission_id = sub_id
+        self.submission_id = sub_id,
+        self.user_id = user_id
         ProcessingStep.increment_total_step_num()
 
     @classmethod

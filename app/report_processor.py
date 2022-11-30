@@ -293,7 +293,7 @@ class ReportProcessor:
                 "Formatting",f"added {len(no_match_records)} branches to the branches table" #TODO if multiple submissions are part of this step in a reintegration, this same message shows up in processing steps for both, which is inaccurate for both and makes it appear as though a multiple of the actual number was added
             )
             self.reset_branch_ref()
-            result = self.add_branch_id(data=self.staged_data, pipe=pipe)
+            result = self.add_branch_id(data=operating_data, pipe=pipe)
             return result
         else:
             if pipe:
@@ -352,9 +352,14 @@ class ReportProcessor:
                 retry_result = self.fill_state_ids(retry_result, pipe=False)
                 retry_result = self.add_branch_id(retry_result, pipe=False)
                 if not retry_result.empty:
-                    self.staged_data.loc[:,new_column] = retry_result[new_column]
+                    #only update values with matching index to the data subset re-processed
+                    self.staged_data.loc[
+                        self.staged_data.index.isin(retry_result.index),
+                        new_column] = retry_result[new_column]
                     self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
-                    self.staged_data.loc[:,"in_territory"] = retry_result["in_territory"].fillna(False)
+                    self.staged_data.loc[
+                        self.staged_data.index.isin(retry_result.index),
+                        "in_territory"] = retry_result["in_territory"].fillna(False)
                 self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data, suppress_event=True) # will duplicate all drops made implicitly above if not suppressed
         else:   # otherwise just send these match failures to errors table
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]

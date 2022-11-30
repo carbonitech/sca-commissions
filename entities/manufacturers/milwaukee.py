@@ -18,6 +18,10 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "Prorated Sales Amt"
         comm_col: str = "Commission"
 
+        if missed_transfers := kwargs.get("additional_file_1", None):
+            missed_transfers_df: pd.DataFrame = pd.read_excel(missed_transfers)
+            data = pd.concat([data, missed_transfers_df])
+
         data = data.dropna(subset=data.columns.to_list()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]

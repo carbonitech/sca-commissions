@@ -348,6 +348,7 @@ class ApiAdapter:
             
     @staticmethod
     def matched_user(user: User, model, reference_id: int, db: Session) -> bool:
+        # BUG this causes to an error to be thrown later when the id simply doesn't exist
         return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
     
     @jsonapi_error_handling
@@ -531,10 +532,17 @@ class ApiAdapter:
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling
-    def delete_map_customer_name(self, db: Session, id_: int, user: User):
+    def delete_map_customer_name(self, db: Session, id_: int, user: User) -> None:
         if not self.matched_user(user, CUSTOMER_NAME_MAP, id_, db):
             raise UserMisMatch()
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
+        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
+
+    @jsonapi_error_handling
+    def delete_map_city_name(self, db: Session, id_: int, user: User) -> None:
+        if not self.matched_user(user, CITY_NAME_MAP, id_, db):
+            raise UserMisMatch()
+        model_name = hyphenated_name(CITY_NAME_MAP)
         return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
     
     @jsonapi_error_handling

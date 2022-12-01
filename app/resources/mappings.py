@@ -44,5 +44,4 @@ async def new_map_city_name(name_mapping: RequestModels.new_city_name_mapping, d
 
 @router_cities.delete("/{id}", tags=["mappings"])
 async def delete_map_city_name(id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
-    ...
-
+    return api.delete_map_city_name(db=db, id_=id, user=user)

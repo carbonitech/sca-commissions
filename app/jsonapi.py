@@ -57,6 +57,8 @@ class Customer(BaseModel):
 class CustomerModification(JSONAPIBaseModification):
     id: int
     attributes: Customer
+class NewCustomer(JSONAPIBaseModification):
+    attributes: Customer
 class CustomerModificationRequest(BaseModel):
     data: CustomerModification
 class CustomerNameMapping(BaseModel):
@@ -78,6 +80,9 @@ class NewCityNameMapping(JSONAPIBaseModification):
 
 
 ### top level objects ###
+class NewCustomerRequest(BaseModel):
+    data: NewCustomer
+
 class NewCustomerNameMappingRequest(BaseModel):
     data: NewCustomerNameMapping
     
@@ -87,11 +92,13 @@ class BranchModificationRequest(BaseModel):
 class NewCityNameMappingRequest(BaseModel):
     data: NewCityNameMapping
 
+
 @dataclass
 class RequestModels:
     new_customer_name_mapping = NewCustomerNameMappingRequest
     new_city_name_mapping = NewCityNameMappingRequest
     branch_modification = BranchModificationRequest
+    new_customer = NewCustomerRequest
 
 
 def convert_to_jsonapi(query: dict) -> dict:

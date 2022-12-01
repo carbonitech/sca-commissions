@@ -471,8 +471,6 @@ class ReportProcessor:
         self.staged_data["user_id"] = self.user_id
         return self
 
-# TODO ADD METHOD FOR INSERTING USER ID BEFORE DATA COMMITTED
-
     def process_and_commit(self) -> int|None:
         """
         Taking preprocessed data, use reference tables from the database

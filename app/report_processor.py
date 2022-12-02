@@ -383,6 +383,7 @@ class ReportProcessor:
 
     def remove_out_of_territory_branches(self) -> 'ReportProcessor':
         self.staged_data = self.staged_data[self.staged_data["in_territory"]]
+        # TODO NEED A PROCESSING STEP MSG HERE
         if self.staged_data.empty:
             raise EmptyTableException
         return self
@@ -391,7 +392,7 @@ class ReportProcessor:
     def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, suppress_event: bool=False) -> pd.DataFrame:
         if data.empty:
             return data
-        mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
+        mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt","row_index"])].all('columns')
         data_dropped = data[~mask].index.to_list()
         data = data[mask]
         if not suppress_event:
@@ -498,6 +499,7 @@ class ReportProcessor:
                     ._filter_for_existing_records_with_target_error_type()
                     .remove_error_db_entries()
                 )
+
             self.fill_customer_ids()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()

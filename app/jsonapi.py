@@ -159,7 +159,7 @@ class JSONAPI_(JSONAPI):
         Roughly quivalent to SELECT field FROM table WHERE field LIKE '%value_1% OR LIKE '%value_2%'
         """
         if (filter_args_str := query_params.get('filter')):
-            filter_args: dict[str,str] = json.loads(filter_args_str)
+            filter_args: dict[str,str] = json.loads(filter_args_str) # BUG an apostrophe in the value causes a parsing error, single quote is converted to double quote upstream
             filter_args = {k:[sub_v.upper().strip() for sub_v in v.split(',')] for k,v in filter_args.items() if v is not None}
             filter_query_args = []
             for field, values in filter_args.items():

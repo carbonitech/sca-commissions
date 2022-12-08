@@ -19,12 +19,12 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: int = 6
         comm_col: int = 9
 
-        data = data.T.reset_index().T  # move headers to first row
+        data = data.T.reset_index().T.reset_index()  # move headers to first row and keep row index intact
         events.append(("Formatting","moved headers to first row. Headers now integers",self.submission_id))
         data[[city_name_col, state_name_col]] = data.pop(city_state_col).str.split(", ", expand=True)
         events.append(("Formatting",f"split city-state, column {city_state_col}, into {city_name_col} and {state_name_col} columns",self.submission_id))
         data = data.dropna(subset=city_name_col)
-        events.append(("Formatting","removed all rows with no values in the {city_name_col} column",self.submission_id))
+        events.append(("Formatting",f"removed all rows with no values in the {city_name_col} column",self.submission_id))
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
 
         result[inv_col] = result[inv_col].replace(r'[^.0-9]','',regex=True).astype(float) # convert string currency figure to float
@@ -35,6 +35,7 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         result.columns = self.result_columns
+        result.index
         return PreProcessedData(result,events)
 
 

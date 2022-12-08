@@ -28,7 +28,11 @@ class PreProcessor(AbstractPreProcessor):
 
 
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
-        """processes the 'Baker' genesis file"""
+        """
+        processes the 'Baker' genesis file
+        Remarks:
+            - Entire amount is credited to one customer_branch
+        """
 
         events = []
         customer_name_col: str = "Customer Name"
@@ -38,6 +42,7 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "Comm.  Due"
 
         split: float = kwargs.get("split", 1.0)
+        default_branch: int = kwargs.get("default_branch")
 
         data = data.dropna(axis=1, how='all')
         events.append(("Formatting","removed columns with no values",self.submission_id))
@@ -56,10 +61,23 @@ class PreProcessor(AbstractPreProcessor):
         """
         processes the 'Lennox' genesis file
         Remarks:
-        - Processing steps for lennox and baker are the same,
-            so pass along to baker method and return results
+        - Lennox report does not have commission amounts in the actual table, only sales.
+        - Sales will be scaled down to 1% of the sales total to determine total sales
+        - Commission amount will be determined by a split on the new sales amount
+        - Entire amount is credited to one customer_branch
         """
-        return self._baker_report_preprocessing(data)
+
+        events = []
+        customer_name_col: str = "Customer Name"
+        city_name_col: str = "City"
+        state_name_col: str = "St."
+        inv_col: str = "Amount"
+        comm_col: str = "Comm.  Due"
+
+        split: float = kwargs.get("split", 1.0)
+        default_branch: int = kwargs.get("default_branch")
+        
+        return
 
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

@@ -17,7 +17,12 @@ class PreProcessor(AbstractPreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _calculate_commission_amounts(self, data: pd.DataFrame, inv_col: str, comm_col: str, total_commission: float|None, events: list):
+    def _calculate_commission_amounts(self, 
+            data: pd.DataFrame,
+            inv_col: str,
+            comm_col: str,
+            total_commission: float|None,
+            events: list):
         if total_commission:
             total_sales = data[inv_col].sum()/100 # converted to dollars
             comm_rate = total_commission/total_sales

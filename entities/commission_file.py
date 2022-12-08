@@ -1,16 +1,20 @@
 from dataclasses import dataclass
 import pandas as pd
+import tabula
 from io import BytesIO
 
 @dataclass
 class CommissionFile:
     file_data: bytes|BytesIO
 
-    def to_df(self, combine_sheets=False) -> pd.DataFrame:
+    def to_df(self, combine_sheets=False, from_pdf=False) -> pd.DataFrame:
         """
         read only visible sheets in the excel file
         if combine_sheets is True, attempt to UNION all visible sheets
         """
+        if from_pdf:
+            return tabula.read_pdf(BytesIO(self.file_data), pages="all")[0]
+
         try:
             with pd.ExcelFile(self.file_data, engine="openpyxl") as excel_file:
                 excel_file: pd.ExcelFile

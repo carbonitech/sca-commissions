@@ -1,7 +1,6 @@
 
 from datetime import datetime
 from dataclasses import dataclass, field
-from pandas import DataFrame
 from entities.commission_file import CommissionFile
 
 @dataclass
@@ -27,7 +26,3 @@ class NewSubmission:
         
     def __getitem__(self,key):
         return getattr(self,key)
-
-    def file_df(self) -> DataFrame:
-        return self.file.to_df()
-    

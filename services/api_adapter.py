@@ -258,7 +258,7 @@ class ApiAdapter:
     def get_all_manufacturers(self, db: Session) -> dict:
         sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
         query_result = db.execute(sql).fetchall()
-        return {id_: name_.lower().replace(" ","_") for id_, name_ in query_result}
+        return {id_: name_.lower().replace(" ","_").replace("-","_") for id_, name_ in query_result}
 
     def get_branches(self, db: Session, user_id: int) -> pd.DataFrame:
         sql = sqlalchemy.select(BRANCHES).where(BRANCHES.user_id == user_id)

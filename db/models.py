@@ -81,6 +81,7 @@ class CustomerBranch(Base):
     state_name = relationship("State", back_populates="branch_states")
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")
+    manufacturers_reports = relationship("ManufacturersReport", back_populates="customer_branches")
 
 class Representative(Base):
     __tablename__ = 'representatives'
@@ -111,9 +112,11 @@ class ManufacturersReport(Base):
     pos_report = Column(Boolean)
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
+    default_branch = Column(Integer, ForeignKey("customer_branches.id"))
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
+    customer_branches = relationship("CustomerBranch", back_populates="manufacturers_reports")
     commission_split = relationship("CommissionSplit")
 
 class Submission(Base):

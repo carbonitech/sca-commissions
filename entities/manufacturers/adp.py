@@ -68,7 +68,7 @@ class PreProcessor(AbstractPreProcessor):
             under Customer: COBURN, City: VARIOUS, State: MS
         """
         events = []
-        default_customer_name = "COBURN"
+        default_branch: dict[str,str] = kwargs.get("default_branch")
 
         comm_col_before = data.columns.values[-1]
         comm_col_after = "Commission"
@@ -104,7 +104,7 @@ class PreProcessor(AbstractPreProcessor):
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
         
-        result = pd.DataFrame([[default_customer_name, "VARIOUS", "MS", total_inv_adj, total_comm_adj]],
+        result = pd.DataFrame([list(default_branch.values()) + [total_inv_adj, total_comm_adj]],
             columns=self.result_columns)
         ref_cols = self.result_columns[:3]
 
@@ -128,7 +128,7 @@ class PreProcessor(AbstractPreProcessor):
 
         """
         events = []
-        default_customer_name = "RE MICHEL"
+        default_branch: dict[str,str] = kwargs.get("default_branch")  # only going to use the name
         split: float = kwargs.get("split", 1.0)
         comm_rate: float = kwargs.get("standard_commission_rate",0)
 
@@ -147,8 +147,8 @@ class PreProcessor(AbstractPreProcessor):
         events.append(("Formatting",f"added commissions column by calculating {comm_rate*100:,.2f}% of the inv_amt",
             self.submission_id))
 
-        data.loc[:,"customer"] = default_customer_name
-        events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
+        data.loc[:,"customer"] = default_branch["name"]
+        events.append(("Formatting",f"added a column with customer name {default_branch['name']} in all rows",
             self.submission_id))
 
         result = data.loc[:,["store_number", "customer", "inv_amt", "comm_amt"]]

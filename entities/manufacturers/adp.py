@@ -198,6 +198,8 @@ class PreProcessor(AbstractPreProcessor):
         receiving_table = receiving_table.rename(columns={"receiving_city": "city", "receiving_state": "state"})
         # recombine (city, state, customer, inv_amt, comm_amt, direction, store_number)
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
+        result.loc[:,"city"] = result["city"].str.upper()
+        result.loc[:,"state"] = result["state"].str.upper()
         return PreProcessedData(result, events)
 
 

@@ -68,7 +68,7 @@ def get_user(request: Request) -> User:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
             return User(nickname=a, name=b, email=c, verified=d)
         case _:
-            raise HTTPException(status=400, detail={"user could not be verified"})
+            raise HTTPException(status_code=400, detail={"user could not be verified"})
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")

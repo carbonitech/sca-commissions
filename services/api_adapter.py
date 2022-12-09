@@ -68,7 +68,8 @@ def get_user(request: Request) -> User:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
             return User(nickname=a, name=b, email=c, verified=d)
         case _:
-            raise HTTPException(status_code=400, detail={"user could not be verified"})
+            print(auth0_user_body)
+            raise HTTPException(status_code=400, detail="user could not be verified")
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")
@@ -203,7 +204,7 @@ class ApiAdapter:
             sql = sql.where(states.id == state)
         if(representative := kwargs.get("representative_id")):
             sql = sql.where(reps.id == representative)
-            
+
         view_table = pd.read_sql(sql, con=db.get_bind())
 
         view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",

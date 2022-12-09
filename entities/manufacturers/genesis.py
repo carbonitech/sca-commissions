@@ -131,8 +131,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,comm_col] = data.iloc[:,comm_col_index]
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100*0.18
-        events.append(("Formatting","applied ",self.submission_id))
+        result.loc[:,comm_col] = result[comm_col]*100
         result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
         return PreProcessedData(result,events)
 

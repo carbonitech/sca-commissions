@@ -55,7 +55,7 @@ async def download_file(file: str, db: Session=Depends(get_db)):
 
     bfile = BytesIO()
     with ExcelWriter(bfile) as excel_file:
-        methods[data_type](**query_args).to_excel(excel_file,sheet_name="data",index=False)
+        methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
     bfile.seek(0)
     api.mark_file_downloaded(db, file)
     return ExcelFileResponse(content=bfile, filename=query_args.get("filename"))

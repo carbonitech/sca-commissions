@@ -131,7 +131,7 @@ class ApiAdapter:
     def convert_month_from_number_to_name(month_num: int) -> str:
         return calendar.month_name[month_num]
 
-    def commission_data_with_all_names(self, submission_id: int=0, **kwargs) -> pd.DataFrame:
+    def commission_data_with_all_names(self, db: Session, submission_id: int=0, **kwargs) -> pd.DataFrame:
         """runs sql query to produce the commission table format used by SCA
         and converts month number to name and cents to dollars before return
         
@@ -151,10 +151,10 @@ class ApiAdapter:
             cities.name, states.name, commission_data_raw.inv_amt,
             commission_data_raw.comm_amt
             ).select_from(commission_data_raw) \
-            .join(submission_data)             \
-            .join(reports)                     \
-            .join(manufacturers)               \
-            .join(branches)                    \
+            .join(submission_data, commission_data_raw.submission_id == submission_data.id)\
+            .join(reports)                      \
+            .join(manufacturers, reports.manufacturer_id == manufacturers.id)\
+            .join(branches, commission_data_raw.customer_branch_id == branches.id)\
             .join(reps)                        \
             .join(customers)                   \
             .join(cities)                      \
@@ -167,7 +167,7 @@ class ApiAdapter:
                 cities.name.asc(),
                 states.name.asc()
             )
-
+        
         if submission_id:
             sql = sql.where(commission_data_raw.submission_id == submission_id)
 
@@ -203,8 +203,9 @@ class ApiAdapter:
             sql = sql.where(states.id == state)
         if(representative := kwargs.get("representative_id")):
             sql = sql.where(reps.id == representative)
+            
+        view_table = pd.read_sql(sql, con=db.get_bind())
 
-        view_table = pd.read_sql(sql, con=self.engine)
         view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
                 "Customer Name","City","State","Inv Amt","Comm Amt"]
         view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)

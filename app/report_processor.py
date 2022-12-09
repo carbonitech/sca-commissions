@@ -59,6 +59,7 @@ class ReportProcessor:
                 self.preprocessor = preprocessor
                 self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
                 self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
+                self.default_branch = self.api.get_default_branch(session, submission.report_id, user_id=self.user_id)
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -429,14 +430,11 @@ class ReportProcessor:
         optional_params = {
             "total_freight_amount": self.submission.total_freight_amount,
             "total_commission_amount": self.submission.total_commission_amount,
-            "additional_file_1": self.submission.additional_file_1
+            "additional_file_1": self.submission.additional_file_1,
+            "standard_commission_rate": self.standard_commission_rate,
+            "split": self.split,
+            "default_branch": self.default_branch
         }
-        if comm_rate := self.standard_commission_rate:
-            optional_params["standard_commission_rate"] = comm_rate
-
-        if self.split:
-            optional_params["split"] = self.split
-
         try:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:

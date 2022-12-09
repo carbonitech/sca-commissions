@@ -614,7 +614,7 @@ class ApiAdapter:
         return pd.read_sql(sql, con=db.get_bind())
 
 
-    def get_commission_rate(self, db: Session, manufacturer_id: int, user_id: int) -> float:
+    def get_commission_rate(self, db: Session, manufacturer_id: int, user_id: int) -> float|None:
         sql = sqlalchemy.select(USER_COMMISSIONS.commission_rate)\
             .where(
                 sqlalchemy.and_(
@@ -635,4 +635,22 @@ class ApiAdapter:
         result = db.execute(sql).scalar()
         return result
 
-
+    def get_default_branch(self, db: Session, report_id: int, user_id: int) -> dict[str,str]|None:
+        sql = sqlalchemy.select(CUSTOMERS.name,CITIES.name,STATES.name)\
+            .select_from(REPORTS)\
+            .join(BRANCHES)\
+            .join(CUSTOMERS)\
+            .join(CITIES)\
+            .join(STATES)\
+            .where(
+                sqlalchemy.and_(
+                    REPORTS.id == report_id,
+                    REPORTS.user_id == user_id
+                )
+            )
+        q_result = db.execute(sql).one_or_none()
+        if q_result:
+            name, city, state = q_result
+            result = {"name": name, "city": city, "state": state}
+            return result
+            

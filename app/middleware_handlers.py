@@ -21,7 +21,9 @@ async def handle_300_range(response: Response) -> Response:
 
 async def handle_400_range(request: Request, response: Response) -> Response:
 
-
+    response_headers = {key.decode(): value.decode() for key,value in response.headers.raw}
+    del response_headers["content-length"]
+    
     resp_body = await read_response_body(response.body_iterator)
     resp_body.update({"status":response.status_code})
     jsonapi_err_response_content = {"errors":[]}
@@ -60,6 +62,7 @@ async def handle_400_range(request: Request, response: Response) -> Response:
             return JSONResponse(
                 content=jsonapi_err_response_content,
                 status_code=response.status_code,
+                headers=response_headers,
                 media_type="application/json"
             )
 
@@ -86,6 +89,7 @@ async def handle_400_range(request: Request, response: Response) -> Response:
     return JSONResponse(
         content=jsonapi_err_response_content,
         status_code=response.status_code,
+        headers=response_headers,
         media_type="application/json"
     )
 

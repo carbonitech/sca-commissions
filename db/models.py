@@ -74,7 +74,6 @@ class CustomerBranch(Base):
     deleted = Column(DateTime)
     store_number = Column(String)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
-    in_territory = Column(Boolean)
     user_id = Column(Integer, ForeignKey("users.id"))
     customers = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")

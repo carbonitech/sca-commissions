@@ -586,7 +586,6 @@ class ApiAdapter:
         default_rep = db.execute(sql_default_rep).scalar()
         for record in records:
             record["rep_id"]=default_rep
-            record["in_territory"]=True
             record["user_id"]=user_id
             db.add(BRANCHES(**record))
         db.commit()

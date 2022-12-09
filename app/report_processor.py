@@ -253,7 +253,6 @@ class ReportProcessor:
 
         if operating_data.empty:
             operating_data["customer_branch_id"] = None
-            operating_data["in_territory"] = None
             return self if pipe else operating_data
 
         # some customers have two stores in the same geo differentiated only by store numbers.
@@ -271,13 +270,7 @@ class ReportProcessor:
         except KeyError:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
-        try:
-            in_territory = merged_with_branches.loc[:,"in_territory_ref_table"].fillna(0).to_list()
-        except KeyError:
-            in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
-
         operating_data.loc[:, new_column] = new_col_values
-        operating_data.loc[:, "in_territory"] = in_territory
 
         if "store_number" in operating_data.columns.to_list():
             no_match_table = operating_data.loc[operating_data[new_column]==0,left_on_list+["store_number"]]
@@ -336,10 +329,7 @@ class ReportProcessor:
         except KeyError:
             new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
 
-        in_territory = merged_with_branches.loc[:,"in_territory"].fillna(0).to_list()
-
         self.staged_data.loc[:, new_column] = new_col_values
-        self.staged_data.loc[:, "in_territory"] = in_territory
 
         # if city and state are present, try going with mapping those and concatentating what you can get
         table_columns = set(data_copy.columns.to_list())
@@ -358,9 +348,6 @@ class ReportProcessor:
                         self.staged_data.index.isin(retry_result.index),
                         new_column] = retry_result[new_column]
                     self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
-                    self.staged_data.loc[
-                        self.staged_data.index.isin(retry_result.index),
-                        "in_territory"] = retry_result["in_territory"].fillna(False)
                 self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data, suppress_event=True) # will duplicate all drops made implicitly above if not suppressed
         else:   # otherwise just send these match failures to errors table
             no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
@@ -381,14 +368,6 @@ class ReportProcessor:
         self._send_event_by_submission(self.staged_data.index.to_list(),"Formatting", "assigned negative dollars to sender warehouses")
         return self
 
-
-    def remove_out_of_territory_branches(self) -> 'ReportProcessor':
-        self.staged_data = self.staged_data[self.staged_data["in_territory"]]
-        # TODO NEED A PROCESSING STEP MSG HERE
-        if self.staged_data.empty:
-            raise EmptyTableException
-        return self
-        
 
     def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, suppress_event: bool=False) -> pd.DataFrame:
         if data.empty:
@@ -510,7 +489,6 @@ class ReportProcessor:
                     .fill_state_ids()
                     .add_branch_id()
                 )
-            self.remove_out_of_territory_branches()
         except EmptyTableException:
             pass
         except Exception as err:

@@ -32,6 +32,7 @@ class PreProcessor(AbstractPreProcessor):
         processes the 'Baker' genesis file
         Remarks:
             - Entire amount is credited to one customer_branch
+            - split is applied to both sales and commission
         """
 
         events = []
@@ -42,7 +43,7 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "Comm.  Due"
 
         split: float = kwargs.get("split", 1.0)
-        default_branch: int = kwargs.get("default_branch")
+        default_branch: dict[str,str] = kwargs.get("default_branch")
 
         data = data.dropna(axis=1, how='all')
         events.append(("Formatting","removed columns with no values",self.submission_id))
@@ -53,7 +54,18 @@ class PreProcessor(AbstractPreProcessor):
         result.loc[:,comm_col] = result[comm_col]*100*split
         events.append(("Formatting",f"replaced {inv_col} column with {split*100:,.2f}% of the values",self.submission_id))
         events.append(("Formatting",f"replaced {comm_col} column with {split*100:,.2f}% of the values",self.submission_id))
-        result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
+        
+        # a default is used to credit all sales data to agency. Locations in the data are not territory-specific,
+        # although they're used to calculate the values
+        total_inv = result[inv_col].sum()
+        total_comm = result[comm_col].sum()
+        result = pd.DataFrame(
+                [
+                    list(default_branch.values())
+                    +[total_inv, total_comm]
+                ],
+            columns=self.result_columns)
+
         return PreProcessedData(result,events)
 
 
@@ -62,8 +74,8 @@ class PreProcessor(AbstractPreProcessor):
         processes the 'Lennox' genesis file
         Remarks:
         - Lennox report does not have commission amounts in the actual table, only sales.
-        - Sales will be scaled down to 1% of the sales total to determine total sales
-        - Commission amount will be determined by a split on the new sales amount
+        - Sales will be scaled down by the split proportion to determine sales
+        - Commission amount will be 1% of sales post-split. Column starts as all zeros
         - Entire amount is credited to one customer_branch
         """
 
@@ -75,9 +87,30 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "Comm.  Due"
 
         split: float = kwargs.get("split", 1.0)
-        default_branch: int = kwargs.get("default_branch")
-        
-        return
+        default_branch: dict[str,str] = kwargs.get("default_branch")
+
+        data = data.dropna(axis=1, how='all')
+        events.append(("Formatting","removed columns with no values",self.submission_id))
+        data = data.dropna(subset=data.columns.to_list()[0])
+        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        result.loc[:,inv_col] = result[inv_col]*100*split
+        result.loc[:,comm_col] = result[inv_col]*0.01 # all reps in this report get 1%, it's the split that varies
+        events.append(("Formatting",f"replaced {inv_col} column with {split*100:,.2f}% of the values",self.submission_id))
+        events.append(("Formatting",f"replaced {comm_col} column with {0.01*100:,.2f}% of sales",self.submission_id))
+
+        # a default is used to credit all sales data to agency. Locations in the data are not territory-specific,
+        # although they're used to calculate the values
+        total_inv = result[inv_col].sum()
+        total_comm = result[comm_col].sum()
+        result = pd.DataFrame(
+                [
+                    list(default_branch.values())
+                    +[total_inv, total_comm]
+                ],
+            columns=self.result_columns)
+
+        return PreProcessedData(result,events)
 
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

@@ -223,6 +223,17 @@ class User(Base):
     report_form_fields = relationship("ReportFormFields")
     failures = relationship("Failures")
 
+class UserToken(Base):
+    __tablename__ = "user_tokens"
+    id = Column(Integer,primary_key=True)
+    access_token = Column(String)
+    nickname = Column(String)
+    name = Column(String)
+    email = Column(String)
+    verified = Column(Boolean)
+    expires_at = Column(Integer)
+
+
 class UserCommissionRate(Base):
     __tablename__ = "user_commission_rates"
     id = Column(Integer,primary_key=True)

@@ -3,6 +3,7 @@ import re
 import json
 import calendar
 from datetime import datetime
+import time
 from dotenv import load_dotenv
 from os import getenv
 import requests
@@ -14,6 +15,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from fastapi import Request, HTTPException
+from jose.jwt import get_unverified_claims
 
 from app import event
 from app.jsonapi import jsonapi_error_handling
@@ -62,14 +64,42 @@ class User:
 
 
 def get_user(request: Request) -> User:
+
+    access_token: str = request.headers.get("Authorization")
+    access_token_bare = access_token.replace("Bearer ","")
+    if user_details := preverified(access_token_bare):
+        return User(**user_details)
+
     url = os.getenv("AUTH0_DOMAIN") + "/userinfo"
-    auth0_user_body: dict =  requests.get(url, headers={"Authorization": request.headers.get("Authorization")}).json()
+    auth0_user_body: dict = requests.get(url, headers={"Authorization":access_token}).json()
     match auth0_user_body:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
+            cache_token(access_token_bare, nickname=a, name=b, email=c, verified=d)
             return User(nickname=a, name=b, email=c, verified=d)
         case _:
-            print(auth0_user_body)
             raise HTTPException(status_code=400, detail="user could not be verified")
+
+def preverified(access_token: str) -> dict | None:
+    session = next(get_db())
+    parameters = {"access_token": access_token, "current_time": int(time.time())}
+    sql = "SELECT nickname, name, email, verified FROM user_tokens WHERE access_token = :access_token and expires_at > :current_time"
+    return session.execute(sql, parameters).one_or_none()
+
+def cache_token(access_token: str, nickname: str, name: str, email: str, verified: bool) -> None:
+    session = next(get_db())
+    sql = "INSERT INTO user_tokens (access_token, nickname, name, email, verified, expires_at)"\
+        "VALUES (:access_token, :nickname, :name, :email, :verified, :expires_at)"
+    parameters = {
+        "access_token": access_token,
+        "nickname": nickname,
+        "name": name,
+        "email": email,
+        "verified": verified,
+        "expires_at": int(get_unverified_claims(access_token)["exp"]) 
+    }
+    session.execute(sql, parameters)
+    session.commit()
+    session.close()
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")

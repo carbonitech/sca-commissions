@@ -72,6 +72,6 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(pdf="table"), **kwargs)
+            return preprocess_method(self.file.to_df(pdf="text"), **kwargs)
         else:
             return

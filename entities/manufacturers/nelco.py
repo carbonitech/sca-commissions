@@ -20,17 +20,16 @@ class PreProcessor(AbstractPreProcessor):
         city_state_regex: str = r"^(.*),\s*?(\w{2})" # searches for format like Atlanta, GA at beginning of str
         inv_col: int = -1
         customer_boundary_value: str = "Customer :"
-        comm_rate: float = kwargs.get("standard_commission_rate",0)
+        comm_rate: float = kwargs.get("standard_commission_rate")
 
         data_printed_date = data.iloc[0]
         events.append(("Formatting",f"grabbed first text element of PDF page header: {data_printed_date}",self.submission_id))
-        data_cleaned = data.loc[~data.isin(data.loc[:42])].str.replace(data_printed_date,"")
+        data_cleaned = data.loc[~data.isin(data[:42])].str.replace(data_printed_date,"")
         events.append(("Formatting",f"removed all text elements matching the header elements in the first 42 text elements",self.submission_id))
-        data_cleaned = data_cleaned[~data_cleaned.str.contains(r"PAGE:\s*\d")]
+        data_cleaned = data_cleaned[~data_cleaned.str.contains(r"PAGE:\s*\d")].reset_index(drop=True)
         events.append(("Formatting",f"removed page number lines using regex",self.submission_id))
         customer_boundaries: list[int] = data_cleaned.loc[data_cleaned.str.contains(customer_boundary_value)].index.tolist()
         events.append(("Formatting",f"used boundary value {customer_boundary_value} to isolate customers",self.submission_id))
-
         compiled_data = {
             "customer": [],
             "city": [],
@@ -55,8 +54,8 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.DataFrame(compiled_data)
         events.append(("Formatting",f"extracted customer, city, state, and sales amount and formatted into a table",self.submission_id))
 
-        result.loc[:,"int_amt"] = result["int_amt"]*100
-        result.loc[:,"comm_amt"] = result["int_amt"]*comm_rate
+        result["inv_amt"] = result["inv_amt"]*100
+        result.loc[:,"comm_amt"] = result["inv_amt"]*comm_rate
         events.append(("Formatting",f"calculated comm_amt column as {comm_rate*100:,.2f}% of sales",self.submission_id))
         for col in ["customer","city","state"]:
             result.loc[:, col] = result[col].str.upper()

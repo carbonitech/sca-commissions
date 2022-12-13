@@ -23,7 +23,7 @@ class CommissionFile:
                 for page in PdfFileReader(BytesIO(self.file_data)).pages:
                     all_text += page.extract_text()
                 text_list = all_text.splitlines()
-                text_list_compact = [line.strip() for line in text_list if line]
+                text_list_compact = [line.strip() for line in text_list if line.strip()]
                 return pd.Series(text_list_compact)
             elif strategy.lower() == "table":
                 return tabula.read_pdf(BytesIO(self.file_data), pages="all")[0]

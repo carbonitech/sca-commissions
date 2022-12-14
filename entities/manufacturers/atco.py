@@ -74,6 +74,7 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(subset=data.columns.to_list()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
+        data.loc[:,inv_col] = data[inv_col].fillna(0)
         data.loc[:,inv_col] = data[inv_col]*100
         data.loc[:,comm_col] = data[comm_col]*100
         for col in self.result_columns[:3]:

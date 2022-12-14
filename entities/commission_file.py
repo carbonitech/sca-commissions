@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import pandas as pd
 import tabula
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
 from io import BytesIO
 
 @dataclass
@@ -20,7 +20,7 @@ class CommissionFile:
         if strategy := pdf:
             if strategy.lower() == "text":
                 all_text = ""
-                for page in PdfFileReader(BytesIO(self.file_data)).pages:
+                for page in PdfReader(BytesIO(self.file_data)).pages:
                     all_text += page.extract_text()
                 text_list = all_text.splitlines()
                 text_list_compact = [line.strip() for line in text_list if line.strip()]

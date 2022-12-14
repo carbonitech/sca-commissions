@@ -21,41 +21,40 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self,data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
         events = []
+        customer_name_col: str = "Customer.1"
+        city_name_col: str = "ShipToCity"
+        state_name_col: str = "ShpToState"
+        inv_col: str = "NetSales"
+        comm_col: str = "Rep1Commission"
 
         data.columns = [col.replace(" ","") for col in data.columns.tolist()]
         events.append(("Formatting","removed spaces from column names",self.submission_id))
 
         # convert dollars to cents to avoid demical imprecision
-        data.NetSales = data.loc[:,"NetSales"].apply(lambda amt: amt*100)
-        data.Rep1Commission = data.loc[:,"Rep1Commission"].apply(lambda amt: amt*100)
+        data[inv_col] = data.loc[:,inv_col].apply(lambda amt: amt*100)
+        data[comm_col] = data.loc[:,comm_col].apply(lambda amt: amt*100)
 
         ref_col = data.columns.tolist()[0]
-        rows_null = data[data[ref_col].isna()]
         data.dropna(subset=ref_col, inplace=True)
-        events.append(("Rows Removed",rows_null.rename(
-            columns={"NetSales":"inv_amt","Rep1Commission":"comm_amt"}
-        ),self.submission_id))
 
         # sum by account convert to a flat table
-        piv_table_values = ["NetSales", "Rep1Commission"]
-        piv_table_index = ["Customer.1","ShipToCity","ShpToState","Customer","ShipTo"]
+        piv_table_values = [inv_col, comm_col]
+        piv_table_index = [customer_name_col,city_name_col,state_name_col,"Customer","ShipTo"]
         result = pd.pivot_table(
             data,
             values=piv_table_values,
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
         
-        events.append(("Formatting","grouped NetSales and Rep1Commission by sold-to, "
+        events.append(("Formatting","grouped sales and commission by sold-to, "
                 "ship-to, customer name, city, and state (pivot table)",self.submission_id))
 
         result = result.drop(columns=["Customer","ShipTo"])
-        events.append(("Formatting", "dropped the ship-to and sold-to id columns",self.submission_id))
-
+        events.append(("Formatting", "dropped the ship-to and sold-to columns",self.submission_id))
+        for col in [customer_name_col,city_name_col,state_name_col]:
+            result.loc[:, col] = result[col].str.upper()
+            result.loc[:, col] = result[col].str.strip()
         result.columns = self.result_columns
-        ref_cols = result.columns.tolist()[:3]
-
-        for ref_col in ref_cols:
-            result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
         return PreProcessedData(result, events)
 

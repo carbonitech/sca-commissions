@@ -8,7 +8,7 @@ from io import BytesIO
 class CommissionFile:
     file_data: bytes|BytesIO
 
-    def to_df(self, combine_sheets=False, pdf: str=None) -> pd.DataFrame:
+    def to_df(self, combine_sheets=False, split_sheets=False, pdf: str=None) -> pd.DataFrame:
         """
         read only visible sheets in the excel file
         if combine_sheets is True, attempt to UNION all visible sheets
@@ -35,6 +35,10 @@ class CommissionFile:
                 if combine_sheets:
                     data = [excel_file.parse(sheet) for sheet in visible_sheets]
                     return pd.concat(data, ignore_index=True)
+                if split_sheets:
+                    return {sheet: excel_file.parse(sheet) for sheet in visible_sheets}
+                    
+
                 
                 return pd.read_excel(self.file_data, sheet_name=visible_sheets[0])
         except:
@@ -44,4 +48,6 @@ class CommissionFile:
                 if combine_sheets:
                     data = [excel_file.parse(sheet) for sheet in excel_file.sheet_names]
                     return pd.concat(data, ignore_index=True)
+                if split_sheets:
+                    return {sheet: excel_file.parse(sheet) for sheet in excel_file.sheet_names}
                 return pd.read_excel(self.file_data)

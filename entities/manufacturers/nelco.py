@@ -61,7 +61,6 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         result.columns = self.result_columns
-        result.index
         return PreProcessedData(result,events)
 
 

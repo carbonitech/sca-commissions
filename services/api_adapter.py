@@ -88,6 +88,9 @@ def preverified(access_token: str) -> dict | None:
 
 def cache_token(access_token: str, nickname: str, name: str, email: str, verified: bool) -> None:
     session = next(get_db())
+    if session.execute("select id from user_tokens where access_token = :access_token", {"access_token": access_token}).fetchone():
+        session.close()
+        return
     sql = "INSERT INTO user_tokens (access_token, nickname, name, email, verified, expires_at)"\
         "VALUES (:access_token, :nickname, :name, :email, :verified, :expires_at)"
     parameters = {

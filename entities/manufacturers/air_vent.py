@@ -45,7 +45,7 @@ class PreProcessor(AbstractPreProcessor):
             dfs.append(combined)
 
         events.append(("Formatting",f"extracted customer, city, state, and sales amount and formatted into a table",self.submission_id))
-        result = pd.concat(dfs)
+        result = pd.concat(dfs, ignore_index=True)
 
         result[inv_col_name] = result[inv_col_name]*100
         result[comm_col_name] = result[comm_col_name]*100

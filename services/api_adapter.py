@@ -560,6 +560,23 @@ class ApiAdapter:
         return result
 
     @jsonapi_error_handling
+    def create_city(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        model_name = hyphenated_name(CITIES)
+        new_name: str = json_data["data"]["attributes"]["name"]
+        json_data["data"]["attributes"]["name"] = new_name.upper().strip()
+        hyphenate_attribute_keys(json_data)
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
+        event.post_event(
+            "New Record",
+            CITIES,
+            db=db,
+            user=user,
+            name=json_data["data"]["attributes"]["name"],
+            id_=result["data"]["id"]
+        )
+        return result
+
+    @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict, user: User) -> JSONAPIResponse:
         if not self.matched_user(user, CUSTOMERS, customer_id, db):
             raise UserMisMatch()

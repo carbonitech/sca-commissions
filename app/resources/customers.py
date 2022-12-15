@@ -21,14 +21,12 @@ async def modify_customer(customer_id: int,
         customer: CustomerModificationRequest,
         db: Session=Depends(get_db),
         user: User=Depends(get_user)):
-        
     return api.modify_customer_jsonapi(db, customer_id, customer.dict(), user)
 
 @router.post("", tags=["customers"])
-async def new_customer(name_mapping: RequestModels.new_customer, db: Session=Depends(get_db), user: User=Depends(get_user)):
-    return api.create_customer(db=db, json_data=name_mapping.dict(), user=user)
+async def new_customer(jsonapi_obj: RequestModels.new_customer, db: Session=Depends(get_db), user: User=Depends(get_user)):
+    return api.create_customer(db=db, json_data=jsonapi_obj.dict(), user=user)
 
 @router.delete("/{customer_id}", tags=["customers"])
 async def delete_customer(customer_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
-    user.id(db=db)
     ...

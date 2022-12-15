@@ -133,14 +133,6 @@ class ApiAdapter:
             result = conn.execute(sql).fetchone()
         return True if result else False
 
-
-    def set_city_name_mapping(self, **kwargs):
-        # user_id is in kwargs
-        sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New Record", CITY_NAME_MAP, **kwargs, session=kwargs.get("db"))
  
     def set_state_name_mapping(self, **kwargs):
         # user_id is in kwargs
@@ -634,6 +626,19 @@ class ApiAdapter:
             db.commit()
             event.post_event("New Record", CUSTOMER_NAME_MAP, user=user, session=db, **kwargs)
 
+    
+    def set_city_name_mapping(self, db: Session, user: User, **kwargs):
+        # user_id is in kwargs
+        sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
+        try:
+            db.execute(sql)
+        except IntegrityError as e:
+            db.rollback()
+            print(e)
+        else:
+            db.commit()
+            event.post_event("New Record", CITY_NAME_MAP, user=user, session=db, **kwargs)
+            
     def create_new_customer_branch_bulk(self, db: Session, user_id: int, records: list[dict]):
         sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca") #    TODO use a user's default rep
         default_rep = db.execute(sql_default_rep).scalar()

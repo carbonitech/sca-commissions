@@ -17,7 +17,7 @@ class PreProcessor(AbstractPreProcessor):
 
         events = []
         customer_boundary_value: str = r"\d{6}\s+([a-zA-Z ]*?)\s{2,}([a-zA-Z ]*?)\s{2,}([A-Z]{2})" # format to find 6-digit number, then customer name, city, and state - grouped
-        inv_line_item_re: str = r"INVOICE TOTAL\s+([0-9^,.]+)\s+([0-9^,.]+)\s+([0-9^,.]+)"
+        inv_line_item_re: str = r"INVOICE TOTAL\s+([0-9^,.-]+)\s+([0-9^,.-]+)\s+([0-9^,.-]+)"
 
         customer_col_name: str = "customer"
         city_col_name: str = "city"
@@ -37,7 +37,8 @@ class PreProcessor(AbstractPreProcessor):
             customer_info = subseries.str.extract(customer_boundary_value).dropna().rename(
                 columns={0:customer_col_name, 1: city_col_name, 2: state_col_name}
             )
-            amounts = subseries.str.extract(inv_line_item_re).dropna().replace('[^.0-9]','', regex=True).astype(float)
+            amounts = subseries.str.extract(inv_line_item_re).dropna().replace('[^-.0-9]','', regex=True) # extract numbers and replace chars not used in a float number
+            amounts = amounts.replace('([0-9^.]+)(-)?$',r'\2\1', regex=True).astype(float) # put trailing minus sign in front if it's there
             amounts[inv_col_name] = amounts[0] - amounts[1]
             amounts = amounts.rename(columns={2:comm_col_name})
             sales_comm = amounts[[inv_col_name, comm_col_name]]

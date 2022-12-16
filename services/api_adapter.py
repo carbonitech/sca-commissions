@@ -206,9 +206,11 @@ class ApiAdapter:
             except Exception as e:
                 print(e)
             if isinstance(start_date, datetime):
-                sql = sql.where(sqlalchemy.and_(
-                    submission_data.reporting_year >= start_date.year,
-                    submission_data.reporting_month >= start_date.month))
+                sql = sql.where(sqlalchemy.or_(
+                    sqlalchemy.and_(
+                        submission_data.reporting_year == start_date.year,
+                        submission_data.reporting_month >= start_date.month),
+                    submission_data.reporting_year > start_date.year))
         if (end_date := kwargs.get("endDate")):
             try:
                 end_date = datetime.fromisoformat(end_date)
@@ -217,9 +219,11 @@ class ApiAdapter:
             except Exception as e:
                 print(e)
             if isinstance(end_date, datetime):
-                sql = sql.where(sqlalchemy.and_(
-                    submission_data.reporting_year <= end_date.year,
-                    submission_data.reporting_month <= end_date.month))
+                sql = sql.where(sqlalchemy.or_(
+                    sqlalchemy.and_(
+                        submission_data.reporting_year == end_date.year,
+                        submission_data.reporting_month <= end_date.month),
+                    submission_data.reporting_year < end_date.year))
         if(manufacturer := kwargs.get("manufacturer_id")):
             sql = sql.where(manufacturers.id == manufacturer)
         if(customer := kwargs.get("customer_id")):

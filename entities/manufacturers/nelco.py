@@ -1,6 +1,6 @@
 """
 Manufacturer report preprocessing definition
-for Agas
+for Nelco
 """
 import pandas as pd
 from entities.commission_data import PreProcessedData

@@ -3,7 +3,8 @@ from app.resources.branches import router as branches
 from app.resources.customers import router as customers
 from app.resources.manufacturers import router as manufacturers
 from app.resources.mappings import router_customers as customer_names 
-from app.resources.mappings import router_cities as city_names 
+from app.resources.mappings import router_cities as city_names
+from app.resources.mappings import router_states as state_names
 from app.resources.reps import router as reps
 from app.resources.submissions import router as submissions
 from app.resources.cities import router as cities

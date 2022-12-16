@@ -122,6 +122,7 @@ def get_db():
     finally:
         db.close()
 
+
 class ApiAdapter:
 
     engine = sqlalchemy.create_engine(getenv("DATABASE_URL").replace("postgres://","postgresql://"))
@@ -132,16 +133,6 @@ class ApiAdapter:
         with self.engine.begin() as conn:
             result = conn.execute(sql).fetchone()
         return True if result else False
-
- 
-    def set_state_name_mapping(self, **kwargs):
-        # user_id is in kwargs
-        sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
-        with Session(bind=self.engine) as session:
-            session.execute(sql)
-            session.commit()
-        event.post_event("New Record", STATE_NAME_MAP, **kwargs, session=kwargs.get("db"))
-
 
     def set_new_commission_data_entry(self, **kwargs) -> int:
         sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)\
@@ -511,6 +502,16 @@ class ApiAdapter:
             return models.serializer.get_collection(db, query, CITY_NAME_MAP, user_id)
 
     @jsonapi_error_handling
+    def get_state_name_mappings(self, db: Session, query: dict, user: User, mapping_id=0) -> JSONAPIResponse:
+        if mapping_id:
+            if not self.matched_user(user, STATE_NAME_MAP, mapping_id, db):
+                raise UserMisMatch()
+            return models.serializer.get_resource(db, query, hyphenated_name(STATE_NAME_MAP), mapping_id, obj_only=True)
+        else:
+            user_id: int = user.id(db=db)
+            return models.serializer.get_collection(db, query, STATE_NAME_MAP, user_id)
+
+    @jsonapi_error_handling
     def get_many_branches_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
         user_id: int = user.id(db=db)
         return models.serializer.get_collection(db,query,BRANCHES, user_id)
@@ -538,6 +539,15 @@ class ApiAdapter:
         event.post_event("New Record", CITY_NAME_MAP, session=db, user=user)
         return result
 
+
+    @jsonapi_error_handling
+    def create_state_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        model_name = hyphenated_name(STATE_NAME_MAP)
+        hyphenate_attribute_keys(json_data)
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
+        event.post_event("New Record", STATE_NAME_MAP, session=db, user=user)
+        return result
+
     @jsonapi_error_handling
     def create_customer(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMERS)
@@ -555,6 +565,7 @@ class ApiAdapter:
         )
         return result
 
+
     @jsonapi_error_handling
     def create_city(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         model_name = hyphenated_name(CITIES)
@@ -565,6 +576,24 @@ class ApiAdapter:
         event.post_event(
             "New Record",
             CITIES,
+            db=db,
+            user=user,
+            name=json_data["data"]["attributes"]["name"],
+            id_=result["data"]["id"]
+        )
+        return result
+
+
+    @jsonapi_error_handling
+    def create_state(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        model_name = hyphenated_name(STATES)
+        new_name: str = json_data["data"]["attributes"]["name"]
+        json_data["data"]["attributes"]["name"] = new_name.upper().strip()
+        hyphenate_attribute_keys(json_data)
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
+        event.post_event(
+            "New Record",
+            STATES,
             db=db,
             user=user,
             name=json_data["data"]["attributes"]["name"],
@@ -610,6 +639,13 @@ class ApiAdapter:
             raise UserMisMatch()
         model_name = hyphenated_name(CITY_NAME_MAP)
         return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
+
+    @jsonapi_error_handling
+    def delete_map_state_name(self, db: Session, id_: int, user: User) -> None:
+        if not self.matched_user(user, STATE_NAME_MAP, id_, db):
+            raise UserMisMatch()
+        model_name = hyphenated_name(STATE_NAME_MAP)
+        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
     
     @jsonapi_error_handling
     def delete_a_branch(self, db: Session, branch_id: int):
@@ -643,6 +679,20 @@ class ApiAdapter:
             db.commit()
             event.post_event("New Record", CITY_NAME_MAP, user=user, session=db, **kwargs)
             
+
+    def set_state_name_mapping(self, db: Session, user: User, **kwargs):
+        # user_id is in kwargs
+        sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
+        try:
+            db.execute(sql)
+        except IntegrityError as e:
+            db.rollback()
+            print(e)
+        else:
+            db.commit()
+            event.post_event("New Record", STATE_NAME_MAP, user=user, session=db, **kwargs)
+
+
     def create_new_customer_branch_bulk(self, db: Session, user_id: int, records: list[dict]):
         sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca") #    TODO use a user's default rep
         default_rep = db.execute(sql_default_rep).scalar()

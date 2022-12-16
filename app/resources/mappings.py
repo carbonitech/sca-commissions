@@ -45,3 +45,22 @@ async def new_map_city_name(name_mapping: RequestModels.new_city_name_mapping, d
 @router_cities.delete("/{id}", tags=["mappings"])
 async def delete_map_city_name(id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
     return api.delete_map_city_name(db=db, id_=id, user=user)
+
+
+@router_states.get("", tags=["mappings"])
+async def map_state_names(db: Session=Depends(get_db), query: Query=Depends(), user: User=Depends(get_user)):
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_state_name_mappings(db,jsonapi_query,user)
+
+@router_states.get("/{map_state_name_id}", tags=["mappings"])
+async def map_state_name(map_state_name_id: int, db: Session=Depends(get_db), query: Query=Depends(), user: User=Depends(get_user)):
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_state_name_mappings(db,jsonapi_query,user,map_state_name_id)
+
+@router_states.post("", tags=["mappings"])
+async def new_map_state_name(name_mapping: RequestModels.new_state_name_mapping, db: Session=Depends(get_db), user: User=Depends(get_user)):
+    return api.create_state_name_mapping(db=db, json_data=name_mapping.dict(), user=user)
+
+@router_states.delete("/{id}", tags=["mappings"])
+async def delete_map_state_name(id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
+    return api.delete_map_state_name(db=db, id_=id, user=user)

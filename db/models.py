@@ -35,7 +35,7 @@ class State(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     branch_states = relationship("CustomerBranch", back_populates="state_name")
-    map_state_names = relationship("MapStateName", back_populates="state_name")
+    map_state_names = relationship("MapStateName", back_populates="states")
     __table_args__ = (UniqueConstraint("name", "user_id"),)
 
 class MapStateName(Base):
@@ -44,7 +44,7 @@ class MapStateName(Base):
     recorded_name = Column(String)
     state_id = Column(Integer, ForeignKey("states.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
-    state_name = relationship("State", back_populates="map_state_names")
+    states = relationship("State", back_populates="map_state_names")
     __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class Customer(Base):

@@ -127,6 +127,7 @@ class Submission(Base):
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     total_commission_amount = Column(Float)
     user_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(Enum('QUEUED', 'PROCESSING', 'COMPLETE', 'NEEDS_ATTENTION', 'FAILED', name='status'))
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
     errors = relationship("Error", back_populates="submission")

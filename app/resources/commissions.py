@@ -80,12 +80,15 @@ async def process_commissions_file(
             total_freight_amount,
             additional_file_1
         )
+
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
+    submission_id = api.record_submission(db=session, submission=new_sub)
     mfg_report_processor = report_processor.ReportProcessor(
         preprocessor=mfg_preprocessor,
         submission=new_sub,
         session=session,
-        user=user
+        user=user,
+        submission_id=submission_id
     )
 
     try:

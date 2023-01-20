@@ -14,7 +14,9 @@ class NewSubmission:
     submission_date: datetime = field(default_factory=datetime.today, init=False)
     total_commission_amount: float|None
     total_freight_amount: float|None
-    additional_file_1: bytes|None 
+    additional_file_1: bytes|None
+    #following is actually an enum in postgres
+    status: str = "QUEUED"
 
     def keys(self):
         unpackable_attrs = list(self.__dict__.keys())

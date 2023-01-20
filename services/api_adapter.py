@@ -765,3 +765,12 @@ class ApiAdapter:
             result = {"name": name, "city": city, "state": state}
             return result
             
+    def alter_sub_status(self, db: Session, submission_id: int, status: str) -> bool:
+        sql = sqlalchemy.update(SUBMISSIONS_TABLE).values(status=status).where(SUBMISSIONS_TABLE.id==submission_id)
+        try:
+            db.execute(sql)
+            db.commit()
+        except:
+            return False
+        else:
+            return True

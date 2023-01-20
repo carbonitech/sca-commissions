@@ -42,7 +42,8 @@ class ReportProcessor:
             preprocessor: AbstractPreProcessor = None, # a class obj, not an instance
             submission: NewSubmission = None,
             target_err: ErrorType = None,
-            error_table: pd.DataFrame = pd.DataFrame()
+            error_table: pd.DataFrame = pd.DataFrame(),
+            submission_id: int|None = None
         ):
 
         self.skip = False
@@ -52,6 +53,9 @@ class ReportProcessor:
         self.session = session
         self.api = api_adapter.ApiAdapter()
         self.user_id = user.id(self.session) if user.verified else None
+        self.submission_id = submission_id
+        if not submission_id:
+            del self.submission_id
         
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
@@ -60,6 +64,7 @@ class ReportProcessor:
                 self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
                 self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
                 self.default_branch = self.api.get_default_branch(session, submission.report_id, user_id=self.user_id)
+
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -380,11 +385,6 @@ class ReportProcessor:
         return data
 
 
-    def register_submission(self) -> 'ReportProcessor':
-        """reigsters a new submission to the database and returns the id number of that submission"""
-        self.submission_id = self.api.record_submission(db=self.session, submission=self.submission)
-        return self
-
     def drop_extra_columns(self) -> 'ReportProcessor':
         
         self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id"]]
@@ -449,6 +449,10 @@ class ReportProcessor:
         self.staged_data["user_id"] = self.user_id
         return self
 
+    def set_submission_status(self, status: str) -> 'ReportProcessor':
+        self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+        return self
+
     def process_and_commit(self) -> int|None:
         """
         Taking preprocessed data, use reference tables from the database
@@ -460,12 +464,11 @@ class ReportProcessor:
         """
         if self.skip:
             return
-
         try:
             if not self.reintegration:
                 (
                     self
-                    .register_submission()
+                    .set_submission_status("PROCESSING")
                     .preprocess()
                     .insert_submission_id()
                     .insert_user_id()
@@ -497,6 +500,6 @@ class ReportProcessor:
             self\
             .drop_extra_columns()\
             .insert_recorded_at_column()\
-            .register_commission_data()
-
+            .register_commission_data()\
+            .set_submission_status("COMPLETE")
         return self.submission_id if not self.reintegration else None

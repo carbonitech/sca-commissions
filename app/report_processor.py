@@ -495,6 +495,10 @@ class ReportProcessor:
         except EmptyTableException:
             pass
         except Exception as err:
+            self.session.execute("UPDATE submissions SET status = 'FAILED' WHERE id = :sub_id;", {"sub_id": self.submission_id})
+            self.session.commit()
+            # BUG background task conversion up-stack means now I'm losing the capture of this traceback
+            # so while this error is raised, nothing useful is happening with it currently
             raise FileProcessingError(err, submission_id=self.submission_id)
         else:
             self\

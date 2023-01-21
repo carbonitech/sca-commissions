@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
-from fastapi import APIRouter, HTTPException, File, Depends, Form
+from fastapi import APIRouter, HTTPException, File, Depends, Form, BackgroundTasks
 
 from app import report_processor
 from entities import submission
@@ -46,68 +46,6 @@ class CommissionDataDownloadParameters(BaseModel):
     state_id: int|None = None
     representative_id: int|None = None
 
-async def process_commissions_file(
-        file: bytes,
-        report_id: int,
-        reporting_month: int,
-        reporting_year: int,
-        manufacturer_id: int,
-        total_commission_amount: float|None,
-        file_password: str|None,
-        total_freight_amount: float|None,
-        additional_file_1: bytes|None,
-        session: Session,
-        user: User
-    ):
-    if file_password:
-        import msoffcrypto
-        from io import BytesIO
-        file_decrypted = BytesIO()
-        decrypter = msoffcrypto.OfficeFile(BytesIO(file))
-        decrypter.load_key(password=str(file_password))
-        decrypter.decrypt(file_decrypted)
-        file = file_decrypted
-
-    file_obj = CommissionFile(file)
-    new_sub = submission.NewSubmission(
-            file_obj,
-            reporting_month,
-            reporting_year,
-            report_id,
-            manufacturer_id,
-            user.id(session),
-            total_commission_amount,
-            total_freight_amount,
-            additional_file_1
-        )
-
-    mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
-    submission_id = api.record_submission(db=session, submission=new_sub)
-    mfg_report_processor = report_processor.ReportProcessor(
-        preprocessor=mfg_preprocessor,
-        submission=new_sub,
-        session=session,
-        user=user,
-        submission_id=submission_id
-    )
-
-    try:
-        return mfg_report_processor.process_and_commit()
-    except report_processor.FileProcessingError as err:
-        import traceback
-        tb = traceback.format_exc()
-        api.delete_submission(err.submission_id, session=session, user=user)
-        status_code = 400
-        detail = "There was an error processing the file. Please contact joe@carbonitech.com with the id number {id_}"
-        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
-        raise HTTPException(status_code, detail=error_obj)
-    except Exception as err:
-        import traceback
-        tb = traceback.format_exc()
-        status_code = 400
-        detail = "Please contact joe@carbonitech.com with the id number {id_}"
-        error_obj = {"errors":[{"status": status_code, "detail": detail, "title": "processing_error", "traceback": tb}]}
-        raise HTTPException(status_code, detail=error_obj)
 
 
 @router.get("", tags=['commissions'])
@@ -153,6 +91,7 @@ async def commission_data_file_link(
 
 @router.post("", tags=['commissions'])
 async def process_data_from_a_file(
+        bg_tasks: BackgroundTasks,
         file: bytes = File(),
         report_id: int = Form(),
         reporting_month: int = Form(),
@@ -163,7 +102,7 @@ async def process_data_from_a_file(
         total_freight_amount: Optional[float] = Form(None),
         additional_file_1: Optional[bytes] = Form(None),
         db: Session=Depends(get_db),
-        user: User=Depends(get_user)
+        user: User=Depends(get_user),
     ):
 
     # TODO: should I do this check?
@@ -197,9 +136,59 @@ async def process_data_from_a_file(
             total_freight_amount,
             additional_file_1,
             db,
-            user
+            user,
+            bg_tasks
         )
     return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={}, user=user)
+
+async def process_commissions_file(
+        file: bytes,
+        report_id: int,
+        reporting_month: int,
+        reporting_year: int,
+        manufacturer_id: int,
+        total_commission_amount: float|None,
+        file_password: str|None,
+        total_freight_amount: float|None,
+        additional_file_1: bytes|None,
+        session: Session,
+        user: User,
+        bg_tasks: BackgroundTasks       # passed directly from the calling route
+    ) -> int:
+
+    if file_password:
+        import msoffcrypto
+        from io import BytesIO
+        file_decrypted = BytesIO()
+        decrypter = msoffcrypto.OfficeFile(BytesIO(file))
+        decrypter.load_key(password=str(file_password))
+        decrypter.decrypt(file_decrypted)
+        file = file_decrypted
+
+    file_obj = CommissionFile(file)
+    new_sub = submission.NewSubmission(
+            file_obj,
+            reporting_month,
+            reporting_year,
+            report_id,
+            manufacturer_id,
+            user.id(session),
+            total_commission_amount,
+            total_freight_amount,
+            additional_file_1
+        )
+
+    mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
+    submission_id = api.record_submission(db=session, submission=new_sub)
+    mfg_report_processor = report_processor.ReportProcessor(
+        preprocessor=mfg_preprocessor,
+        submission=new_sub,
+        session=session,
+        user=user,
+        submission_id=submission_id
+    )
+    bg_tasks.add_task(mfg_report_processor.process_and_commit)
+    return submission_id
 
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(

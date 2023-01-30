@@ -22,17 +22,17 @@ class PreProcessor(AbstractPreProcessor):
             missed_transfers_df: pd.DataFrame = pd.read_excel(missed_transfers)
             data = pd.concat([data, missed_transfers_df])
 
+        target_cols = [customer_name_col, city_name_col, state_name_col, inv_col, comm_col]
         data = data.dropna(subset=data.columns.to_list()[0])
-        cols = data.columns.tolist()
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
-        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        result = data.loc[:,target_cols]
         result = result.groupby(result.columns.tolist()[:3]).sum().reset_index()
         events.append(("Formatting",
             "grouped data by report-given customer name, city, and state, "\
             f"and summed {inv_col} and {comm_col} values",
             self.submission_id
         ))
-        result.columns = cols
+        result.columns = target_cols
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
         for col in [customer_name_col,city_name_col,state_name_col]:

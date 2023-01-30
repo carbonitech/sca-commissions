@@ -455,9 +455,9 @@ class ReportProcessor:
             for sub_id in table["submission_id"].unique().tolist():
                 if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id", {"sub_id": sub_id}).fetchone():
                     continue
-                self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+                self.api.alter_sub_status(db=self.session, submission_id=sub_id, status=status)
             return self
-            
+
         self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
         return self
 
@@ -501,11 +501,9 @@ class ReportProcessor:
                     .add_branch_id()
                 )
         except EmptyTableException:
-            self.session.execute("UPDATE submissions SET status = 'NEEDS_ATTENTION' WHERE id = :sub_id;", {"sub_id": self.submission_id})
-            self.session.commit()
+            self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
-            self.session.execute("UPDATE submissions SET status = 'FAILED' WHERE id = :sub_id;", {"sub_id": self.submission_id})
-            self.session.commit()
+            self.set_submission_status("FAILED")
             import traceback
             # BUG background task conversion up-stack means now I'm losing the capture of this traceback
             # so while this error is raised, nothing useful is happening with it currently

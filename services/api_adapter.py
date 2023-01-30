@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from os import getenv
 import requests
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
 from sqlalchemy.exc import IntegrityError
@@ -143,7 +144,7 @@ class ApiAdapter:
 
     @staticmethod
     def convert_cents_to_dollars(cent_amt: float) -> float:
-        return round(cent_amt/100,2)
+        return cent_amt/100
 
     @staticmethod
     def convert_month_from_number_to_name(month_num: int) -> str:

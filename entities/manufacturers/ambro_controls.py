@@ -12,19 +12,27 @@ class PreProcessor(AbstractPreProcessor):
         """processes the Ambro Controls standard report"""
 
         events = []
-        customer_name_col: str = "Customer Name"
-        city_name_col: str = "Ship to City"
-        state_name_col: str = "State"
-        inv_col: str = "Amount"
-        comm_col: str = "Commission Payable"
+        customer_name_col: str = "customer name"
+        city_name_col: str = "ship to city"
+        state_name_col: str = "state"
+        state_name_col_alt: str = "ship to state"
+        inv_col: str = "amount"
+        comm_col: str = "commission payable"
 
-        data = data.rename(columns=lambda col: col.strip())
+
+        active_state_col = state_name_col
+
+        data = data.rename(columns=lambda col: col.strip().lower())
         data = data.dropna(subset=data.columns.to_list()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
-        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        try: 
+            result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
+        except KeyError:
+            active_state_col = state_name_col_alt
+            result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
-        for col in [customer_name_col,city_name_col,state_name_col]:
+        for col in [customer_name_col,city_name_col,active_state_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         result.columns = self.result_columns

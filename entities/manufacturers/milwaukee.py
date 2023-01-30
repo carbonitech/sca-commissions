@@ -12,20 +12,24 @@ class PreProcessor(AbstractPreProcessor):
         """processes the Milwaukee Full Detail List tab"""
 
         events = []
-        customer_name_col: str = "Customer Name"
-        city_name_col: str = "City"
-        state_name_col: str = "State"
-        inv_col: str = "Prorated Sales Amt"
-        comm_col: str = "Commission"
+        customer_name_col: str = "customer name"
+        city_name_col: str = "city"
+        state_name_col: str = "state"
+        inv_col: str = "prorated sales amt"
+        comm_col: str = "commission"
 
         if missed_transfers := kwargs.get("additional_file_1", None):
             missed_transfers_df: pd.DataFrame = pd.read_excel(missed_transfers)
             data = pd.concat([data, missed_transfers_df])
-
+        
+        data = data.rename(columns=lambda col: col.strip().lower())
         target_cols = [customer_name_col, city_name_col, state_name_col, inv_col, comm_col]
         data = data.dropna(subset=data.columns.to_list()[0])
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
         result = data.loc[:,target_cols]
+        result[inv_col] = pd.to_numeric(result[inv_col], errors="coerce").fillna(0)
+        result[comm_col] = pd.to_numeric(result[comm_col], errors="coerce").fillna(0)
+
         result = result.groupby(result.columns.tolist()[:3]).sum().reset_index()
         events.append(("Formatting",
             "grouped data by report-given customer name, city, and state, "\

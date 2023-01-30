@@ -157,6 +157,8 @@ class PreProcessor(AbstractPreProcessor):
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         events = []
+        # BUG use dynamic default branch instead of hard-coded value
+        default_branch: dict[str,str] = kwargs.get("default_branch")
         default_customer_name = "LENNOX"
 
         data = data.dropna(subset=data.columns.tolist()[0])

@@ -56,7 +56,9 @@ class PreProcessor(AbstractPreProcessor):
                 # move the special row value that sums POS to customer name so it isn't dropped later
                 df = df.dropna(subset=["Invoice"])
                 df["Invoice"] = df["Invoice"].astype(str)
-                df.loc[df["Invoice"].str.contains(r"[^0-9]"),inv_customer_name_col] = df.loc[df["Invoice"].str.contains(r"[^0-9]"),"Invoice"].values
+
+                # removing because REM POS is back
+                # df.loc[df["Invoice"].str.contains(r"[^0-9]"),inv_customer_name_col] = df.loc[df["Invoice"].str.contains(r"[^0-9]"),"Invoice"].values
                 extracted_data = df.loc[:,
                     [inv_customer_name_col,
                     inv_city_name_col,
@@ -82,8 +84,10 @@ class PreProcessor(AbstractPreProcessor):
             data.loc[:, col] = data[col].str.strip()
         return PreProcessedData(data,events)
 
+
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
+        #BUG  use dynamic value
         default_customer_name: str = "RE MICHEL"
         commission_rate = kwargs.get("standard_commission_rate", 0)
 

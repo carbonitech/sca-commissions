@@ -493,12 +493,15 @@ class ReportProcessor:
                     .add_branch_id()
                 )
         except EmptyTableException:
-            pass
+            self.session.execute("UPDATE submissions SET status = 'NEEDS_ATTENTION' WHERE id = :sub_id;", {"sub_id": self.submission_id})
+            self.session.commit()
         except Exception as err:
             self.session.execute("UPDATE submissions SET status = 'FAILED' WHERE id = :sub_id;", {"sub_id": self.submission_id})
             self.session.commit()
+            import traceback
             # BUG background task conversion up-stack means now I'm losing the capture of this traceback
             # so while this error is raised, nothing useful is happening with it currently
+            print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id)
         else:
             self\

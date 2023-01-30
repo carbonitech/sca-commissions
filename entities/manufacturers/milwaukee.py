@@ -23,6 +23,7 @@ class PreProcessor(AbstractPreProcessor):
             data = pd.concat([data, missed_transfers_df])
 
         data = data.dropna(subset=data.columns.to_list()[0])
+        cols = data.columns.tolist()
         events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result = result.groupby(result.columns.tolist()[:3]).sum().reset_index()
@@ -31,6 +32,7 @@ class PreProcessor(AbstractPreProcessor):
             f"and summed {inv_col} and {comm_col} values",
             self.submission_id
         ))
+        result.columns = cols
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
         for col in [customer_name_col,city_name_col,state_name_col]:

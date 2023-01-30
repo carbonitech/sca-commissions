@@ -450,7 +450,7 @@ class ReportProcessor:
         return self
 
     def set_submission_status(self, status: str) -> 'ReportProcessor':
-        if not self.submission_id:
+        if self.reintegration:
             table = self.staged_data
             for sub_id in table["submission_id"].unique().tolist():
                 if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id", {"sub_id": sub_id}).fetchone():

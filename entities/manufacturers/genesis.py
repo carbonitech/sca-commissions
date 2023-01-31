@@ -135,12 +135,16 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
         return PreProcessedData(result,events)
 
+    def _rebate_detail_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        ...
+
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "sales_detail": self._standard_report_preprocessing,
             "baker_pos": self._baker_report_preprocessing,
             "lennox_pos": self._lennox_report_preprocessing,
             "winsupply_pos": self._winsupply_report_preprocessing,
+            "rebate_detail": self._rebate_detail_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

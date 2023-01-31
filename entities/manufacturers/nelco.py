@@ -43,8 +43,15 @@ class PreProcessor(AbstractPreProcessor):
                 subseries = data_cleaned.iloc[index:-3]
             else:
                 subseries = data_cleaned.iloc[index:customer_boundaries[i+1]]
+            
             address = subseries.str.extract(city_state_regex).dropna()
-            city, state = address.iloc[0,0], address.iloc[0,1]
+            if not address.empty:
+                # some reports have city & state, some only state. this will error-out if address is null
+                city, state = address.iloc[0,0], address.iloc[0,1]
+            else:
+                # this returns a mix of the 2-letter state and UOM's, but the state is always first in the series
+                city = None
+                state = subseries[subseries.str.len() == 2].to_list()[0]
             inv_amt = float(subseries.iloc[inv_col])
             compiled_data["customer"].append(subseries.iloc[customer_name])
             compiled_data["city"].append(city) 
@@ -61,6 +68,7 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         result.columns = self.result_columns
+        result = result.dropna(axis=1, how='all') # drops city column, if empty
         return PreProcessedData(result,events)
 
 

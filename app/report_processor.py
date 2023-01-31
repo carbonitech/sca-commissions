@@ -54,6 +54,10 @@ class ReportProcessor:
         self.api = api_adapter.ApiAdapter()
         self.user_id = user.id(self.session) if user.verified else None
         self.submission_id = submission_id
+        self.lookup_state = False
+        self.use_default_branch_city = False
+        self.split_by_defaults = False
+
         if not submission_id:
             del self.submission_id
         
@@ -187,7 +191,7 @@ class ReportProcessor:
         return operating_data
 
 
-    def fill_city_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
+    def fill_city_ids(self, data=pd.DataFrame(), pipe=True, use_lookup: bool=False) -> Union['ReportProcessor',pd.DataFrame]:
         """converts city column city id #s using the map_city_names reference table"""
         left_on_name = "city"
         if not pipe:
@@ -197,6 +201,20 @@ class ReportProcessor:
 
         if operating_data.empty:
             return self if pipe else operating_data
+
+        if use_lookup: # default branch city by state
+            all_defaults = pd.read_sql("""
+                SELECT cb.id, customer_id, loc.city, loc.state
+                from customer_branches as cb
+                join locations as loc
+                on loc.id = cb.location_id
+                where default_branch
+                and cb.user_id = %(user_id)s;
+                """, self.session.get_bind(),params={"user_id": self.user_id})
+            merge_with_defaults = pd.merge(operating_data, all_defaults,
+            how="left", left_on="customer", right_on="customer_id")
+            operating_data[left_on_name] = merge_with_defaults.loc[:,"city"].fillna("NOT FOUND").astype(str).to_list()
+
 
         merged_w_cities_map = pd.merge(
                 operating_data, self.map_city_names,
@@ -214,7 +232,7 @@ class ReportProcessor:
         return operating_data
 
 
-    def fill_state_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
+    def fill_state_ids(self, data=pd.DataFrame(), pipe=True, use_lookup: bool=False) -> Union['ReportProcessor',pd.DataFrame]:
         """converts column supplied in the args to id #s using the map_state_names reference table"""
         left_on_name = "state"
         if not pipe:
@@ -418,13 +436,23 @@ class ReportProcessor:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
+
+        col_list = ppdata.data.columns.to_list()
         
-        match ppdata.data.columns.to_list():
+        match col_list:
+            # additional columns
             case ["store_number", *other_cols]:
                 self.use_store_numbers = True
             case [*other_cols, "direction", "store_number"]:
                 self.use_store_numbers = True
                 self.inter_warehouse_transfer = True
+            # missing columns
+            case ["customer", "city", "inv_amt", "comm_amt"]:
+                self.lookup_state = True
+            case ["customer", "state", "inv_amt", "comm_amt"]:
+                self.use_default_branch_city = True
+            case ["customer", "inv_amt", "comm_amt"]:
+                self.split_by_defaults = True
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
@@ -461,6 +489,10 @@ class ReportProcessor:
         self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
         return self
 
+    def split_customer_values_by_default_branches(self) -> 'ReportProcessor':
+        all_defaults = self.session.execute("SELECT id, customer_id from customer_branches where default_branch;")
+        
+
     def process_and_commit(self) -> int|None:
         """
         Taking preprocessed data, use reference tables from the database
@@ -491,13 +523,16 @@ class ReportProcessor:
             self.fill_customer_ids()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
+
             if self.use_store_numbers:
                 self.add_branch_id_by_store_number()
+            elif self.split_by_defaults:
+                self.split_customer_values_by_default_branches()
             else:
                 (
                     self
-                    .fill_city_ids()
-                    .fill_state_ids()
+                    .fill_city_ids(use_lookup=self.use_default_branch_city)
+                    .fill_state_ids(use_lookup=self.lookup_state)
                     .add_branch_id()
                 )
         except EmptyTableException:
@@ -507,6 +542,7 @@ class ReportProcessor:
             import traceback
             # BUG background task conversion up-stack means now I'm losing the capture of this traceback
             # so while this error is raised, nothing useful is happening with it currently
+            # this print is so I can see it in heroku logs
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id)
         else:

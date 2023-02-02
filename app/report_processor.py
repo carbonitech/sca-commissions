@@ -245,14 +245,14 @@ class ReportProcessor:
 
         if use_lookup:
             customer_locations = pd.read_sql("""
-                SELECT cb.id, ci.id as city, l.state
+                SELECT cb.customer_id, ci.id as city, l.state
                 FROM customer_branches as cb
                 JOIN locations as l on l.id = cb.location_id
                 JOIN cities as ci on ci.name = l.city
                 WHERE cb.user_id = %(user_id)s;
             """, con=self.session.get_bind(), params={"user_id": self.user_id})
             merge_with_defaults = pd.merge(operating_data, customer_locations,
-            how="left", left_on=["customer", "city"], right_on=["id", "city"])
+            how="left", left_on=["customer", "city"], right_on=["customer_id", "city"])
             operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str).to_list()
 
         merged_w_states_map = pd.merge(

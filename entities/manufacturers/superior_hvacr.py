@@ -46,7 +46,7 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
 
-        col_names = self.result_columns
+        col_names = self.result_columns.copy()
         col_names.pop(2) # remove "state"
         result.columns = col_names
         return PreProcessedData(result,events)

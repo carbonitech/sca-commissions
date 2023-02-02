@@ -47,7 +47,7 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         
-        col_names = self.result_columns
+        col_names = self.result_columns.copy()
         if no_state:
             col_names.pop(2) # remove "state"
 

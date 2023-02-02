@@ -143,7 +143,7 @@ class ReportProcessor:
         table_target_errors = self.error_table.loc[mask]
         if table_target_errors.empty:
             raise EmptyTableException
-        self.error_table = table_target_errors.reset_index(drop=True) # fixes for for id merging strategy
+        self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
         self.staged_data = self.error_table.copy()
         for sub_id in self.staged_data["submission_id"].unique().tolist():
             rows_affected = len(self.error_table[self.error_table["submission_id"]==sub_id])    
@@ -204,7 +204,7 @@ class ReportProcessor:
 
         if use_lookup: # default branch city by state
             all_defaults = pd.read_sql("""
-                SELECT cb.id, customer_id, loc.city, loc.state
+                SELECT cb.customer_id, loc.city, loc.state
                 from customer_branches as cb
                 join locations as loc
                 on loc.id = cb.location_id
@@ -212,7 +212,7 @@ class ReportProcessor:
                 and cb.user_id = %(user_id)s;
                 """, self.session.get_bind(),params={"user_id": self.user_id})
             merge_with_defaults = pd.merge(operating_data, all_defaults,
-            how="left", left_on="customer", right_on="customer_id")
+                    how="left", left_on=["customer","state"], right_on=["customer_id", "state"])
             operating_data[left_on_name] = merge_with_defaults.loc[:,"city"].fillna("NOT FOUND").astype(str).to_list()
 
 
@@ -242,8 +242,8 @@ class ReportProcessor:
 
         if operating_data.empty:
             return self if pipe else operating_data
-
         if use_lookup:
+            data_to_match = operating_data
             customer_locations = pd.read_sql("""
                 SELECT cb.customer_id, ci.id as city, l.state
                 FROM customer_branches as cb
@@ -251,9 +251,14 @@ class ReportProcessor:
                 JOIN cities as ci on ci.name = l.city
                 WHERE cb.user_id = %(user_id)s;
             """, con=self.session.get_bind(), params={"user_id": self.user_id})
-            merge_with_defaults = pd.merge(operating_data, customer_locations,
-            how="left", left_on=["customer", "city"], right_on=["customer_id", "city"])
-            operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str).to_list()
+            if left_on_name in operating_data.columns.to_list():
+                data_to_match = operating_data[operating_data[left_on_name].isnull()]
+
+            # keep index consistent during the merge so that values map correctly to operating_data
+            merge_with_defaults = data_to_match.reset_index().merge(customer_locations,
+                    how="left", left_on=["customer", "city"], right_on=["customer_id", "city"]
+                ).set_index('index', drop=True).drop_duplicates()
+            operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str)
 
         merged_w_states_map = pd.merge(
                 operating_data, self.map_state_names,
@@ -431,6 +436,36 @@ class ReportProcessor:
         self._send_event_by_submission(self.staged_data.index.to_list(), "Data Recorded")
         return self
 
+    def set_switches(self) -> 'ReportProcessor':
+        if self.reintegration:
+            col_list = self.staged_data.columns.to_list()
+        else:
+            col_list = self.ppdata.data.columns.to_list()
+
+        match col_list:
+            # additional columns
+            case ["store_number", *other_cols]:
+                self.use_store_numbers = True
+            case [*other_cols, "direction", "store_number"]:
+                self.use_store_numbers = True
+                self.inter_warehouse_transfer = True
+            # missing columns
+            case ["customer", "city", "inv_amt", "comm_amt"]:
+                self.lookup_state = True
+            case ["customer", "state", "inv_amt", "comm_amt"]:
+                self.use_default_branch_city = True
+            case ["customer", "inv_amt", "comm_amt"]:
+                self.split_by_defaults = True
+        
+        if self.reintegration:
+            if "state" in col_list:
+                if self.staged_data["state"].isnull().any():
+                    self.lookup_state = True
+            else:
+                self.lookup_state = True
+
+        return self
+
     def preprocess(self) -> 'ReportProcessor':
         report_name = self.api.get_report_name_by_id(db=self.session, report_id=self.submission.report_id)
         sub_id = self.submission_id
@@ -448,23 +483,6 @@ class ReportProcessor:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
-
-        col_list = ppdata.data.columns.to_list()
-        
-        match col_list:
-            # additional columns
-            case ["store_number", *other_cols]:
-                self.use_store_numbers = True
-            case [*other_cols, "direction", "store_number"]:
-                self.use_store_numbers = True
-                self.inter_warehouse_transfer = True
-            # missing columns
-            case ["customer", "city", "inv_amt", "comm_amt"]:
-                self.lookup_state = True
-            case ["customer", "state", "inv_amt", "comm_amt"]:
-                self.use_default_branch_city = True
-            case ["customer", "inv_amt", "comm_amt"]:
-                self.split_by_defaults = True
 
         for step_num, event_arg_tuple in enumerate(ppdata.events):
             if step_num == 0:
@@ -531,11 +549,9 @@ class ReportProcessor:
                     ._filter_for_existing_records_with_target_error_type()
                     .remove_error_db_entries()
                 )
-
-            self.fill_customer_ids()
+            self.set_switches().fill_customer_ids()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
-
             if self.use_store_numbers:
                 self.add_branch_id_by_store_number()
             elif self.split_by_defaults:
@@ -556,7 +572,7 @@ class ReportProcessor:
             # so while this error is raised, nothing useful is happening with it currently
             # this print is so I can see it in heroku logs
             print(f"from print: {traceback.format_exc()}")
-            raise FileProcessingError(err, submission_id=self.submission_id)
+            raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
         else:
             self\
             .drop_extra_columns()\

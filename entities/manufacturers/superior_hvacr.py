@@ -41,6 +41,7 @@ class PreProcessor(AbstractPreProcessor):
 
         result = data.merge(sales_data, left_on=customer_number_col_comm_file, right_on=customer_number_col_sales_file)
         result = result.loc[:, [customer_name_col_comm_file, city_name_col_sales_file, inv_col_comm_file, comm_col_comm_file]]
+        result = result.reset_index(drop=True)
 
         for col in [customer_name_col_comm_file,city_name_col_sales_file]:
             result.loc[:, col] = result[col].str.upper()

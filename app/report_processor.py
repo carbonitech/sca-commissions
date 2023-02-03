@@ -252,13 +252,17 @@ class ReportProcessor:
                 WHERE cb.user_id = %(user_id)s;
             """, con=self.session.get_bind(), params={"user_id": self.user_id})
             if left_on_name in operating_data.columns.to_list():
-                data_to_match = operating_data[operating_data[left_on_name].isnull()]
+                data_to_match = operating_data.loc[operating_data[left_on_name].isnull(),~operating_data.columns.isin([left_on_name])]
 
             # keep index consistent during the merge so that values map correctly to operating_data
             merge_with_defaults = data_to_match.reset_index().merge(customer_locations,
-                    how="left", left_on=["customer", "city"], right_on=["customer_id", "city"]
-                ).set_index('index', drop=True).drop_duplicates()
-            operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str)
+                    how="left", left_on=["customer", "city"], right_on=["customer_id", "city"],
+                    suffixes=("_left",None)).set_index('index', drop=True).drop_duplicates()
+            
+            if left_on_name in operating_data.columns.to_list():
+                operating_data = operating_data.fillna(merge_with_defaults.loc[:,["state"]])
+            else:
+                operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str)
 
         merged_w_states_map = pd.merge(
                 operating_data, self.map_state_names,

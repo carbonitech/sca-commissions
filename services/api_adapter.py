@@ -229,7 +229,7 @@ class ApiAdapter:
 
         view_table = pd.read_sql(sql, con=db.get_bind())
 
-        view_table.columns = ["ID","Year","Month","Manufacturer","Salesman",
+        view_table.columns = ["ID","Submission","Year","Month","Manufacturer","Salesman",
                 "Customer Name","City","State","Inv Amt","Comm Amt"]
         view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
         view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)

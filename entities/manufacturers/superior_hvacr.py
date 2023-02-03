@@ -43,6 +43,9 @@ class PreProcessor(AbstractPreProcessor):
         result = result.loc[:, [customer_name_col_comm_file, city_name_col_sales_file, inv_col_comm_file, comm_col_comm_file]]
         result = result.reset_index(drop=True)
 
+        result.loc[:,inv_col_comm_file] = result[inv_col_comm_file]*100
+        result.loc[:,comm_col_comm_file] = result[comm_col_comm_file]*100
+
         for col in [customer_name_col_comm_file,city_name_col_sales_file]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()

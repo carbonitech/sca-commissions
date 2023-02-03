@@ -164,7 +164,7 @@ class ApiAdapter:
         customers = CUSTOMERS
         cities = CITIES
         states = STATES
-        sql = sqlalchemy.select(commission_data_raw.id,
+        sql = sqlalchemy.select(commission_data_raw.id, commission_data_raw.submission_id,
             submission_data.reporting_year, submission_data.reporting_month,
             manufacturers.name, reps.initials, customers.name,
             cities.name, states.name, commission_data_raw.inv_amt,

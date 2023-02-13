@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from os import getenv
 import requests
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
 from sqlalchemy.exc import IntegrityError
@@ -372,8 +371,10 @@ class ApiAdapter:
             
     @staticmethod
     def matched_user(user: User, model, reference_id: int, db: Session) -> bool:
-        # BUG this causes to an error to be thrown later when the id simply doesn't exist
-        return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
+        try:
+            return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
+        except:
+            return False
     
     @jsonapi_error_handling
     def get_related(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:

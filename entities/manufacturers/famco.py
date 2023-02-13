@@ -30,11 +30,14 @@ class PreProcessor(AbstractPreProcessor):
 
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
-        
+
         for col in [customer_name_col,city_name_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.columns = self.result_columns
+        
+        col_names = self.result_columns.copy()
+        col_names.pop(2) # remove "state"
+        result.columns = col_names
         return PreProcessedData(result,events)
 
 

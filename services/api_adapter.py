@@ -82,7 +82,7 @@ def get_user(request: Request) -> User:
 def preverified(access_token: str) -> dict | None:
     session = next(get_db())
     parameters = {"access_token": access_token, "current_time": int(time.time())}
-    # BUG without DISTINCT, may run into multiple of the same token cached
+    # without DISTINCT, may run into multiple of the same token cached
     sql = "SELECT DISTINCT nickname, name, email, verified FROM user_tokens WHERE access_token = :access_token and expires_at > :current_time"
     return session.execute(sql, parameters).one_or_none()
 

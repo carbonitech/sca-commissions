@@ -716,6 +716,15 @@ class ApiAdapter:
         for record in records:
             record["rep_id"]=default_rep
             record["user_id"]=user_id
+            record["store_number"]=None
+            loc_id_sql = """
+                SELECT loc.id
+                FROM locations as loc 
+                join cities on cities.name = loc.city
+                join states on states.name = loc.state
+                where cities.id = :city_id and states.id = :state_id
+                order by loc.id LIMIT 1;"""
+            record["location_id"] = db.execute(loc_id_sql, params={"city_id": record["city_id"], "state_id": record["state_id"]}).scalar_one_or_none()
             db.add(BRANCHES(**record))
         db.commit()
         return

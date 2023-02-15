@@ -46,10 +46,18 @@ class Branch(BaseModel):
     store_number: int|None = None
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
+class BranchRelatonshipFull(BaseModel):
+    customers: JSONAPIRelationshipObject|None
+    city_name: JSONAPIRelationshipObject|None
+    state_name: JSONAPIRelationshipObject|None
+    representative: JSONAPIRelationshipObject|None
 class BranchModification(JSONAPIBaseModification):
     id: int
     attributes: Branch|dict|None = {}
     relationships: BranchRelationship|dict|None = {}
+class NewBranch(JSONAPIBaseModification):
+    attributes: Branch
+    relationships:BranchRelatonshipFull
 
 ## customer ##
 class Customer(BaseModel):
@@ -116,6 +124,9 @@ class NewCityNameMappingRequest(BaseModel):
 class NewStateNameMappingRequest(BaseModel):
     data: NewStateNameMapping
 
+class NewBranchRequest(BaseModel):
+    data: NewBranch
+
 
 @dataclass
 class RequestModels:
@@ -126,6 +137,7 @@ class RequestModels:
     new_customer = NewCustomerRequest
     new_city = NewCityRequest
     new_state = NewStateRequest
+    new_branch = NewBranchRequest
 
 
 def convert_to_jsonapi(query: dict) -> dict:

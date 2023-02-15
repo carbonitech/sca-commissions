@@ -111,8 +111,9 @@ def hyphenate_name(table_name: str) -> str:
 def hyphenated_name(table_obj) -> str:
     return table_obj.__tablename__.replace("_","-")
 
-def hyphenate_attribute_keys(json_data: dict) -> dict:
-    json_data["data"]["attributes"] = {hyphenate_name(k):v for k,v in json_data["data"]["attributes"].items()}
+def hyphenate_json_obj_keys(json_data: dict) -> dict:
+    for hi_level in ("attributes","relationships"):
+        json_data["data"][hi_level] = {hyphenate_name(k):v for k,v in json_data["data"][hi_level].items()}
     return json_data
 
 def get_db():
@@ -528,7 +529,7 @@ class ApiAdapter:
     @jsonapi_error_handling
     def create_customer_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         model_name = hyphenated_name(CUSTOMER_NAME_MAP)
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event("New Record", CUSTOMER_NAME_MAP, session=db, user=user)
         return result
@@ -536,7 +537,7 @@ class ApiAdapter:
     @jsonapi_error_handling
     def create_city_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         model_name = hyphenated_name(CITY_NAME_MAP)
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event("New Record", CITY_NAME_MAP, session=db, user=user)
         return result
@@ -545,7 +546,7 @@ class ApiAdapter:
     @jsonapi_error_handling
     def create_state_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         model_name = hyphenated_name(STATE_NAME_MAP)
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event("New Record", STATE_NAME_MAP, session=db, user=user)
         return result
@@ -555,7 +556,7 @@ class ApiAdapter:
         model_name = hyphenated_name(CUSTOMERS)
         new_name: str = json_data["data"]["attributes"]["name"]
         json_data["data"]["attributes"]["name"] = new_name.upper().strip()
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event(
             "New Record",
@@ -573,7 +574,7 @@ class ApiAdapter:
         model_name = hyphenated_name(CITIES)
         new_name: str = json_data["data"]["attributes"]["name"]
         json_data["data"]["attributes"]["name"] = new_name.upper().strip()
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event(
             "New Record",
@@ -591,7 +592,7 @@ class ApiAdapter:
         model_name = hyphenated_name(STATES)
         new_name: str = json_data["data"]["attributes"]["name"]
         json_data["data"]["attributes"]["name"] = new_name.upper().strip()
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
         event.post_event(
             "New Record",
@@ -604,11 +605,25 @@ class ApiAdapter:
         return result
 
     @jsonapi_error_handling
+    def create_branch(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        model_name = hyphenated_name(BRANCHES)
+        hyphenate_json_obj_keys(json_data)
+        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
+        event.post_event(
+            "New Record",
+            BRANCHES,
+            db=db,
+            user=user,
+            id_=result["data"]["id"]
+        )
+        return result
+
+    @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict, user: User) -> JSONAPIResponse:
         if not self.matched_user(user, CUSTOMERS, customer_id, db):
             raise UserMisMatch()
         model_name = hyphenated_name(CUSTOMERS)
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
         event.post_event(
             "Record Updated",
@@ -625,7 +640,7 @@ class ApiAdapter:
         if not self.matched_user(user, BRANCHES, branch_id, db):
             raise UserMisMatch()
         model_name = hyphenated_name(BRANCHES)
-        hyphenate_attribute_keys(json_data)
+        hyphenate_json_obj_keys(json_data)
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling

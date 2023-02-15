@@ -141,10 +141,10 @@ class ReportProcessor:
     def _filter_for_existing_records_with_target_error_type(self) -> 'ReportProcessor':
         mask = self.error_table["reason"] == self.target_err.value
         table_target_errors = self.error_table.loc[mask]
-        if table_target_errors.empty:
-            raise EmptyTableException
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
         self.staged_data = self.error_table.copy()
+        if table_target_errors.empty:
+            raise EmptyTableException
         for sub_id in self.staged_data["submission_id"].unique().tolist():
             rows_affected = len(self.error_table[self.error_table["submission_id"]==sub_id])    
             msg = f"reprocessing of errors initiated by reassessment of {self.target_err.name} errors. {rows_affected} rows affected"

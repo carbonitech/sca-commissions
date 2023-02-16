@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi import JSONAPI_
@@ -75,6 +75,7 @@ class CustomerBranch(Base):
     store_number = Column(String)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
+    location_id = Column(Integer, ForeignKey("locations.id"))
     customers = relationship("Customer", back_populates="customer_branches")
     city_name = relationship("City", back_populates="branch_cities")
     state_name = relationship("State", back_populates="branch_states")
@@ -249,6 +250,13 @@ class CommissionSplit(Base):
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     split_proportion = Column(Float)
     
+class Location(Base):
+    __tablename__ = 'locations'
+    id = Column(Integer,primary_key=True)
+    city = Column(String(200))
+    state = Column(String(20))
+    lat = Column(Numeric)
+    long = Column(Numeric)
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI_(Base)

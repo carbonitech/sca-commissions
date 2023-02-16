@@ -17,19 +17,19 @@ class PreProcessor(AbstractPreProcessor):
 
         events = []
         customer_name: int = 2
-        city_state_regex: str = r"^(.*),\s*?(\w{2})" # searches for format like Atlanta, GA at beginning of str
+        city_state_regex: str = r"^([^().\d/_]+?),\s*?(\w{2})" # searches for format like Atlanta, GA at beginning of str
         inv_col: int = -1
         customer_boundary_value: str = "Customer :"
         comm_rate: float = kwargs.get("standard_commission_rate")
 
+        # grab first text element of PDF page header
         data_printed_date = data.iloc[0]
-        events.append(("Formatting",f"grabbed first text element of PDF page header: {data_printed_date}",self.submission_id))
+        # remove all text elements matching the header elements in the first 42 text elements
         data_cleaned = data.loc[~data.isin(data[:42])].str.replace(data_printed_date,"")
-        events.append(("Formatting",f"removed all text elements matching the header elements in the first 42 text elements",self.submission_id))
+        # remove page number lines using regex
         data_cleaned = data_cleaned[~data_cleaned.str.contains(r"PAGE:\s*\d")].reset_index(drop=True)
-        events.append(("Formatting",f"removed page number lines using regex",self.submission_id))
+        # use boundary value `customer_boundary_value` to isolate customers
         customer_boundaries: list[int] = data_cleaned.loc[data_cleaned.str.contains(customer_boundary_value)].index.tolist()
-        events.append(("Formatting",f"used boundary value {customer_boundary_value} to isolate customers",self.submission_id))
         compiled_data = {
             "customer": [],
             "city": [],

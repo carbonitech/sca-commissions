@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, User, get_user
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+import json
 
 api = ApiAdapter()
 router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
@@ -14,7 +15,18 @@ async def get_all_submissions(query: Query=Depends(), db: Session=Depends(get_db
 @router.get("/{submission_id}", tags=["submissions"])
 async def get_submission_by_id(submission_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_submission_jsonapi(db,submission_id,jsonapi_query,user)
+    raw_result = api.get_submission_jsonapi(db,submission_id,jsonapi_query,user)
+    
+    ## converting row-data from a string of a dict to an actual dict before sending back in the included object
+    def convert_row_data_to_dict(json_obj: dict):
+        if json_obj.get("type") != "errors":
+            return json_obj
+        json_obj["attributes"]["row-data"] = json.loads(json_obj["attributes"]["row-data"])
+        return json_obj
+
+    new_included = list(map(convert_row_data_to_dict, raw_result["included"]))
+    raw_result.update({"included": new_included})
+    return raw_result
 
 @router.put("/{submission_id}", tags=["submissions"])
 async def modify_submission_by_id():

@@ -447,7 +447,7 @@ class ApiAdapter:
         return models.serializer.get_collection(db,query,REPS, user_id)
     
     @jsonapi_error_handling
-    def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict, user: User) -> JSONAPIResponse:
+    def get_submission_jsonapi(self, db: Session, submission_id: int, query: dict, user: User) -> JSONAPIResponse | dict:
         if not self.matched_user(user, SUBMISSIONS_TABLE, submission_id, db):
             raise UserMisMatch()
         model_name = hyphenate_name(SUBMISSIONS_TABLE.__tablename__)

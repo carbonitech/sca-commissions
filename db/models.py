@@ -113,6 +113,7 @@ class ManufacturersReport(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     default_branch = Column(Integer, ForeignKey("customer_branches.id"))
+    report_label = Column(String)
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')

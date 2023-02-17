@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, User, get_user
 from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 import json
+import math
 
 api = ApiAdapter()
 router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
@@ -21,7 +22,13 @@ async def get_submission_by_id(submission_id: int, query: Query=Depends(), db: S
     def convert_row_data_to_dict(json_obj: dict):
         if json_obj.get("type") != "errors":
             return json_obj
-        json_obj["attributes"]["row-data"] = json.loads(json_obj["attributes"]["row-data"])
+        row_data_dict: dict = json.loads(json_obj["attributes"]["row-data"])
+        corrected_row_data = {}
+        for k,v in row_data_dict.items():
+            if isinstance(v, float) and math.isnan(v):
+                continue
+            corrected_row_data[k] = v
+        json_obj["attributes"]["row-data"] = corrected_row_data
         return json_obj
 
     new_included = list(map(convert_row_data_to_dict, raw_result["included"]))

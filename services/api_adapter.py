@@ -112,7 +112,7 @@ def hyphenated_name(table_obj) -> str:
     return table_obj.__tablename__.replace("_","-")
 
 def hyphenate_json_obj_keys(json_data: dict) -> dict:
-    for hi_level in ("attributes","relationships"):
+    for hi_level in json_data["data"].keys():
         json_data["data"][hi_level] = {hyphenate_name(k):v for k,v in json_data["data"][hi_level].items()}
     return json_data
 

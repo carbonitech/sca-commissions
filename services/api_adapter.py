@@ -113,6 +113,8 @@ def hyphenated_name(table_obj) -> str:
 
 def hyphenate_json_obj_keys(json_data: dict) -> dict:
     for hi_level in json_data["data"].keys():
+        if not isinstance(json_data["data"][hi_level], dict):
+            continue
         json_data["data"][hi_level] = {hyphenate_name(k):v for k,v in json_data["data"][hi_level].items()}
     return json_data
 

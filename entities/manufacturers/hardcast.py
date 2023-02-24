@@ -25,19 +25,18 @@ class PreProcessor(AbstractPreProcessor):
 
         drop_col = "Sales Group"
         data = data.drop(columns=drop_col)
-        events.append(("Formatting",f"dropped column {drop_col}",self.submission_id))
         data = data.loc[~(data["Comm Rate"] == "*"),:]
-        events.append(("Formatting","removed all rows with a star (*) in the Comm Rate column",self.submission_id))
         data = data.dropna(how="all")
-        events.append(("Formatting",f"dropped rows with all blanks",self.submission_id))
         data = data.fillna(method="ffill")
-        events.append(("Formatting",f"converted to a flat table by copying customer info (name, city, state) into blank rows",self.submission_id))
         data = data[data[customer_name_col].str.contains(customer_name_col) == False]
-        events.append(("Formatting",f"removed duplicate header rows",self.submission_id))
+
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        for col in [customer_name_col, city_name_col, state_name_col]:
+            result.loc[:, col] = result[col].str.upper()
+            result.loc[:, col] = result[col].str.strip()
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
-        result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
+        result.columns = self.result_columns
         return PreProcessedData(result,events)
 
 

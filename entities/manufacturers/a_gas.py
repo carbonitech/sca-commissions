@@ -21,7 +21,6 @@ class PreProcessor(AbstractPreProcessor):
         no_state: bool = False
 
         data = data.T.reset_index().T.reset_index()  # move headers to first row and keep row index intact
-        events.append(("Formatting","moved headers to first row. Headers now integers",self.submission_id))
         try:
             city_state_data =  data.pop(city_state_col)
             data[[city_name_col, state_name_col]] = city_state_data.str.split(", ", expand=True)
@@ -29,9 +28,7 @@ class PreProcessor(AbstractPreProcessor):
             # assuming this error means the state was not included in the data, only city.
             data[city_name_col] = city_state_data
             no_state = True
-        events.append(("Formatting",f"split city-state, column {city_state_col}, into {city_name_col} and {state_name_col} columns",self.submission_id))
         data = data.dropna(subset=city_name_col)
-        events.append(("Formatting",f"removed all rows with no values in the {city_name_col} column",self.submission_id))
         if no_state:
             result = data.loc[:,[customer_name_col, city_name_col, inv_col, comm_col]]
         else:    

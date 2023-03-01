@@ -116,23 +116,22 @@ class PreProcessor(AbstractPreProcessor):
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         events = []
-        customer_name_col: str = "BILL TO ADDRESS 1"
-        city_name_col: str = "BILL TO ADDRESS 4"
-        state_name_col: str = "BILL TO STATE"
-        inv_col: str = "MTD SALES $"
+        customer_name_col: str = "bill to address 1"
+        city_name_col: str = "bill to address 4"
+        state_name_col: str = "bill to state"
+        inv_col: str = "mtd sales $"
         comm_col: str = "comm_amt" 
         comm_col_index: int = -1 # commission is last column but isn't named properly
         
 
+        data = data.rename(columns=lambda col: col.strip().lower())
         data = data.dropna(axis=1, how='all')
-        events.append(("Formatting","removed columns with no values",self.submission_id))
         data = data.dropna(subset=data.columns.to_list()[0])
-        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
         data.loc[:,comm_col] = data.iloc[:,comm_col_index]
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result.loc[:,inv_col] = result[inv_col]*100
         result.loc[:,comm_col] = result[comm_col]*100
-        result.columns = self.result_columns # local result.cols are same length and position as self.result_columns
+        result.columns = self.result_columns
         return PreProcessedData(result,events)
 
     def _rebate_detail_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

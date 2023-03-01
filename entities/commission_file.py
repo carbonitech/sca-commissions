@@ -16,6 +16,8 @@ class CommissionFile:
         For PDF files, two strategies are available
             "text": raw text dumped into a Panadas Series. Lines split by newline/return characted 
             "table": if the data is formatted as a table in the sheet, extract that table as-is.
+
+        BUG: combining sheets with minor differences in column names causes errors. normalization should be done before combination. Consider adding a database field that sets which row begins headers
         """
         if strategy := pdf:
             if strategy.lower() == "text":

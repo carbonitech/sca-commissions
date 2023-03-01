@@ -34,6 +34,7 @@ class ReportProcessor:
 
 
     TODO: refactor branch id handling. There's a lot of retrying/redirecting, even recursion. This area of the code is confusing.
+    BUG: reintegration does not attempt to use store numbers when present
     """
     def __init__(
             self,

@@ -9,7 +9,6 @@ from entities.error import Error
 @dataclass
 class PreProcessedData:
     data: DataFrame
-    events: List[tuple]
     
 
 @dataclass

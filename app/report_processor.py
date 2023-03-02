@@ -32,9 +32,6 @@ class ReportProcessor:
     another as a branch, a new branch is added to the database without a rep assignment. (While this 
     does need user attention to add a rep assignment, it's not going to the error's table)
 
-
-    TODO: refactor branch id handling. There's a lot of retrying/redirecting, even recursion. This area of the code is confusing.
-    BUG: reintegration does not attempt to use store numbers when present
     """
     def __init__(
             self,
@@ -49,15 +46,11 @@ class ReportProcessor:
 
         self.skip = False
         self.reintegration = False
-        self.use_store_numbers = False
         self.inter_warehouse_transfer = False
         self.session = session
         self.api = api_adapter.ApiAdapter()
         self.user_id = user.id(self.session) if user.verified else None
         self.submission_id = submission_id
-        self.lookup_state = False
-        self.use_default_branch_city = False
-        self.split_by_defaults = False
 
         if not submission_id:
             del self.submission_id
@@ -66,10 +59,9 @@ class ReportProcessor:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
                 self.submission = submission
                 self.preprocessor = preprocessor
+                self.report_id = submission.report_id
                 self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
                 self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
-                self.default_branch = self.api.get_default_branch(session, submission.report_id, user_id=self.user_id)
-
 
         elif target_err and isinstance(error_table, pd.DataFrame):
             if isinstance(target_err, ErrorType):
@@ -85,10 +77,8 @@ class ReportProcessor:
             self.skip = True
             return
 
-        self.map_customer_names = self.api.get_mappings(session, "map_customer_names", user_id=self.user_id)
-        self.map_city_names = self.api.get_mappings(session, "map_city_names", user_id=self.user_id)
-        self.map_state_names = self.api.get_mappings(session, "map_state_names", user_id=self.user_id)
         self.branches = self.api.get_branches(session, user_id=self.user_id)
+        self.id_string_matches = self.api.get_id_string_matches(session, user_id=self.user_id)
 
     def reset_branch_ref(self):
         self.branches = self.api.get_branches(db=self.session, user_id=self.user_id)
@@ -163,125 +153,6 @@ class ReportProcessor:
         self.api.delete_errors(db=self.session, record_ids=self.staged_data["id"].to_list())
         return self
 
-    def fill_customer_ids(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
-        """converts customer column customer id #s using the map_customer_names reference table"""
-        left_on_name = "customer"
-        if not pipe:
-            operating_data = data
-        else:
-            operating_data = self.staged_data
-
-        if operating_data.empty:
-            return self if pipe else operating_data
-
-        merged_with_name_map = pd.merge(
-                operating_data, self.map_customer_names,
-                how="left", left_on=left_on_name, right_on="recorded_name"
-            )
-        # customer column is going from a name string to an id integer
-        operating_data[left_on_name] = merged_with_name_map.loc[:,"customer_id"].fillna(0).astype(int).to_list()
-
-        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
-        self._send_event_by_submission(no_match_indices,ErrorType(1))
-        operating_data = self._filter_out_any_rows_unmapped(operating_data)
-        if operating_data.empty:
-            raise EmptyTableException
-        if pipe:
-            self.staged_data = operating_data
-            return self
-        return operating_data
-
-
-    def fill_city_ids(self, data=pd.DataFrame(), pipe=True, use_lookup: bool=False) -> Union['ReportProcessor',pd.DataFrame]:
-        """converts city column city id #s using the map_city_names reference table"""
-        left_on_name = "city"
-        if not pipe:
-            operating_data = data
-        else:
-            operating_data = self.staged_data
-
-        if operating_data.empty:
-            return self if pipe else operating_data
-
-        if use_lookup: # default branch city by state
-            all_defaults = pd.read_sql("""
-                SELECT cb.customer_id, loc.city, loc.state
-                from customer_branches as cb
-                join locations as loc
-                on loc.id = cb.location_id
-                where default_branch
-                and cb.user_id = %(user_id)s;
-                """, self.session.get_bind(),params={"user_id": self.user_id})
-            merge_with_defaults = pd.merge(operating_data, all_defaults,
-                    how="left", left_on=["customer","state"], right_on=["customer_id", "state"])
-            operating_data[left_on_name] = merge_with_defaults.loc[:,"city"].fillna("NOT FOUND").astype(str).to_list()
-
-
-        merged_w_cities_map = pd.merge(
-                operating_data, self.map_city_names,
-                how="left", left_on=left_on_name, right_on="recorded_name"
-        )
-
-        # city column is going from a name string to an id integer
-        operating_data[left_on_name] = merged_w_cities_map.loc[:,"city_id"].fillna(0).astype(int).to_list()
-        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
-        self._send_event_by_submission(no_match_indices,ErrorType(2))
-        operating_data = self._filter_out_any_rows_unmapped(operating_data)
-        if pipe:
-            self.staged_data = operating_data
-            return self
-        return operating_data
-
-
-    def fill_state_ids(self, data=pd.DataFrame(), pipe=True, use_lookup: bool=False) -> Union['ReportProcessor',pd.DataFrame]:
-        """converts column supplied in the args to id #s using the map_state_names reference table"""
-        left_on_name = "state"
-        if not pipe:
-            operating_data = data
-        else:
-            operating_data = self.staged_data
-
-        if operating_data.empty:
-            return self if pipe else operating_data
-        if use_lookup:
-            data_to_match = operating_data
-            customer_locations = pd.read_sql("""
-                SELECT cb.customer_id, ci.id as city, l.state
-                FROM customer_branches as cb
-                JOIN locations as l on l.id = cb.location_id
-                JOIN cities as ci on ci.name = l.city
-                WHERE cb.user_id = %(user_id)s;
-            """, con=self.session.get_bind(), params={"user_id": self.user_id})
-            if left_on_name in operating_data.columns.to_list():
-                data_to_match = operating_data.loc[operating_data[left_on_name].isnull(),~operating_data.columns.isin([left_on_name])]
-
-            # keep index consistent during the merge so that values map correctly to operating_data
-            merge_with_defaults = data_to_match.reset_index().merge(customer_locations,
-                    how="left", left_on=["customer", "city"], right_on=["customer_id", "city"],
-                    suffixes=("_left",None)).set_index('index', drop=True).drop_duplicates()
-            
-            if left_on_name in operating_data.columns.to_list():
-                operating_data = operating_data.fillna(merge_with_defaults.loc[:,["state"]])
-            else:
-                operating_data[left_on_name] = merge_with_defaults.loc[:,"state"].fillna("NOT FOUND").astype(str)
-
-        merged_w_states_map = pd.merge(
-                operating_data, self.map_state_names,
-                how="left", left_on=left_on_name, right_on="recorded_name"
-            )
-
-        # state column is going from a name string to an id integer
-        operating_data[left_on_name] = merged_w_states_map.loc[:,"state_id"].fillna(0).astype(int).to_list()
-        
-        no_match_indices = operating_data.loc[operating_data[left_on_name] == 0].index.to_list()
-        self._send_event_by_submission(no_match_indices,ErrorType(3))
-        operating_data = self._filter_out_any_rows_unmapped(operating_data)
-        if pipe:
-            self.staged_data = operating_data
-            return self
-        return operating_data
-
-
     def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
         """
         Adds the customer's branch id, if the assignment exists.
@@ -289,7 +160,6 @@ class ReportProcessor:
 
         """
         new_column: str = "customer_branch_id"
-        left_on_list = ["customer","city","state"]
 
         if not pipe:
             operating_data = data
@@ -300,105 +170,23 @@ class ReportProcessor:
             operating_data["customer_branch_id"] = None
             return self if pipe else operating_data
 
-        # some customers have two stores in the same geo differentiated only by store numbers.
-        # if a seperate canonical city name is used, dedup isn't needed, but it doesn't hurt
-        deduped_branches = self.branches.drop_duplicates(subset=["customer_id", "city_id", "state_id"])
-
         merged_with_branches = pd.merge(
-                operating_data, deduped_branches,
-                how="left", left_on=left_on_list,
-                right_on=["customer_id","city_id","state_id"],
+                operating_data, self.id_string_matches[self.id_string_matches["report_id"] == self.report_id],
+                how="left", left_on="id_string",
+                right_on="match_string",
                 suffixes=(None,"_ref_table")
         ) 
-        try:
-            new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
-        except KeyError:
-            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+        
+        new_col_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
 
         operating_data.loc[:, new_column] = new_col_values
 
-        if "store_number" in operating_data.columns.to_list():
-            no_match_table = operating_data.loc[operating_data[new_column]==0,left_on_list+["store_number"]]
-            no_match_table.columns = ["customer_id", "city_id", "state_id", "store_number"]
+        if pipe:
+            operating_data = self._filter_out_any_rows_unmapped(operating_data)
+            self.staged_data = operating_data
+            return self
         else:
-            no_match_table = operating_data.loc[operating_data[new_column]==0,left_on_list]
-            no_match_table.columns = ["customer_id", "city_id", "state_id"]
-
-        if not no_match_table.empty:
-            no_match_records = no_match_table.drop_duplicates()
-            self.api.create_new_customer_branch_bulk(self.session,self.user_id,no_match_records.to_dict(orient="records"))
-            self._send_event_by_submission(
-                no_match_records.index.to_list(),
-                "Formatting",f"added {len(no_match_records)} branches to the branches table" #TODO if multiple submissions are part of this step in a reintegration, this same message shows up in processing steps for both, which is inaccurate for both and makes it appear as though a multiple of the actual number was added
-            )
-            self.reset_branch_ref()
-            result = self.add_branch_id(data=operating_data, pipe=pipe)
-            return result
-        else:
-            if pipe:
-                operating_data = self._filter_out_any_rows_unmapped(operating_data)
-                self.staged_data = operating_data
-                return self
-            else:
-                return operating_data
-
-
-    def add_branch_id_by_store_number(self) -> 'ReportProcessor':
-        """
-        if branch numbers are in the preprocessed data in place of customer info, 
-            this method replaces matching by customer name, 
-            city name, and state name seperately.
-        However, if there's unmatched data and there are customer, city, and state columns in the data
-            attempt to use individual name mappings
-            
-        Unmatched data is put into the errors table
-        """
-        new_column: str = "customer_branch_id"
-        left_on_list = ["store_number", "customer"]
-        data_copy = self.staged_data.copy()
-        try:
-            # for int-like store numbers -> remove the float-like representation from the string
-            data_copy["store_number"] = data_copy["store_number"].astype(float).astype(int).astype(str)
-        except:
-            # store number is likely alphanumeric and will match properly
-            pass
-
-        merged_with_branches = pd.merge(
-                data_copy, self.branches,
-                how="left", left_on=left_on_list,
-                right_on=["store_number", "customer_id"],
-                suffixes=(None,"_ref_table")
-        )
-        try:
-            new_col_values = merged_with_branches.loc[:,"id_ref_table"].fillna(0).astype(int).to_list()
-        except KeyError:
-            new_col_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
-
-        self.staged_data.loc[:, new_column] = new_col_values
-
-        # if city and state are present, try going with mapping those and concatentating what you can get
-        table_columns = set(data_copy.columns.to_list())
-        core_columns = ["city", "state"]
-        if set(core_columns).issubset(table_columns):
-            no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, ["submission_id"] + left_on_list + core_columns]
-            msg = f"Using store numbers, {str(len(no_match_table))} rows failed to match. City and State columns are present. Attempting to map customers by mapping cities and states instead."
-            self._send_event_by_submission(no_match_table.index.to_list(),"Formatting",msg=msg)
-            if not no_match_table.empty:
-                retry_result = self.fill_city_ids(no_match_table, pipe=False)
-                retry_result = self.fill_state_ids(retry_result, pipe=False)
-                retry_result = self.add_branch_id(retry_result, pipe=False)
-                if not retry_result.empty:
-                    #only update values with matching index to the data subset re-processed
-                    self.staged_data.loc[
-                        self.staged_data.index.isin(retry_result.index),
-                        new_column] = retry_result[new_column]
-                    self.staged_data[new_column] = self.staged_data[new_column].fillna(0).astype(int)
-                self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data, suppress_event=True) # will duplicate all drops made implicitly above if not suppressed
-        else:   # otherwise just send these match failures to errors table
-            no_match_table = self.staged_data.loc[self.staged_data[new_column]==0, left_on_list]
-            self._send_event_by_submission(no_match_table.index.to_list(),ErrorType(4))
-            self.staged_data = self._filter_out_any_rows_unmapped(self.staged_data)
-        return self
+            return operating_data
 
     def assign_value_by_transfer_direction(self) -> 'ReportProcessor':
         """
@@ -426,7 +214,6 @@ class ReportProcessor:
 
 
     def drop_extra_columns(self) -> 'ReportProcessor':
-        
         self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id"]]
         return self
 
@@ -448,27 +235,9 @@ class ReportProcessor:
             col_list = self.ppdata.data.columns.to_list()
 
         match col_list:
-            # additional columns
-            case ["store_number", *other_cols]:
-                self.use_store_numbers = True
-            case [*other_cols, "direction", "store_number"]:
-                self.use_store_numbers = True
+            case [*other_cols, "direction"]:
                 self.inter_warehouse_transfer = True
-            # missing columns
-            case ["customer", "city", "inv_amt", "comm_amt"]:
-                self.lookup_state = True
-            case ["customer", "state", "inv_amt", "comm_amt"]:
-                self.use_default_branch_city = True
-            case ["customer", "inv_amt", "comm_amt"]:
-                self.split_by_defaults = True
         
-        if self.reintegration:
-            if "state" in col_list:
-                if self.staged_data["state"].isnull().any():
-                    self.lookup_state = True
-            else:
-                self.lookup_state = True
-
         return self
 
     def preprocess(self) -> 'ReportProcessor':
@@ -482,19 +251,11 @@ class ReportProcessor:
             "additional_file_1": self.submission.additional_file_1,
             "standard_commission_rate": self.standard_commission_rate,
             "split": self.split,
-            "default_branch": self.default_branch
         }
         try:
             ppdata = preprocessor.preprocess(**optional_params)
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
-
-        for step_num, event_arg_tuple in enumerate(ppdata.events):
-            if step_num == 0:
-                event.post_event(*event_arg_tuple, user_id=self.user_id, start_step=1, session=self.session)
-            else:
-                event.post_event(*event_arg_tuple, user_id=self.user_id, session=self.session)
-
 
         self.ppdata = ppdata
         self.staged_data = ppdata.data.copy()
@@ -524,9 +285,6 @@ class ReportProcessor:
         self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
         return self
 
-    def split_customer_values_by_default_branches(self) -> 'ReportProcessor':
-        all_defaults = self.session.execute("SELECT id, customer_id from customer_branches where default_branch;")
-        
 
     def process_and_commit(self) -> int|None:
         """
@@ -541,33 +299,20 @@ class ReportProcessor:
             return
         try:
             if not self.reintegration:
-                (
-                    self
-                    .set_submission_status("PROCESSING")
-                    .preprocess()
-                    .insert_submission_id()
+                self.set_submission_status("PROCESSING")\
+                    .preprocess()\
+                    .insert_submission_id()\
                     .insert_user_id()
-                )
             else:
-                (
-                    self
-                    ._filter_for_existing_records_with_target_error_type()
+                self._filter_for_existing_records_with_target_error_type()\
                     .remove_error_db_entries()
-                )
-            self.set_switches().fill_customer_ids()
+            self.set_switches()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
-            if self.use_store_numbers:
-                self.add_branch_id_by_store_number()
-            elif self.split_by_defaults:
-                self.split_customer_values_by_default_branches()
             else:
-                (
-                    self
-                    .fill_city_ids(use_lookup=self.use_default_branch_city)
-                    .fill_state_ids(use_lookup=self.lookup_state)
-                    .add_branch_id()
-                )
+                    print(self.staged_data)
+                    self.add_branch_id()
+                    print(self.staged_data)
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
@@ -579,9 +324,8 @@ class ReportProcessor:
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
         else:
-            self\
-            .drop_extra_columns()\
-            .insert_recorded_at_column()\
-            .register_commission_data()\
-            .set_submission_status("COMPLETE")
+            self.drop_extra_columns()\
+                .insert_recorded_at_column()\
+                .register_commission_data()\
+                .set_submission_status("COMPLETE")
         return self.submission_id if not self.reintegration else None

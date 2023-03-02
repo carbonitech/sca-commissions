@@ -20,15 +20,13 @@ class PreProcessor(AbstractPreProcessor):
 
     def _standard_report_preprocessing(self,data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the 'Detail' tab of the ADP commission report"""
-        events = []
-        customer_name_col: str = "Customer.1"
-        city_name_col: str = "ShipToCity"
-        state_name_col: str = "ShpToState"
-        inv_col: str = "NetSales"
-        comm_col: str = "Rep1Commission"
+        customer_name_col: str = "customer.1"
+        city_name_col: str = "shiptocity"
+        state_name_col: str = "shptostate"
+        inv_col: str = "netsales"
+        comm_col: str = "rep1commission"
 
-        data.columns = [col.replace(" ","") for col in data.columns.tolist()]
-        events.append(("Formatting","removed spaces from column names",self.submission_id))
+        data.columns = [col.replace(" ","").lower() for col in data.columns.tolist()]
 
         # convert dollars to cents to avoid demical imprecision
         data[inv_col] = data.loc[:,inv_col].apply(lambda amt: amt*100)
@@ -39,61 +37,44 @@ class PreProcessor(AbstractPreProcessor):
 
         # sum by account convert to a flat table
         piv_table_values = [inv_col, comm_col]
-        piv_table_index = [customer_name_col,city_name_col,state_name_col,"Customer","ShipTo"]
+        piv_table_index = [customer_name_col,city_name_col,state_name_col,"customer","shipto"]
         result = pd.pivot_table(
             data,
             values=piv_table_values,
             index=piv_table_index,
             aggfunc=np.sum).reset_index()
         
-        events.append(("Formatting","grouped sales and commission by sold-to, "
-                "ship-to, customer name, city, and state (pivot table)",self.submission_id))
-
-        result = result.drop(columns=["Customer","ShipTo"])
-        events.append(("Formatting", "dropped the ship-to and sold-to columns",self.submission_id))
+        result = result.drop(columns=["customer","shipto"])
         for col in [customer_name_col,city_name_col,state_name_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.columns = self.result_columns
 
-        return PreProcessedData(result, events)
+        result["id_string"] = result[[customer_name_col, city_name_col, state_name_col]].apply("_".join, axis=1)
+        result.columns = ["customer", "city", "state", "inv_amt", "comm_amt", "id_string"]
+        return PreProcessedData(result)
 
 
     def _coburn_report_preprocessing(self,data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """
         Process any tab of the report for Coburn's.
         Only the the sums of sales and commissions are used, 
-            and they are reported as a single entry of negative amounts,
-            under Customer: COBURN, City: VARIOUS, State: MS
+            and they are reported as a single entry of negative amounts
         """
-        events = []
-        default_branch: dict[str,str] = kwargs.get("default_branch")
-
         comm_col_before = data.columns.values[-1]
         comm_col_after = "Commission"
         data = data.rename(columns={comm_col_before: comm_col_after}) # if commission rate changes, this column name would change
-        events.append(("Formatting",f"renamed last column {str(comm_col_before)} to {comm_col_after}",
-            self.submission_id))
         data.columns = [col.replace(" ","") for col in data.columns.tolist() if isinstance(col,str)]
-        events.append(("Formatting","removed spaces from column names",self.submission_id))
 
         na_filter_col = "Date"
         branch_total_amount_filter = "Amount"
         key_cols = ["Amount","Branch","Location","Commission"]
         data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
         data = data[~data[branch_total_amount_filter].isna()]
-        events.append(("Formatting",f"filtered for only blank rows in the {na_filter_col} column",
-            self.submission_id))
-        events.append(("Formatting",f"filtered out blank rows in the {branch_total_amount_filter} column",
-            self.submission_id))
-        events.append(("Formatting",f"filtered out all columns EXCEPT {', '.join(key_cols)}",
-            self.submission_id))
 
         def strip_branch_number(value: str) -> int:
             return value.lower().strip().replace(" total","")
 
         data["Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
-        events.append(("Formatting","striped Branch column down to branch number only",self.submission_id))
 
         # convert dollars to cents to avoid demical imprecision
         data.loc[:,"Amount"]= data["Amount"].fillna(0).apply(lambda amt: amt*100)
@@ -103,14 +84,14 @@ class PreProcessor(AbstractPreProcessor):
         total_inv_adj = -data["Amount"].sum()
         total_comm_adj = -data["Commission"].sum()
         
-        result = pd.DataFrame([list(default_branch.values()) + [total_inv_adj, total_comm_adj]],
+        result = pd.DataFrame([total_inv_adj, total_comm_adj],
             columns=self.result_columns)
         ref_cols = self.result_columns[:3]
 
         for ref_col in ref_cols:
             result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
 
-        return PreProcessedData(result, events)
+        return PreProcessedData(result)
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

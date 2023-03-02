@@ -9,44 +9,6 @@ from app.jsonapi import JSONAPI_
 
 Base = declarative_base()
 
-class City(Base):
-    __tablename__ = 'cities'
-    id = Column(Integer,primary_key=True)
-    name = Column(String)
-    deleted = Column(DateTime)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    branch_cities = relationship("CustomerBranch", back_populates="city_name")
-    map_city_names = relationship("MapCityName", back_populates="cities")
-    __table_args__ = (UniqueConstraint("name", "user_id"),)
-
-class MapCityName(Base):
-    __tablename__ = 'map_city_names'
-    id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
-    city_id = Column(Integer, ForeignKey("cities.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    cities = relationship("City", back_populates="map_city_names")
-    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
-
-class State(Base):
-    __tablename__ = 'states'
-    id = Column(Integer,primary_key=True)
-    name = Column(String)
-    deleted = Column(DateTime)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    branch_states = relationship("CustomerBranch", back_populates="state_name")
-    map_state_names = relationship("MapStateName", back_populates="states")
-    __table_args__ = (UniqueConstraint("name", "user_id"),)
-
-class MapStateName(Base):
-    __tablename__ = 'map_state_names'
-    id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
-    state_id = Column(Integer, ForeignKey("states.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    states = relationship("State", back_populates="map_state_names")
-    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
-
 class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer,primary_key=True)
@@ -54,34 +16,17 @@ class Customer(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     customer_branches = relationship("CustomerBranch", back_populates="customers")
-    map_customer_names = relationship("MapCustomerName", back_populates="customers")
-
-class MapCustomerName(Base):
-    __tablename__ = 'map_customer_names'
-    id = Column(Integer,primary_key=True)
-    recorded_name = Column(String)
-    customer_id = Column(Integer, ForeignKey("customers.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    customers = relationship("Customer", back_populates="map_customer_names")
-    __table_args__ = (UniqueConstraint("recorded_name", "user_id"),)
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
     id = Column(Integer,primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
-    city_id = Column(Integer, ForeignKey("cities.id"))
-    state_id = Column(Integer, ForeignKey("states.id"))
-    deleted = Column(DateTime)
-    store_number = Column(String)
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     location_id = Column(Integer, ForeignKey("locations.id"))
     customers = relationship("Customer", back_populates="customer_branches")
-    city_name = relationship("City", back_populates="branch_cities")
-    state_name = relationship("State", back_populates="branch_states")
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")
-    manufacturers_reports = relationship("ManufacturersReport", back_populates="customer_branches")
 
 class Representative(Base):
     __tablename__ = 'representatives'
@@ -112,12 +57,10 @@ class ManufacturersReport(Base):
     pos_report = Column(Boolean)
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
-    default_branch = Column(Integer, ForeignKey("customer_branches.id"))
     report_label = Column(String)
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
-    customer_branches = relationship("CustomerBranch", back_populates="manufacturers_reports")
     commission_split = relationship("CommissionSplit")
 
 class Submission(Base):
@@ -209,11 +152,6 @@ class User(Base):
     commission_rates = relationship("UserCommissionRate")
     commission_splits = relationship("CommissionSplit")
     customers = relationship("Customer")
-    map_customer_names = relationship("MapCustomerName")
-    cities = relationship("City")
-    map_city_names = relationship("MapCityName")
-    states = relationship("State")
-    map_state_names = relationship("MapStateName")
     branches = relationship("CustomerBranch")
     representatives = relationship("Representative")
     manufacturers = relationship("Manufacturer")
@@ -258,6 +196,18 @@ class Location(Base):
     state = Column(String(20))
     lat = Column(Numeric)
     long = Column(Numeric)
+
+class IDStringMatch(Base):
+    __tablename__ = "id_string_matches"
+    id = Column(Integer,primary_key=True)
+    match_string = Column(String)
+    match_string_components = Column(TEXT)
+    report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
+    created_at = Column(DateTime)
+    auto_matched = Column(Boolean)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI_(Base)

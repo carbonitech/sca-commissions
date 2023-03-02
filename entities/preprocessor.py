@@ -5,8 +5,6 @@ from entities.commission_file import CommissionFile
 
 class AbstractPreProcessor(ABC):
     
-    result_columns = ["customer","city","state","inv_amt","comm_amt"]
-
     def __init__(self, report_name: str, submission_id: int, file: CommissionFile):
         self.report_name = report_name
         self.submission_id = submission_id

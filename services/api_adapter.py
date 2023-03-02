@@ -26,12 +26,12 @@ from entities.error import Error
 
 CUSTOMERS = models.Customer
 BRANCHES = models.CustomerBranch
-CITIES = models.City
-STATES = models.State
+CITIES = None
+STATES = None
 REPS = models.Representative
-CUSTOMER_NAME_MAP = models.MapCustomerName
-CITY_NAME_MAP = models.MapCityName
-STATE_NAME_MAP = models.MapStateName
+CUSTOMER_NAME_MAP = None
+CITY_NAME_MAP = None
+STATE_NAME_MAP = None
 MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
@@ -43,6 +43,7 @@ FORM_FIELDS = models.ReportFormFields
 USERS = models.User
 USER_COMMISSIONS = models.UserCommissionRate
 COMMISSION_SPLITS = models.CommissionSplit
+ID_STRINGS = models.IDStringMatch
 
 load_dotenv()
 
@@ -272,30 +273,20 @@ class ApiAdapter:
         session.execute(sql_submission)
         session.commit()
         
-    def get_mappings(self, db: Session, table: str, user_id: int) -> pd.DataFrame:
-        if table == "map_customer_names":
-            sql = sqlalchemy.select(CUSTOMER_NAME_MAP).where(CUSTOMER_NAME_MAP.user_id == user_id)
-        elif table == "map_city_names":
-            sql = sqlalchemy.select(CITY_NAME_MAP).where(CITY_NAME_MAP.user_id == user_id)
-        elif table == "map_state_names":
-            sql = sqlalchemy.select(STATE_NAME_MAP).where(STATE_NAME_MAP.user_id == user_id)
-        return pd.read_sql(sql,db.get_bind())
-
     def get_all_manufacturers(self, db: Session) -> dict:
         sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
         query_result = db.execute(sql).fetchall()
         return {id_: name_.lower().replace(" ","_").replace("-","_") for id_, name_ in query_result}
 
     def get_branches(self, db: Session, user_id: int) -> pd.DataFrame:
-        sql = sqlalchemy.select(BRANCHES).where(BRANCHES.user_id == user_id)
-        data = pd.read_sql(sql,con=db.get_bind())
-        def _try_convert_number(value: str) -> str:
-            try:
-                return str(int(float(value)))
-            except:
-                return value
-        data["store_number"] = data["store_number"].apply(_try_convert_number)
-        return data
+        return self.get_all_by_user_id(db, BRANCHES, user_id)
+    
+    def get_id_string_matches(self, db: Session, user_id: int) -> pd.DataFrame:
+        return self.get_all_by_user_id(db, ID_STRINGS, user_id)
+    
+    def get_all_by_user_id(self, db: Session, table: models.Base, user_id: int) -> pd.DataFrame:
+        sql = sqlalchemy.select(table).where(table.user_id == user_id)
+        return pd.read_sql(sql,con=db.get_bind())      
 
     def record_final_data(self, db: Session, data: pd.DataFrame) -> None:
         data_records = data.to_dict(orient="records")
@@ -381,12 +372,10 @@ class ApiAdapter:
     
     @jsonapi_error_handling
     def get_related(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
-        user_id: int = user.id(db=db)
         return models.serializer.get_related(db,{},primary,id_,secondary)
     
     @jsonapi_error_handling
     def get_relationship(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
-        user_id: int = user.id(db=db)
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
     
 
@@ -774,25 +763,6 @@ class ApiAdapter:
         result = db.execute(sql).scalar()
         return result
 
-    def get_default_branch(self, db: Session, report_id: int, user_id: int) -> dict[str,str]|None:
-        sql = sqlalchemy.select(CUSTOMERS.name,CITIES.name,STATES.name)\
-            .select_from(REPORTS)\
-            .join(BRANCHES)\
-            .join(CUSTOMERS)\
-            .join(CITIES)\
-            .join(STATES)\
-            .where(
-                sqlalchemy.and_(
-                    REPORTS.id == report_id,
-                    REPORTS.user_id == user_id
-                )
-            )
-        q_result = db.execute(sql).one_or_none()
-        if q_result:
-            name, city, state = q_result
-            result = {"name": name, "city": city, "state": state}
-            return result
-            
     def alter_sub_status(self, db: Session, submission_id: int, status: str) -> bool:
         sql = sqlalchemy.update(SUBMISSIONS_TABLE).values(status=status).where(SUBMISSIONS_TABLE.id==submission_id)
         try:

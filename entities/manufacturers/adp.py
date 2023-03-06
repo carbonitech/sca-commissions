@@ -61,35 +61,39 @@ class PreProcessor(AbstractPreProcessor):
             and they are reported as a single entry of negative amounts
         """
         comm_col_before = data.columns.values[-1]
-        comm_col_after = "Commission"
+        comm_col_after = "commission"
         data = data.rename(columns={comm_col_before: comm_col_after}) # if commission rate changes, this column name would change
-        data.columns = [col.replace(" ","") for col in data.columns.tolist() if isinstance(col,str)]
+        data.columns = [col.replace(" ","").lower() for col in data.columns.tolist() if isinstance(col,str)]
 
-        na_filter_col = "Date"
-        branch_total_amount_filter = "Amount"
-        key_cols = ["Amount","Branch","Location","Commission"]
+
+        na_filter_col = "date"
+        branch_total_amount_filter = "amount"
+        key_cols = ["amount","branch","location","commission"]
         data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
         data = data[~data[branch_total_amount_filter].isna()]
 
         def strip_branch_number(value: str) -> int:
             return value.lower().strip().replace(" total","")
 
-        data["Branch"] = data["Branch"].apply(strip_branch_number).astype(int)
+        data["branch"] = data["branch"].apply(strip_branch_number).astype(int)
 
         # convert dollars to cents to avoid demical imprecision
-        data.loc[:,"Amount"]= data["Amount"].fillna(0).apply(lambda amt: amt*100)
-        data.loc[:,"Commission"] = data["Commission"].fillna(0).apply(lambda amt: amt*100)
+        data.loc[:,"amount"]= data["amount"].fillna(0).apply(lambda amt: amt*100)
+        data.loc[:,"commission"] = data["commission"].fillna(0).apply(lambda amt: amt*100)
 
-        # amounts are negative to represent deductions from Coburn DC shipments to outside of the SCA territory
-        total_inv_adj = -data["Amount"].sum()
-        total_comm_adj = -data["Commission"].sum()
-        
-        result = pd.DataFrame([total_inv_adj, total_comm_adj],
-            columns=self.result_columns)
-        ref_cols = self.result_columns[:3]
+        # amounts are negative to represent deductions from Coburn DC shipments
+        total_inv_adj = -data["amount"].sum()
+        total_comm_adj = -data["commission"].sum()
 
-        for ref_col in ref_cols:
-            result[ref_col] = result.loc[:,ref_col].apply(str.upper).apply(str.strip)
+        cols = ["customer", "inv_amt", "comm_amt", "id_string"]
+        result = pd.DataFrame([["COBURN",total_inv_adj, total_comm_adj]],
+            columns=cols[:-1])
+
+        result.loc[:, cols[0]] = result[cols[0]].str.upper()
+        result.loc[:, cols[0]] = result[cols[0]].str.strip()
+
+        result["id_string"] = result[cols[0]]
+        result.columns = cols
 
         return PreProcessedData(result)
 
@@ -107,44 +111,24 @@ class PreProcessor(AbstractPreProcessor):
             and amounts per branch
 
         """
-        events = []
-        default_branch: dict[str,str] = kwargs.get("default_branch")  # only going to use the name
         split: float = kwargs.get("split", 1.0)
         comm_rate: float = kwargs.get("standard_commission_rate",0)
+        data.columns = [col.replace(" ","").lower() for col in data.columns.tolist() if isinstance(col,str)]
 
-        data = data.dropna(subset=data.columns.tolist()[0])
-        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
-
+        data = data.dropna(subset=data.columns[0])
         data = data.dropna(axis=1, how='all')
-        events.append(("Formatting","removed columns with no values",self.submission_id))
-
-        data.loc[:,"store_number"] = data.pop("Branch#").astype(str)
-        data.loc[:,"inv_amt"] = data.pop("Cost")*split*100
-        events.append(("Formatting",f"replaced 'Cost' column with {split*100:,.2f}% of the value, renamed as 'inv_amt'",
-            self.submission_id))
-
+        data.loc[:,"store_number"] = data.pop("branch#").astype(str)
+        data.loc[:,"inv_amt"] = data.pop("cost")*split*100
         data.loc[:,"comm_amt"] = data["inv_amt"]*comm_rate
-        events.append(("Formatting",f"added commissions column by calculating {comm_rate*100:,.2f}% of the inv_amt",
-            self.submission_id))
-
-        data.loc[:,"customer"] = default_branch["name"]
-        events.append(("Formatting",f"added a column with customer name {default_branch['name']} in all rows",
-            self.submission_id))
-
+        data.loc[:,"customer"] = "RE MICHEL"
         result = data.loc[:,["store_number", "customer", "inv_amt", "comm_amt"]]
-        return PreProcessedData(result, events)
+        result["id_string"] = result[["store_number", "customer"]].apply("_".join, axis=1)
+        return PreProcessedData(result)
         
 
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
-        events = []
-        # BUG use dynamic default branch instead of hard-coded value
-        default_branch: dict[str,str] = kwargs.get("default_branch")
-        default_customer_name = "LENNOX"
-
         data = data.dropna(subset=data.columns.tolist()[0])
-        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
-
         data.loc[:,"receiving"] = data["Plnt"]
         data.loc[:,"receiving_city"] = data["City"]
         data.loc[:,"receiving_state"] = data["Rg"]
@@ -158,9 +142,7 @@ class PreProcessor(AbstractPreProcessor):
         )
         data.loc[:,"inv_amt"] = data["Ext Price"]*100
         data.loc[:,"comm_amt"] = data["Commission"]*100
-        data.loc[:,"customer"] = default_customer_name
-        events.append(("Formatting",f"added a column with customer name {default_customer_name} in all rows",
-            self.submission_id))
+        data.loc[:,"customer"] = "LENNOX"
         result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state", "customer", "inv_amt", "comm_amt", "receiving", "sending"]
         result = data.loc[:,result_cols]
         
@@ -182,7 +164,8 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
         result.loc[:,"city"] = result["city"].str.upper()
         result.loc[:,"state"] = result["state"].str.upper()
-        return PreProcessedData(result, events)
+        result["id_string"] = result[["store_number", "customer", "city", "state"]].apply("_".join, axis=1)
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:

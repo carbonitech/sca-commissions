@@ -201,7 +201,6 @@ class IDStringMatch(Base):
     __tablename__ = "id_string_matches"
     id = Column(Integer,primary_key=True)
     match_string = Column(String)
-    match_string_components = Column(TEXT)
     report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
     customer_branch_id = Column(Integer, ForeignKey("customer_branches.id"))
     created_at = Column(DateTime)

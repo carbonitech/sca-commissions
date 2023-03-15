@@ -13,11 +13,12 @@ class CommissionFile:
         read only visible sheets in the excel file
         if combine_sheets is True, attempt to UNION all visible sheets
 
+        `skip` parameter allows skipping of rows or pages in the output, depending on the parsing strategy used
+
         For PDF files, two strategies are available
             "text": raw text dumped into a Panadas Series. Lines split by newline/return characted 
             "table": if the data is formatted as a table in the sheet, extract that table as-is.
 
-        BUG: combining sheets with minor differences in column names causes errors. normalization should be done before combination. Consider adding a database field that sets which row begins headers
         """
         if strategy := pdf:
             if strategy.lower() == "text":
@@ -35,19 +36,31 @@ class CommissionFile:
                 excel_file: pd.ExcelFile
                 visible_sheets = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
                 if combine_sheets:
-                    data = [excel_file.parse(sheet, skiprows=skip) for sheet in visible_sheets]
-                    return pd.concat(data, ignore_index=True)
+                    # columns are treated by lowering and de-spacing before combination
+                    data = [
+                        excel_file.parse(sheet, skiprows=skip)\
+                                .rename(columns=lambda col: col.replace(" ","").lower())
+                            for sheet in visible_sheets
+                            ]
+                    result = pd.concat(data, ignore_index=True)
                 if split_sheets:
                     return {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in visible_sheets}
                 
-                return pd.read_excel(self.file_data, sheet_name=visible_sheets[0], skiprows=skip)
+                result: pd.DataFrame = pd.read_excel(self.file_data, sheet_name=visible_sheets[0], skiprows=skip)
         except:
             # TODO make sure this fallback using xlrd also ignores hidden sheets
             with pd.ExcelFile(self.file_data, engine="xlrd") as excel_file:
                 excel_file: pd.ExcelFile
                 if combine_sheets:
-                    data = [excel_file.parse(sheet, skiprows=skip) for sheet in excel_file.sheet_names]
-                    return pd.concat(data, ignore_index=True)
+                    # columns are treated by lowering and de-spacing before combination
+                    data = [
+                        excel_file.parse(sheet, skiprows=skip)\
+                            .rename(columns=lambda col: col.replace(" ","").lower())
+                        for sheet in excel_file.sheet_names
+                        ]
+                    result =  pd.concat(data, ignore_index=True)
                 if split_sheets:
                     return {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in excel_file.sheet_names}
-                return pd.read_excel(self.file_data, skiprows=skip)
+                result =  pd.read_excel(self.file_data, skiprows=skip)
+
+        return result.rename(columns=lambda col: col.lower().replace(" "))

@@ -26,8 +26,6 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "netsales"
         comm_col: str = "rep1commission"
 
-        data.columns = [col.replace(" ","").lower() for col in data.columns.tolist()]
-
         # convert dollars to cents to avoid demical imprecision
         data[inv_col] = data.loc[:,inv_col].apply(lambda amt: amt*100)
         data[comm_col] = data.loc[:,comm_col].apply(lambda amt: amt*100)
@@ -170,16 +168,16 @@ class PreProcessor(AbstractPreProcessor):
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "detail": self._standard_report_preprocessing,
-            "coburn_pos": self._coburn_report_preprocessing,
-            "lennox_pos": self._lennox_report_preprocessing,
-            "re_michel_pos": self._re_michel_report_preprocessing
+            "detail": (self._standard_report_preprocessing,0),
+            "coburn_pos": (self._coburn_report_preprocessing,3),
+            "lennox_pos": (self._lennox_report_preprocessing,0),
+            "re_michel_pos": (self._re_michel_report_preprocessing,2)
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip = method_by_name.get(self.report_name, None)
         if preprocess_method:
             if self.report_name == "lennox_pos":
-                return preprocess_method(self.file.to_df(combine_sheets=True), **kwargs)
-            return preprocess_method(self.file.to_df(), **kwargs)
+                return preprocess_method(self.file.to_df(combine_sheets=True, skip=skip), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip), **kwargs)
         else:
             return
 

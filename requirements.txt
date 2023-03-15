@@ -28,7 +28,7 @@ orjson==3.8.0
 packaging==21.3
 pandas==1.5.0
 pluggy==1.0.0
-psycopg2-binary==2.9.4
+psycopg2-binary==2.9.5
 py==1.11.0
 pyasn1==0.4.8
 pycparser==2.21

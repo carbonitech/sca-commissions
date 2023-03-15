@@ -17,6 +17,7 @@ class PreProcessor(AbstractPreProcessor):
         customer_name_col: str = "customer"
         inv_col: str = "inv_amt"
         comm_rate: float = kwargs.get("standard_commission_rate", 0)
+        
         # replace dashes so empty col removal works, drop empty cols, then leave out grand totals for rows and cols
         data = data.replace('-',nan).dropna(how="all",axis=1).iloc[:-1,:-1]
         data.columns = [customer_name_col, inv_col]

@@ -193,15 +193,15 @@ class PreProcessor(AbstractPreProcessor):
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": self._standard_report_preprocessing,
-            "baker_pos": self._baker_report_preprocessing,
-            "johnstone_pos": self._johnstone_report_preprocessing,
-            "re_michel_pos": self._re_michel_report_preprocessing,
-            "united_refrigeration_pos": self._united_refrigeration_report_preprocessing,
-            "winsupply_pos": self._winsupply_report_preprocessing
+            "standard": (self._standard_report_preprocessing,0),
+            "baker_pos": (self._baker_report_preprocessing,1),
+            "johnstone_pos": (self._johnstone_report_preprocessing,1),
+            "re_michel_pos": (self._re_michel_report_preprocessing,1),
+            "winsupply_pos": (self._winsupply_report_preprocessing,1),
+            "united_refrigeration_pos": (self._united_refrigeration_report_preprocessing,0),
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
         else:
             return

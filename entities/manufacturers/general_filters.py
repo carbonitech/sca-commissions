@@ -16,7 +16,6 @@ class PreProcessor(AbstractPreProcessor):
             heavy amount of parsing required to get to the data, which comes in as one long series
         """
 
-        events = []
         customer_boundary_re: str = r"\d{4} CUST: SHIP-TO"
         page_num_re: str = r"^(Page \d of \d)"
         offset: int = -1
@@ -36,7 +35,6 @@ class PreProcessor(AbstractPreProcessor):
             for index
             in data.loc[data.str.contains(customer_boundary_re)].index.tolist()
         ]
-        events.append(("Formatting",f"used boundary value {customer_boundary_re} to isolate customers",self.submission_id))
         compiled_data = {
             "customer": [],
             "city": [],
@@ -51,7 +49,6 @@ class PreProcessor(AbstractPreProcessor):
             else:
                 subseries = data.iloc[index:customer_boundaries[i+1]]
 
-            print(subseries)
             city_state = re.match(city_state_re, subseries.iloc[1]).group(1)
             city, state = city_state[:-2], city_state[-2:] # split city from 2-letter state
 
@@ -67,15 +64,17 @@ class PreProcessor(AbstractPreProcessor):
             compiled_data["comm_amt"].append(comm_amt)
 
         result = pd.DataFrame(compiled_data)
-        events.append(("Formatting",f"extracted customer, city, state, and sales amount and formatted into a table",self.submission_id))
 
         result["inv_amt"] = result["inv_amt"]*100
         result["comm_amt"] = result["comm_amt"]*100
         for col in ["customer","city","state"]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.columns = self.result_columns
-        return PreProcessedData(result,events)
+        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
+        result.columns = col_names
+        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+
+        return PreProcessedData(result)
 
 
     def _unifilter_report_preprocessing(self, data: pd.Series, **kwargs) -> PreProcessedData:

@@ -18,12 +18,11 @@ class PreProcessor(AbstractPreProcessor):
             - commission amounts are in a seperate file by invoice number, these are not necessarily all the same
                 commission rate from one month to the next
         """
-        events = []
-
-        invoice_number_col: str = "Invoice Number"
+        invoice_number_col: str = "invoicenumber"
         comm_col: int = -1
 
-        sales_report: pd.DataFrame = pd.read_excel(kwargs.get("additional_file_1"))
+        sales_report: pd.DataFrame = pd.read_excel(kwargs.get("additional_file_1"))\
+                    .rename(columns=lambda col: col.lower().replace(" "))
         customer_name_col: int = 4
         city_name_col: str = "city"
         state_name_col: str = "state"
@@ -48,47 +47,42 @@ class PreProcessor(AbstractPreProcessor):
         value_indecies = invoice_numbers.index.to_list()
         sales_report = sales_report.loc[value_indecies]
         sales_report[sales_report.columns[invoice_num_col]] = sales_report.iloc[:,invoice_num_col].astype(int)
-        events.append(("Formatting","filtered for rows with an invoice number in the second column and converted from text to numbers",self.submission_id))
         # address is combined and needs to be split into city and state
         sales_report[[city_name_col,state_name_col]] = sales_report.iloc[:,address_col].str.split(", ", expand=True)
         sales_report.loc[:, state_name_col] = sales_report[state_name_col].str.slice(0,2)
-        events.append(("Formatting",f"split the address in column {address_col+1} into city and state columns",self.submission_id))
         # make a new table with just invoice number, customer, sales, city, and state
         sales_report = pd.concat([sales_report.iloc[:,[1,customer_name_col,inv_col]], sales_report.loc[:,[city_name_col,state_name_col]]], axis=1)
         # reorder columns so invoice amount is at the end
         sales_report = sales_report.iloc[:,[0,1,3,4,2]]
         sales_report.columns = ["invoice", "customer", "city", "state", "inv_amt"]
         sales_report.loc[:, "inv_amt"] = sales_report["inv_amt"]*100
-        result = sales_report.groupby(sales_report.columns.tolist()[:4]).sum().reset_index()
-        events.append(("Formatting",f"grouped data by invoice number, customer, city, and state. Index changed.",self.submission_id))
+        result = sales_report.groupby(sales_report.columns[:4]).sum().reset_index()
         
         # merge the sales report data with the commission report data by invoice number
         merged = result.merge(data, how="left", left_on="invoice", right_on="invoice_summary")
         result.loc[:,"comm_amt"] = merged["total_comm"]*100
-        events.append(("Formatting",f"Merged Commission Amounts by invoice number using the reference file",self.submission_id))
         # drop invoice number column
         result = result.drop(columns="invoice")
 
         # standardize
-        result.columns = self.result_columns
+        result.columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
         for col in range(3):
             result.iloc[:, col] = result.iloc[:, col].str.upper()
             result.iloc[:, col] = result.iloc[:, col].str.strip()
 
         # without invoice column now, group by branch
-        result = result.groupby(result.columns.tolist()[:3]).sum().reset_index()
-        events.append(("Formatting",f"Dropped the Invoice number column and grouped sales again by Customer, City, and State. Index changed.",self.submission_id))
-
-        return PreProcessedData(result, events)
+        result = result.groupby(result.columns[:3]).sum().reset_index()
+        result["id_string"] = result[result.columns.tolist()[:3]].apply("_".join, axis=1)
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": self._standard_report_preprocessing,
+            "standard": (self._standard_report_preprocessing,2),
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
         else:
             return
 

@@ -11,9 +11,8 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Famco standard report"""
 
-        events = []
-        customer_name_col: str = "ship to name"
-        city_name_col: str = "ship to city"
+        customer_name_col: str = "shiptoname"
+        city_name_col: str = "shiptocity"
         inv_col_index: int = 13
         inv_col: str = "sales"
         comm_col: str = "extcom"
@@ -35,17 +34,16 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
         
-        col_names = self.result_columns.copy()
-        col_names.pop(2) # remove "state"
+        col_names = ["customer", "city", "inv_amt", "comm_amt"]
         result.columns = col_names
-        return PreProcessedData(result,events)
+        result["id_string"] = result[col_names[:2]].apply("_".join, axis=1)
+        return PreProcessedData(result)
 
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Famco Johnstone report"""
 
-        events = []
-        default_customer_name: str = "" # BUG USE DYNAMIC DEFAULT
+        default_customer_name: str = "JOHNSTONE"
         store_number_col: str = ""
         city_name_col: str = ""
         state_name_col: str = ""
@@ -62,16 +60,16 @@ class PreProcessor(AbstractPreProcessor):
             result.loc[:, col] = result[col].str.strip()
 
         result.columns = ["store_number"] + self.result_columns
-        return PreProcessedData(result,events)
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": self._standard_report_preprocessing,
-            "johnstone_pos": self._johnstone_report_preprocessing
+            "standard": (self._standard_report_preprocessing,2),
+            "johnstone_pos": (self._johnstone_report_preprocessing,0)
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
         else:
             return

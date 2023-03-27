@@ -11,19 +11,16 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Friedrich Paid tab"""
 
-        events = []
-        customer_name_col: str = "CustomerName"
-        city_name_col: str = "ShipToCity"
-        state_name_col: str = "ShipToState"
-        inv_col: str = "Net sales"
-        comm_col: str = "Rep comission"
+        customer_name_col: str = "customername"
+        city_name_col: str = "shiptocity"
+        state_name_col: str = "shiptostate"
+        inv_col: str = "netsales"
+        comm_col: str = "repcomission"
 
         data = data.dropna(subset=data.columns.to_list()[0])
-        events.append(("Formatting","removed all rows with no values in the first column",self.submission_id))
         if customer_name_col not in data.columns.to_list():
             data = data.rename(columns=data.iloc[0]).drop(data.index[0])
         data = data.dropna(how="all",axis=1)
-        events.append(("Formatting","removed columns with no values",self.submission_id))
 
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
 
@@ -32,8 +29,11 @@ class PreProcessor(AbstractPreProcessor):
         for col in [customer_name_col,city_name_col,state_name_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.columns = self.result_columns
-        return PreProcessedData(result,events)
+        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
+        result.columns = col_names
+        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+
+        return PreProcessedData(result)
 
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -75,11 +75,11 @@ class PreProcessor(AbstractPreProcessor):
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "paid": self._standard_report_preprocessing,
-            "johnstone_pos": self._johnstone_report_preprocessing
+            "paid": (self._standard_report_preprocessing,1),
+            "johnstone_pos": (self._johnstone_report_preprocessing,1)
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
         else:
             return

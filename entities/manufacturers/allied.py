@@ -22,7 +22,7 @@ class PreProcessor(AbstractPreProcessor):
         data = data.replace('-',nan).dropna(how="all",axis=1).iloc[:-1,:-1]
         data.columns = [customer_name_col, inv_col]
 
-        data.loc[:,inv_col] = data[inv_col]*100
+        data.loc[:,inv_col] *= 100
         data.loc[:,"commission"] = data[inv_col]*comm_rate
         for col in [customer_name_col]:
             data.loc[:, col] = data[col].str.upper()

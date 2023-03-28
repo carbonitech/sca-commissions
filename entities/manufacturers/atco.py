@@ -75,8 +75,8 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(subset=data.columns.to_list()[0])
         data.loc[:,inv_col] = data[inv_col].fillna(0)
-        data.loc[:,inv_col] = data[inv_col]*100
-        data.loc[:,comm_col] = data[comm_col]*100
+        data.loc[:,inv_col] *= 100
+        data.loc[:,comm_col] *= 100
         for col in result_columns[:3]:
             data.loc[:, col] = data[col].str.upper()
             data.loc[:, col] = data[col].str.strip()

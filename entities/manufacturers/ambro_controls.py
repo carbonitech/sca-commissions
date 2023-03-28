@@ -26,8 +26,8 @@ class PreProcessor(AbstractPreProcessor):
         except KeyError:
             active_state_col = state_name_col_alt
             result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
+        result.loc[:,inv_col] *= 100
+        result.loc[:,comm_col] *= 100
         for col in [customer_name_col,city_name_col,active_state_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()

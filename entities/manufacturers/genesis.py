@@ -19,8 +19,8 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(subset=data.columns.to_list()[0])
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
+        result.loc[:,inv_col] *= 100
+        result.loc[:,comm_col] *= 100
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         for col in col_names[:3]:
@@ -94,8 +94,8 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns.to_list()[0])
         data.loc[:,comm_col] = data.iloc[:,comm_col_index]
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
+        result.loc[:,inv_col] *= 100
+        result.loc[:,comm_col] *= 100
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         for col in col_names[:3]:
@@ -126,7 +126,7 @@ class PreProcessor(AbstractPreProcessor):
         col_names = ["customer", "inv_amt", "comm_amt"]
         result.columns = col_names
         result["id_string"] = result[col_names[0]]
-        
+
         return PreProcessedData(result)
 
 

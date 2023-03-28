@@ -31,8 +31,8 @@ class PreProcessor(AbstractPreProcessor):
         result.loc[:, comm_col] = result[comm_col].replace(r'^\(','-', regex=True)
         result.loc[:, comm_col] = result[comm_col].replace(r'[^-.0-9]','',regex=True).astype(float)
 
-        result.loc[:, inv_col] = result.loc[:, inv_col]*100
-        result.loc[:, comm_col] = result.loc[:, comm_col]*100
+        result.loc[:, inv_col] *= 100
+        result.loc[:, comm_col] *= 100
         for col in [customer_name_col,city_name_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()

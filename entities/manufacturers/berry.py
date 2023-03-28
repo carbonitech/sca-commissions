@@ -41,8 +41,8 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns.to_list()[0])
         data = data[data["STATUS"] == "CLSD"]
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
+        result.loc[:,inv_col] *= 100
+        result.loc[:,comm_col] *= 100
         result.columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result["id_string"] = result[result.columns.tolist()[:3]].apply("_".join, axis=1)
         return PreProcessedData(result)

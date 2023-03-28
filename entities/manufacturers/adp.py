@@ -27,8 +27,8 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "rep1commission"
 
         # convert dollars to cents to avoid demical imprecision
-        data[inv_col] = data.loc[:,inv_col].apply(lambda amt: amt*100)
-        data[comm_col] = data.loc[:,comm_col].apply(lambda amt: amt*100)
+        data.loc[:,inv_col] *= 100
+        data.loc[:,comm_col] *= 100
 
         ref_col = data.columns.tolist()[0]
         data.dropna(subset=ref_col, inplace=True)
@@ -111,7 +111,6 @@ class PreProcessor(AbstractPreProcessor):
         """
         split: float = kwargs.get("split", 1.0)
         comm_rate: float = kwargs.get("standard_commission_rate",0)
-        data.columns = [col.replace(" ","").lower() for col in data.columns.tolist() if isinstance(col,str)]
 
         data = data.dropna(subset=data.columns[0])
         data = data.dropna(axis=1, how='all')
@@ -141,7 +140,8 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,"inv_amt"] = data["Ext Price"]*100
         data.loc[:,"comm_amt"] = data["Commission"]*100
         data.loc[:,"customer"] = "LENNOX"
-        result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state", "customer", "inv_amt", "comm_amt", "receiving", "sending"]
+        result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state",
+                       "customer", "inv_amt", "comm_amt", "receiving", "sending"]
         result = data.loc[:,result_cols]
         
         # unpivot sending and receiving (trailing columns) into "direction" (sending/receiving) and warehouse code (i.e. A300)

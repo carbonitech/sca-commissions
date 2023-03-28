@@ -55,7 +55,7 @@ class PreProcessor(AbstractPreProcessor):
         # reorder columns so invoice amount is at the end
         sales_report = sales_report.iloc[:,[0,1,3,4,2]]
         sales_report.columns = ["invoice", "customer", "city", "state", "inv_amt"]
-        sales_report.loc[:, "inv_amt"] = sales_report["inv_amt"]*100
+        sales_report.loc[:, "inv_amt"] *= 100
         result = sales_report.groupby(sales_report.columns[:4]).sum().reset_index()
         
         # merge the sales report data with the commission report data by invoice number

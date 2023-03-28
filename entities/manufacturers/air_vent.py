@@ -45,8 +45,8 @@ class PreProcessor(AbstractPreProcessor):
 
         result = pd.concat(dfs, ignore_index=True)
 
-        result[inv_col_name] = result[inv_col_name]*100
-        result[comm_col_name] = result[comm_col_name]*100
+        result[inv_col_name] *= 100
+        result[comm_col_name] *= 100
         for col in [customer_col_name, city_col_name, state_col_name]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()

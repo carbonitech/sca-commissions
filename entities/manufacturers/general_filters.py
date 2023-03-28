@@ -65,8 +65,8 @@ class PreProcessor(AbstractPreProcessor):
 
         result = pd.DataFrame(compiled_data)
 
-        result["inv_amt"] = result["inv_amt"]*100
-        result["comm_amt"] = result["comm_amt"]*100
+        result["inv_amt"] *= 100
+        result["comm_amt"] *= 100
         for col in ["customer","city","state"]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()

@@ -11,8 +11,6 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the standard superior hvacr commission file with an additional file"""
 
-        events = []
-
         ## commission file
         customer_name_col_comm_file: str = "customer"
         customer_number_col_comm_file: str = "to"
@@ -23,12 +21,10 @@ class PreProcessor(AbstractPreProcessor):
         sales_file: pd.DataFrame
         if sales_file := kwargs.get("additional_file_1", None):
             sales_data: pd.DataFrame = pd.read_excel(sales_file, skiprows=1)
+            sales_data = sales_data.rename(columns=lambda col: col.lower().replace(" ",""))
 
         customer_number_col_sales_file: str = "soldto"
         city_name_col_sales_file: str = "city"
-
-        data.columns = [col.lower().strip() for col in data.columns]
-        sales_data.columns = [col.lower().strip() for col in sales_data.columns]
 
         data = data.loc[
             data.loc[:,inv_col_comm_file] > 0,
@@ -43,17 +39,18 @@ class PreProcessor(AbstractPreProcessor):
         result = result.loc[:, [customer_name_col_comm_file, city_name_col_sales_file, inv_col_comm_file, comm_col_comm_file]]
         result = result.reset_index(drop=True)
 
-        result.loc[:,inv_col_comm_file] = result[inv_col_comm_file]*100
-        result.loc[:,comm_col_comm_file] = result[comm_col_comm_file]*100
+        result.loc[:,inv_col_comm_file] *= 100
+        result.loc[:,comm_col_comm_file] *= 100
 
         for col in [customer_name_col_comm_file,city_name_col_sales_file]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
 
-        col_names = self.result_columns.copy()
-        col_names.pop(2) # remove "state"
+        col_names = ["customer", "city", "inv_amt", "comm_amt"]
         result.columns = col_names
-        return PreProcessedData(result,events)
+        result["id_string"] = result[col_names[:2]].apply("_".join, axis=1)
+
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:

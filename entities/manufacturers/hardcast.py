@@ -16,36 +16,39 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self, data: pd.DataFrame) -> PreProcessedData:
         """processes the 'Commissions by Sales Office' tab of the Hardcast commission report"""
 
-        events = []
-        customer_name_col: str = "Sold To"
-        city_name_col: str = "ShipTo City"
-        state_name_col: str = "Ship To State"
-        inv_col: str = "Sales Base for Comm"
-        comm_col: str = "Comm"
+        customer_name_col: str = "soldto"
+        city_name_col: str = "shiptocity"
+        state_name_col: str = "shiptostate"
+        inv_col: str = "salesbaseforcomm"
+        comm_col: str = "comm"
 
-        drop_col = "Sales Group"
+        drop_col = "salesgroup"
         data = data.drop(columns=drop_col)
-        data = data.loc[~(data["Comm Rate"] == "*"),:]
+        data = data.loc[~(data["commrate"] == "*"),:]
         data = data.dropna(how="all")
         data = data.fillna(method="ffill")
         data = data[data[customer_name_col].str.contains(customer_name_col) == False]
 
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        result.loc[:,inv_col] *= 100
+        result.loc[:,comm_col] *= 100
+
         for col in [customer_name_col, city_name_col, state_name_col]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
-        result.columns = self.result_columns
-        return PreProcessedData(result,events)
+
+        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
+        result.columns = col_names
+        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": self._standard_report_preprocessing,
+            "standard": (self._standard_report_preprocessing,4),
         }
-        preprocess_method = method_by_name.get(self.report_name, None)
+        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df())
+            return preprocess_method(self.file.to_df(skip=skip_param))
         else:
             return

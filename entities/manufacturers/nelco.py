@@ -15,12 +15,12 @@ class PreProcessor(AbstractPreProcessor):
             heavy amount of parsing required to get to the data, which comes in as one long series
         """
 
-        events = []
         customer_name: int = 2
         city_state_regex: str = r"^([^().\d/_]+?),\s*?(\w{2})" # searches for format like Atlanta, GA at beginning of str
         inv_col: int = -1
         customer_boundary_value: str = "Customer :"
         comm_rate: float = kwargs.get("standard_commission_rate")
+
 
         # grab first text element of PDF page header
         data_printed_date = data.iloc[0]
@@ -49,8 +49,8 @@ class PreProcessor(AbstractPreProcessor):
                 # some reports have city & state, some only state. this will error-out if address is null
                 city, state = address.iloc[0,0], address.iloc[0,1]
             else:
-                # this returns a mix of the 2-letter state and UOM's, but the state is always first in the series
-                city = None
+                city = "" # allows for a str join for the id_string without having to drop the column
+                ## this returns a mix of the 2-letter state and UOM's, but the state is always the first in the series
                 state = subseries[subseries.str.len() == 2].to_list()[0]
             inv_amt = float(subseries.iloc[inv_col])
             compiled_data["customer"].append(subseries.iloc[customer_name])
@@ -59,17 +59,16 @@ class PreProcessor(AbstractPreProcessor):
             compiled_data["inv_amt"].append(inv_amt)
 
         result = pd.DataFrame(compiled_data)
-        events.append(("Formatting",f"extracted customer, city, state, and sales amount and formatted into a table",self.submission_id))
-
-        result["inv_amt"] = result["inv_amt"]*100
-        result.loc[:,"comm_amt"] = result["inv_amt"]*comm_rate
-        events.append(("Formatting",f"calculated comm_amt column as {comm_rate*100:,.2f}% of sales",self.submission_id))
+        result.loc[:,"inv_amt"] *= 100
+        result.loc[:,"comm_amt"] *= comm_rate
         for col in ["customer","city","state"]:
             result.loc[:, col] = result[col].str.upper()
             result.loc[:, col] = result[col].str.strip()
-        result.columns = self.result_columns
-        result = result.dropna(axis=1, how='all') # drops city column, if empty
-        return PreProcessedData(result,events)
+
+        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
+        result.columns = col_names
+        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1) # empty city col makes this 'customer__state'
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:

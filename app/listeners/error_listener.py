@@ -8,12 +8,10 @@ from services.api_adapter import ApiAdapter
 
 def error_factory(error_data: DataFrame, type_: int, submission_id: int, user_id: int) -> List[error.Error]:
     result_list = []
-    for row_index, row_data in error_data.to_dict("index").items():
-        row_index: int
+    for row_data in error_data.to_dict("index").values():
         row_data: dict
         error_obj = error.Error(
             submission_id=submission_id,
-            row_index=row_index,
             reason=error.ErrorType(type_),
             row_data=row_data,
             user_id=user_id)
@@ -46,7 +44,6 @@ def error_handler(data_affected: DataFrame, submission_id: int, *args, **kwargs)
     api = ApiAdapter()
     for error in errors:
         api.record_error(session, error)
-    event.post_event("Errors Recorded", errors, submission_id, *args, **kwargs)
     
 
 

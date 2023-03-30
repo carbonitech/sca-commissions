@@ -68,12 +68,13 @@ class ReportProcessor:
             if isinstance(target_err, ErrorType):
                 self.reintegration = True
                 self.target_err = target_err
-                self.error_table = pd.concat(   # expand row_data into dataframe columns
+                self.error_table: pd.DataFrame = pd.concat(   # expand row_data into dataframe columns
                     [
                         error_table, 
                         pd.json_normalize(error_table.pop("row_data"),max_level=1)
                     ], 
-                    axis=1).reset_index(drop=True)
+                    axis=1)
+                self.error_table = self.error_table.reset_index(drop=True)
         else:
             self.skip = True
             return
@@ -81,53 +82,19 @@ class ReportProcessor:
         self.branches = self.api.get_branches(session, user_id=self.user_id)
         self.id_string_matches = self.api.get_id_string_matches(session, user_id=self.user_id)
 
-    def reset_branch_ref(self):
-        self.branches = self.api.get_branches(db=self.session, user_id=self.user_id)
-
-    def total_commissions(self, dataset: str=None) -> int:
-        total_comm = self.staged_data.loc[:,"comm_amt"].sum()
-        return round(total_comm)
-
-    def total_sales(self, dataset: str=None) -> int:
-        if dataset == "ppdata":
-            data = self.ppdata.data
-        else:
-            data = self.staged_data
-
-        total_sales = data.loc[:,"inv_amt"].sum()
-        return round(total_sales)
-
-    def _send_event_by_submission(self, indecies: list, event_: Hashable, msg: str=None) -> None:
-        if self.reintegration:
-            table = self.error_table.loc[indecies,:]
-        else:
-            table = self.ppdata.data.loc[indecies,:]
-            table.insert(0,"submission_id",self.submission_id)
-
-        for sub_id in table["submission_id"].unique().tolist():
-            mask = table["submission_id"] == sub_id
-            sub_id_table = table.loc[mask,:]
-            if "row_index" in table.columns.tolist():
-                sub_id_table = sub_id_table.set_index("row_index")
+    def _send_event_by_submission(self, data: pd.DataFrame, event_: Hashable) -> None:
+        
+        for sub_id in data["submission_id"].unique().tolist():
+            mask = data["submission_id"] == sub_id
+            sub_id_table = data.loc[mask,:]
             sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason','user_id'])]
-            if event_ == "Formatting" and msg:
-                event.post_event(
-                    event_,
-                    msg,
-                    submission_id=sub_id,
-                    user_id=self.user_id,
-                    start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
-                    session=self.session
-                )
-            else:
-                event.post_event(
-                    event_,
-                    sub_id_table,
-                    submission_id=sub_id,
-                    user_id=self.user_id,
-                    start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
-                    session=self.session
-                )
+            event.post_event(
+                event_,
+                sub_id_table,
+                submission_id=sub_id,
+                user_id=self.user_id,
+                session=self.session
+            )
 
 
     def _filter_for_existing_records_with_target_error_type(self) -> 'ReportProcessor':
@@ -137,17 +104,6 @@ class ReportProcessor:
         self.staged_data = self.error_table.copy()
         if table_target_errors.empty:
             raise EmptyTableException
-        for sub_id in self.staged_data["submission_id"].unique().tolist():
-            rows_affected = len(self.error_table[self.error_table["submission_id"]==sub_id])    
-            msg = f"reprocessing of errors initiated by reassessment of {self.target_err.name} errors. {rows_affected} rows affected"
-            event.post_event(
-                "Reprocessing",
-                data_ = msg,
-                submission_id = sub_id,
-                user_id=self.user_id,
-                start_step=self.api.last_step_num(db=self.session, submission_id=sub_id)+1,
-                session=self.session
-            )
         return self
 
     def remove_error_db_entries(self) -> 'ReportProcessor':
@@ -199,19 +155,17 @@ class ReportProcessor:
                 lambda row: row[money_col] if row["direction"] == "receiving" else -row[money_col],
                 axis=1
             )
-        self._send_event_by_submission(self.staged_data.index.to_list(),"Formatting", "assigned negative dollars to sender warehouses")
         return self
 
 
-    def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, suppress_event: bool=False) -> pd.DataFrame:
+    def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, error_type: ErrorType) -> pd.DataFrame:
         if data.empty:
             return data
         mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt","row_index"])].all('columns')
-        data_dropped = data[~mask].index.to_list()
-        data = data[mask]
-        if not suppress_event:
-            self._send_event_by_submission(data_dropped, "Rows Removed")
-        return data
+        data_remaining = data[mask]
+        data_removed = data[~mask]
+        self._send_event_by_submission(data_removed, error_type)
+        return data_remaining
 
 
     def drop_extra_columns(self) -> 'ReportProcessor':
@@ -226,7 +180,6 @@ class ReportProcessor:
         else:
             self.staged_data = self.staged_data.dropna() # just in case
         self.api.record_final_data(db=self.session, data=self.staged_data)
-        self._send_event_by_submission(self.staged_data.index.to_list(), "Data Recorded")
         return self
 
     def set_switches(self) -> 'ReportProcessor':

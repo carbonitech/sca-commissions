@@ -78,20 +78,10 @@ class Submission(Base):
     errors = relationship("Error", back_populates="submission")
     processing_steps = relationship("ProcessingStep", back_populates="submission")
 
-class ProcessingStep(Base):
-    __tablename__ = 'processing_steps'
-    id = Column(Integer,primary_key=True)
-    submission_id = Column(Integer, ForeignKey("submissions.id"))
-    step_num = Column(Integer)
-    description = Column(String)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    submission = relationship("Submission", back_populates="processing_steps")
-
 class Error(Base):
     __tablename__ = 'errors'
     id = Column(Integer,primary_key=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"))
-    row_index = Column(Integer)
     reason = Column(Integer)
     row_data = Column(TEXT)
     user_id = Column(Integer, ForeignKey("users.id"))

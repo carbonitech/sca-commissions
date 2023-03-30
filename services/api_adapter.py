@@ -1,16 +1,15 @@
 import os
 import re
 import json
-import calendar
-from datetime import datetime
 import time
-from dotenv import load_dotenv
-from os import getenv
+import calendar
 import requests
+from os import getenv
+from datetime import datetime
+from dotenv import load_dotenv
 from dataclasses import dataclass
 
 import pandas as pd
-from sqlalchemy.exc import IntegrityError
 import sqlalchemy
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
@@ -18,25 +17,18 @@ from fastapi import Request, HTTPException
 from jose.jwt import get_unverified_claims
 
 from app import event
-from app.jsonapi import jsonapi_error_handling
 from db import models
-from entities.submission import NewSubmission
-from entities.processing_step import ProcessingStep
 from entities.error import Error
+from entities.submission import NewSubmission
+from app.jsonapi import jsonapi_error_handling
 
 CUSTOMERS = models.Customer
 BRANCHES = models.CustomerBranch
-CITIES = None
-STATES = None
 REPS = models.Representative
-CUSTOMER_NAME_MAP = None
-CITY_NAME_MAP = None
-STATE_NAME_MAP = None
 MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
 SUBMISSIONS_TABLE = models.Submission
-PROCESS_STEPS_LOG = models.ProcessingStep
 ERRORS_TABLE = models.Error
 DOWNLOADS = models.FileDownloads
 FORM_FIELDS = models.ReportFormFields
@@ -44,6 +36,7 @@ USERS = models.User
 USER_COMMISSIONS = models.UserCommissionRate
 COMMISSION_SPLITS = models.CommissionSplit
 ID_STRINGS = models.IDStringMatch
+LOCATIONS = models.Location
 
 load_dotenv()
 
@@ -165,12 +158,11 @@ class ApiAdapter:
         reps = REPS
         branches = BRANCHES
         customers = CUSTOMERS
-        cities = CITIES
-        states = STATES
+        locations = LOCATIONS
         sql = sqlalchemy.select(commission_data_raw.id, commission_data_raw.submission_id,
             submission_data.reporting_year, submission_data.reporting_month,
             manufacturers.name, reps.initials, customers.name,
-            cities.name, states.name, commission_data_raw.inv_amt,
+            locations.city, locations.state, commission_data_raw.inv_amt,
             commission_data_raw.comm_amt
             ).select_from(commission_data_raw) \
             .join(submission_data, commission_data_raw.submission_id == submission_data.id)\
@@ -179,15 +171,14 @@ class ApiAdapter:
             .join(branches, commission_data_raw.customer_branch_id == branches.id)\
             .join(reps)                        \
             .join(customers)                   \
-            .join(cities)                      \
-            .join(states)                      \
+            .join(locations)                      \
             .where(commission_data_raw.user_id == kwargs.get("user_id"))\
             .order_by(
                 submission_data.reporting_year.desc(),
                 submission_data.reporting_month.desc(),
                 customers.name.asc(),
-                cities.name.asc(),
-                states.name.asc()
+                locations.city.asc(),
+                locations.state.asc()
             )
         
         if submission_id:
@@ -224,9 +215,9 @@ class ApiAdapter:
         if(customer := kwargs.get("customer_id")):
             sql = sql.where(customers.id == customer)
         if(city := kwargs.get("city_id")):
-            sql = sql.where(cities.id == city)
+            sql = sql.where(locations.city == city)
         if(state := kwargs.get("state_id")):
-            sql = sql.where(states.id == state)
+            sql = sql.where(locations.state == state)
         if(representative := kwargs.get("representative_id")):
             sql = sql.where(reps.id == representative)
 
@@ -265,10 +256,8 @@ class ApiAdapter:
             raise UserMisMatch()
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
         sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.submission_id == submission_id)
-        sql_processing_steps = sqlalchemy.delete(PROCESS_STEPS_LOG).where(PROCESS_STEPS_LOG.submission_id == submission_id)
         sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
         session.execute(sql_commission)
-        session.execute(sql_processing_steps)
         session.execute(sql_errors)
         session.execute(sql_submission)
         session.commit()
@@ -301,22 +290,6 @@ class ApiAdapter:
         result = db.execute(sql).fetchone()[0]
         db.commit()
         return result
-
-
-    def record_processing_step(self, db: Session, step_obj: ProcessingStep) -> bool:
-        """commit all report processing stesp for a commission report submission"""
-        sql = sqlalchemy.insert(PROCESS_STEPS_LOG).values(**step_obj)
-        db.execute(sql)
-        db.commit()
-        return True
-
-    def last_step_num(self, db: Session, submission_id: int) -> int:
-        sql = sqlalchemy.select(sqlalchemy.func.max(PROCESS_STEPS_LOG.step_num))\
-            .where(PROCESS_STEPS_LOG.submission_id == submission_id)
-        if result := db.execute(sql).one()[0]:
-            return result
-        else:
-            return 0
 
     def record_error(self, db: Session, error_obj: Error) -> None:
         """record errors into the current_errors table"""
@@ -402,30 +375,6 @@ class ApiAdapter:
             return models.serializer.get_collection(db, query, REPORTS, user_id)
     
     @jsonapi_error_handling
-    def get_many_cities_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
-        user_id: int = user.id(db=db)
-        return models.serializer.get_collection(db,query,CITIES, user_id)
-    
-    @jsonapi_error_handling
-    def get_city_jsonapi(self, db: Session, city_id: int, query: dict, user: User) -> JSONAPIResponse:
-        if not self.matched_user(user, CITIES, city_id, db):
-            raise UserMisMatch()
-        model_name = hyphenate_name(CITIES.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,city_id, obj_only=True)
-    
-    @jsonapi_error_handling
-    def get_state_jsonapi(self, db: Session, state_id: int, query: dict, user: User) -> JSONAPIResponse:
-        if not self.matched_user(user, STATES, state_id, db):
-            raise UserMisMatch()
-        model_name = hyphenate_name(STATES.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,state_id, obj_only=True)
-    
-    @jsonapi_error_handling
-    def get_many_states_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
-        user_id: int = user.id(db=db)
-        return models.serializer.get_collection(db,query,STATES, user_id)
-    
-    @jsonapi_error_handling
     def get_rep_jsonapi(self, db: Session, rep_id: int, query: dict, user: User) -> JSONAPIResponse:
         if not self.matched_user(user, REPS, rep_id, db):
             raise UserMisMatch()
@@ -473,38 +422,6 @@ class ApiAdapter:
         user_id: int = user.id(db=db)
         return models.serializer.get_collection(db,query,COMMISSION_DATA_TABLE, user_id)
     
-    @jsonapi_error_handling   
-    def get_all_customer_name_mappings(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
-        user_id: int = user.id(db=db)
-        return models.serializer.get_collection(db,query,CUSTOMER_NAME_MAP, user_id)
-    
-    @jsonapi_error_handling
-    def get_customer_name_mapping_by_id(self, db: Session, mapping_id: int, query: dict, user: User) -> JSONAPIResponse:
-        if not self.matched_user(user, CUSTOMER_NAME_MAP, mapping_id, db):
-            raise UserMisMatch()
-        model_name = hyphenate_name(CUSTOMER_NAME_MAP.__tablename__)
-        return models.serializer.get_resource(db,query,model_name,mapping_id,obj_only=True)
-
-    @jsonapi_error_handling
-    def get_city_name_mappings(self, db: Session, query: dict, user: User, mapping_id=0) -> JSONAPIResponse:
-        if mapping_id:
-            if not self.matched_user(user, CITY_NAME_MAP, mapping_id, db):
-                raise UserMisMatch()
-            return models.serializer.get_resource(db, query, hyphenated_name(CITY_NAME_MAP), mapping_id, obj_only=True)
-        else:
-            user_id: int = user.id(db=db)
-            return models.serializer.get_collection(db, query, CITY_NAME_MAP, user_id)
-
-    @jsonapi_error_handling
-    def get_state_name_mappings(self, db: Session, query: dict, user: User, mapping_id=0) -> JSONAPIResponse:
-        if mapping_id:
-            if not self.matched_user(user, STATE_NAME_MAP, mapping_id, db):
-                raise UserMisMatch()
-            return models.serializer.get_resource(db, query, hyphenated_name(STATE_NAME_MAP), mapping_id, obj_only=True)
-        else:
-            user_id: int = user.id(db=db)
-            return models.serializer.get_collection(db, query, STATE_NAME_MAP, user_id)
-
     @jsonapi_error_handling
     def get_many_branches_jsonapi(self, db: Session, query: dict, user: User) -> JSONAPIResponse:
         user_id: int = user.id(db=db)
@@ -516,31 +433,6 @@ class ApiAdapter:
             raise UserMisMatch()
         model_name = hyphenated_name(BRANCHES)
         return models.serializer.get_resource(db,query,model_name,branch_id,obj_only=True)
-
-    @jsonapi_error_handling
-    def create_customer_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        model_name = hyphenated_name(CUSTOMER_NAME_MAP)
-        hyphenate_json_obj_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-        event.post_event("New Record", CUSTOMER_NAME_MAP, session=db, user=user)
-        return result
-
-    @jsonapi_error_handling
-    def create_city_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        model_name = hyphenated_name(CITY_NAME_MAP)
-        hyphenate_json_obj_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-        event.post_event("New Record", CITY_NAME_MAP, session=db, user=user)
-        return result
-
-
-    @jsonapi_error_handling
-    def create_state_name_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        model_name = hyphenated_name(STATE_NAME_MAP)
-        hyphenate_json_obj_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-        event.post_event("New Record", STATE_NAME_MAP, session=db, user=user)
-        return result
 
     @jsonapi_error_handling
     def create_customer(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
@@ -559,41 +451,6 @@ class ApiAdapter:
         )
         return result
 
-
-    @jsonapi_error_handling
-    def create_city(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        model_name = hyphenated_name(CITIES)
-        new_name: str = json_data["data"]["attributes"]["name"]
-        json_data["data"]["attributes"]["name"] = new_name.upper().strip()
-        hyphenate_json_obj_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-        event.post_event(
-            "New Record",
-            CITIES,
-            db=db,
-            user=user,
-            name=json_data["data"]["attributes"]["name"],
-            id_=result["data"]["id"]
-        )
-        return result
-
-
-    @jsonapi_error_handling
-    def create_state(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
-        model_name = hyphenated_name(STATES)
-        new_name: str = json_data["data"]["attributes"]["name"]
-        json_data["data"]["attributes"]["name"] = new_name.upper().strip()
-        hyphenate_json_obj_keys(json_data)
-        result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-        event.post_event(
-            "New Record",
-            STATES,
-            db=db,
-            user=user,
-            name=json_data["data"]["attributes"]["name"],
-            id_=result["data"]["id"]
-        )
-        return result
 
     @jsonapi_error_handling
     def create_branch(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
@@ -635,88 +492,9 @@ class ApiAdapter:
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling
-    def delete_map_customer_name(self, db: Session, id_: int, user: User) -> None:
-        if not self.matched_user(user, CUSTOMER_NAME_MAP, id_, db):
-            raise UserMisMatch()
-        model_name = hyphenated_name(CUSTOMER_NAME_MAP)
-        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
-
-    @jsonapi_error_handling
-    def delete_map_city_name(self, db: Session, id_: int, user: User) -> None:
-        if not self.matched_user(user, CITY_NAME_MAP, id_, db):
-            raise UserMisMatch()
-        model_name = hyphenated_name(CITY_NAME_MAP)
-        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
-
-    @jsonapi_error_handling
-    def delete_map_state_name(self, db: Session, id_: int, user: User) -> None:
-        if not self.matched_user(user, STATE_NAME_MAP, id_, db):
-            raise UserMisMatch()
-        model_name = hyphenated_name(STATE_NAME_MAP)
-        return models.serializer.delete_resource(db,{},model_name,id_) # data param is unused
-    
-    @jsonapi_error_handling
     def delete_a_branch(self, db: Session, branch_id: int):
         _now = datetime.utcnow()
         db.execute("UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id", {"branch_id": branch_id, "current_time": _now})
-        db.commit()
-        return
-
-    def set_customer_name_mapping(self, db: Session, user: User, **kwargs):
-        # user_id is in kwargs
-        sql = sqlalchemy.insert(CUSTOMER_NAME_MAP).values(**kwargs)
-        try:
-            db.execute(sql)
-        except IntegrityError as e:
-            db.rollback()
-            print(e)
-        else:
-            db.commit()
-            event.post_event("New Record", CUSTOMER_NAME_MAP, user=user, session=db, **kwargs)
-
-    
-    def set_city_name_mapping(self, db: Session, user: User, **kwargs):
-        # user_id is in kwargs
-        sql = sqlalchemy.insert(CITY_NAME_MAP).values(**kwargs)
-        try:
-            db.execute(sql)
-        except IntegrityError as e:
-            db.rollback()
-            print(e)
-        else:
-            db.commit()
-            event.post_event("New Record", CITY_NAME_MAP, user=user, session=db, **kwargs)
-            
-
-    def set_state_name_mapping(self, db: Session, user: User, **kwargs):
-        # user_id is in kwargs
-        sql = sqlalchemy.insert(STATE_NAME_MAP).values(**kwargs)
-        try:
-            db.execute(sql)
-        except IntegrityError as e:
-            db.rollback()
-            print(e)
-        else:
-            db.commit()
-            event.post_event("New Record", STATE_NAME_MAP, user=user, session=db, **kwargs)
-
-
-    def create_new_customer_branch_bulk(self, db: Session, user_id: int, records: list[dict]):
-        sql_default_rep = sqlalchemy.select(REPS.id).where(REPS.initials == "sca") #    TODO use a user's default rep
-        default_rep = db.execute(sql_default_rep).scalar()
-        for record in records:
-            record["rep_id"]=default_rep
-            record["user_id"]=user_id
-            record["store_number"]=None
-            loc_id_sql = """
-                SELECT loc.id
-                FROM locations as loc 
-                join cities on cities.name = loc.city
-                join states on states.name = loc.state
-                where cities.id = :city_id and states.id = :state_id
-                order by loc.id LIMIT 1;"""
-            record["location_id"] = db.execute(loc_id_sql, params={"city_id": record["city_id"], "state_id": record["state_id"]}).scalar_one_or_none()
-            db.add(BRANCHES(**record))
         db.commit()
         return
 

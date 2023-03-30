@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Hashable, Union
+from typing import Hashable, Union, Type
 import pandas as pd
 from sqlalchemy.orm import Session
 
 from app import event
 from entities.preprocessor import AbstractPreProcessor
+from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
 from services import api_adapter
@@ -37,7 +38,7 @@ class ReportProcessor:
             self,
             session: Session,
             user: api_adapter.User,
-            preprocessor: AbstractPreProcessor = None, # a class obj, not an instance
+            preprocessor: Type[AbstractPreProcessor] = None,
             submission: NewSubmission = None,
             target_err: ErrorType = None,
             error_table: pd.DataFrame = pd.DataFrame(),
@@ -253,7 +254,7 @@ class ReportProcessor:
             "split": self.split,
         }
         try:
-            ppdata = preprocessor.preprocess(**optional_params)
+            ppdata: PreProcessedData = preprocessor.preprocess(**optional_params)
         except Exception:
             raise FileProcessingError("There was an error attempting to process the file", submission_id=sub_id)
 
@@ -310,7 +311,6 @@ class ReportProcessor:
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
             else:
-                    print(self.staged_data)
                     self.add_branch_id()
                     print(self.staged_data)
         except EmptyTableException:

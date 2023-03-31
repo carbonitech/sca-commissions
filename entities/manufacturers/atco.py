@@ -86,7 +86,9 @@ class PreProcessor(AbstractPreProcessor):
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
-
+        """
+            NOTE: RE MICHEL report comes with the first row of data on the first row, no headers.
+        """
         default_customer_name: str = "RE MICHEL"
         commission_rate = kwargs.get("standard_commission_rate", 0)
 
@@ -99,12 +101,16 @@ class PreProcessor(AbstractPreProcessor):
         result_columns = ["customer", "city", "state", "inv_col", "comm_col"]
 
         def isolate_city_name(row: pd.Series) -> str:
-            city_state = row[city_name_col].split(" ")
-            return " ".join(city_state[:city_state.index(row[state_name_col])]).upper()
+            city_state: str = row[city_name_col]
+            city_state = city_state.upper().split(" ")
+            ## since a city could have spaces, rejoin the list up-to but excluding the state str
+            ## found in the next column
+            return " ".join(city_state[:city_state.index(row[state_name_col].upper())]).upper()
 
+        data = data.T.reset_index().T   # bring the column headings down to the first row
         data = data.dropna(subset=data.columns.to_list()[0])
         data.iloc[:,city_name_col] = data.apply(isolate_city_name, axis=1)
-        data.iloc[:,inv_col] = data.iloc[:,inv_col]*100
+        data.iloc[:,inv_col] *= 100
         data["comm_amt"] = data.iloc[:,inv_col]*commission_rate
         data["customer"] = default_customer_name
 

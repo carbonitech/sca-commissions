@@ -27,6 +27,7 @@ class CustomerBranch(Base):
     customers = relationship("Customer", back_populates="customer_branches")
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")
+    id_strings = relationship("IDStringMatch", back_populates="branches")
 
 class Representative(Base):
     __tablename__ = 'representatives'
@@ -76,7 +77,6 @@ class Submission(Base):
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
     errors = relationship("Error", back_populates="submission")
-    processing_steps = relationship("ProcessingStep", back_populates="submission")
 
 class Error(Base):
     __tablename__ = 'errors'
@@ -147,7 +147,6 @@ class User(Base):
     manufacturers = relationship("Manufacturer")
     manufacturers_reports = relationship("ManufacturersReport")
     submissions = relationship("Submission")
-    processing_steps = relationship("ProcessingStep")
     errors = relationship("Error")
     commission_data = relationship("CommissionData")
     file_downloads = relationship("FileDownloads")
@@ -196,6 +195,7 @@ class IDStringMatch(Base):
     created_at = Column(DateTime)
     auto_matched = Column(Boolean)
     user_id = Column(Integer, ForeignKey("users.id"))
+    branches = relationship("CustomerBranch", back_populates="id_strings")
     
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

@@ -83,11 +83,14 @@ class ReportProcessor:
         self.id_string_matches = self.api.get_id_string_matches(session, user_id=self.user_id)
 
     def _send_event_by_submission(self, data: pd.DataFrame, event_: Hashable) -> None:
-        
+        """
+        Seperates data by submission ID before posting an event specific to that submission
+        """
         for sub_id in data["submission_id"].unique().tolist():
             mask = data["submission_id"] == sub_id
-            sub_id_table = data.loc[mask,:]
-            sub_id_table = sub_id_table.loc[:,~sub_id_table.columns.isin(['submission_id','id','reason','user_id'])]
+            sub_id_table = data.loc[mask, data.columns.isin(
+                    ['customer', 'city', 'state', 'inv_amt', 'comm_amt', 'id_string', 'direction']
+                )]
             event.post_event(
                 event_,
                 sub_id_table,
@@ -99,7 +102,8 @@ class ReportProcessor:
 
     def _filter_for_existing_records_with_target_error_type(self) -> 'ReportProcessor':
         mask = self.error_table["reason"] == self.target_err.value
-        table_target_errors = self.error_table.loc[mask]
+        table_target_errors = self.error_table.loc[mask,:]
+        self.error_ids = table_target_errors["id"].to_list()
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
         self.staged_data = self.error_table.copy()
         if table_target_errors.empty:
@@ -107,7 +111,7 @@ class ReportProcessor:
         return self
 
     def remove_error_db_entries(self) -> 'ReportProcessor':
-        self.api.delete_errors(db=self.session, record_ids=self.staged_data["id"].to_list())
+        self.api.delete_errors(db=self.session, record_ids=self.error_ids)
         return self
 
     def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
@@ -139,7 +143,7 @@ class ReportProcessor:
         operating_data.loc[:, new_column] = new_col_values
 
         if pipe:
-            operating_data = self._filter_out_any_rows_unmapped(operating_data)
+            operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
             self.staged_data = operating_data
             return self
         else:
@@ -258,8 +262,7 @@ class ReportProcessor:
                     .insert_submission_id()\
                     .insert_user_id()
             else:
-                self._filter_for_existing_records_with_target_error_type()\
-                    .remove_error_db_entries()
+                self._filter_for_existing_records_with_target_error_type()
             self.set_switches()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
@@ -277,6 +280,8 @@ class ReportProcessor:
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
         else:
+            if self.reintegration:
+                self.remove_error_db_entries()
             self.drop_extra_columns()\
                 .insert_recorded_at_column()\
                 .register_commission_data()\

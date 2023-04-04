@@ -14,7 +14,6 @@ class ErrorType(Enum):
 @dataclass
 class Error:
     submission_id: int
-    row_index: int
     reason: ErrorType
     row_data: dict
     user_id: int

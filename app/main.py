@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, RedirectResponse
 
 from app import resources, middleware_handlers, auth
-from app.listeners import api_adapter_listener, error_listener, process_step_listener
+from app.listeners import api_adapter_listener, error_listener
 from db.models import Base
 from services.api_adapter import ApiAdapter
 
@@ -60,7 +60,6 @@ app.include_router(resources.downloads)
 app.include_router(resources.reports, dependencies=PROTECTED)
 
 error_listener.setup_error_event_handlers()
-process_step_listener.setup_processing_step_handlers()
 api_adapter_listener.setup_api_event_handlers()
 
 

@@ -108,6 +108,11 @@ class ReportProcessor:
         self.staged_data = self.error_table.copy()
         if table_target_errors.empty:
             raise EmptyTableException
+        self.report_id_by_submission = self.api.report_id_by_submission(
+                self.session,
+                user_id=self.user_id,
+                sub_ids=self.staged_data.loc[:,"submission_id"].unique().tolist()
+            )
         return self
 
     def remove_error_db_entries(self) -> 'ReportProcessor':
@@ -132,14 +137,13 @@ class ReportProcessor:
             return self if pipe else operating_data
 
         merged_with_branches = pd.merge(
-                operating_data, self.id_string_matches[self.id_string_matches["report_id"] == self.report_id],
-                how="left", left_on="id_string",
-                right_on="match_string",
+                operating_data, self.id_string_matches,
+                how="left", left_on=["id_string", "report_id"],
+                right_on=["match_string", "report_id"],
                 suffixes=(None,"_ref_table")
         ) 
         
         new_col_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
-
         operating_data.loc[:, new_column] = new_col_values
 
         if pipe:
@@ -167,7 +171,7 @@ class ReportProcessor:
             return data
         mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt","row_index"])].all('columns')
         data_remaining = data[mask]
-        data_removed = data[~mask]
+        data_removed = data.loc[~mask, ~data.columns.isin(['customer_branch_id'])]
         self._send_event_by_submission(data_removed, error_type)
         return data_remaining
 
@@ -222,6 +226,13 @@ class ReportProcessor:
     def insert_submission_id(self) -> 'ReportProcessor':
         self.staged_data.insert(0,"submission_id",self.submission_id)
         return self
+    
+    def insert_report_id(self) -> 'ReportProcessor':
+        if self.reintegration:
+            new_col = self.staged_data.loc[:,["submission_id"]].merge(self.report_id_by_submission, how="left", on="submission_id").loc[:,["report_id"]]
+            self.staged_data["report_id"] = new_col
+        else:
+            self.staged_data.insert(0,"report_id", self.report_id)
 
     def insert_recorded_at_column(self) -> 'ReportProcessor':
         self.staged_data["recorded_at"] = datetime.utcnow()
@@ -260,9 +271,11 @@ class ReportProcessor:
                 self.set_submission_status("PROCESSING")\
                     .preprocess()\
                     .insert_submission_id()\
-                    .insert_user_id()
+                    .insert_user_id()\
+                    .insert_report_id()
             else:
-                self._filter_for_existing_records_with_target_error_type()
+                self._filter_for_existing_records_with_target_error_type()\
+                    .insert_report_id()
             self.set_switches()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()

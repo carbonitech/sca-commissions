@@ -281,7 +281,6 @@ class ReportProcessor:
                 self.assign_value_by_transfer_direction()
             else:
                     self.add_branch_id()
-                    print(self.staged_data)
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:

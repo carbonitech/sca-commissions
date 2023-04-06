@@ -49,15 +49,16 @@ async def format_responses_to_jsonapi_spec(request: Request, call_next):
 
 PROTECTED = [Depends(auth.authenticate_auth0_token)]
 
-app.include_router(resources.relationships, dependencies=PROTECTED)
-app.include_router(resources.customers, dependencies=PROTECTED)
+app.include_router(resources.downloads)
 app.include_router(resources.reps, dependencies=PROTECTED)
+app.include_router(resources.reports, dependencies=PROTECTED)
+app.include_router(resources.mappings, dependencies=PROTECTED)
 app.include_router(resources.branches, dependencies=PROTECTED)
+app.include_router(resources.customers, dependencies=PROTECTED)
 app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
+app.include_router(resources.relationships, dependencies=PROTECTED)
 app.include_router(resources.manufacturers, dependencies=PROTECTED)
-app.include_router(resources.downloads)
-app.include_router(resources.reports, dependencies=PROTECTED)
 
 error_listener.setup_error_event_handlers()
 api_adapter_listener.setup_api_event_handlers()

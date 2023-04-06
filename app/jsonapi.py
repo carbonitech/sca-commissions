@@ -59,6 +59,17 @@ class NewBranch(JSONAPIBaseModification):
     attributes: Branch
     relationships:BranchRelatonshipFull
 
+## mapping ##
+class Mapping(BaseModel):
+    report_id: int
+    match_string: str
+    created_at: datetime
+class MappingRelationship(BaseModel):
+    branches: JSONAPIRelationshipObject
+class NewMapping(JSONAPIBaseModification):
+    attributes: Mapping
+    relationships:MappingRelationship
+
 ## customer ##
 class Customer(BaseModel):
     name: str
@@ -77,30 +88,6 @@ class NewCustomerNameMapping(JSONAPIBaseModification):
     attributes: CustomerNameMapping
     relationships: CustomerRelationship
 
-## city ##
-class City(BaseModel):
-    name: str
-class State(BaseModel):
-    name: str
-class NewCity(JSONAPIBaseModification):
-    attributes: City
-class NewState(JSONAPIBaseModification):
-    attributes: State
-class CityNameMapping(BaseModel):
-    recorded_name: str
-class StateNameMapping(BaseModel):
-    recorded_name: str
-class CityRelationship(BaseModel):
-    cities: JSONAPIRelationshipObject
-class StateRelationship(BaseModel):
-    states: JSONAPIRelationshipObject
-class NewCityNameMapping(JSONAPIBaseModification):
-    attributes: CityNameMapping
-    relationships: CityRelationship
-class NewStateNameMapping(JSONAPIBaseModification):
-    attributes: StateNameMapping
-    relationships: StateRelationship
-
 
 ### top level objects ###
 class NewCustomerRequest(BaseModel):
@@ -112,32 +99,20 @@ class NewCustomerNameMappingRequest(BaseModel):
 class BranchModificationRequest(BaseModel):
     data: BranchModification
 
-class NewCityRequest(BaseModel):
-    data: NewCity
-
-class NewStateRequest(BaseModel):
-    data: NewState
-
-class NewCityNameMappingRequest(BaseModel):
-    data: NewCityNameMapping
-
-class NewStateNameMappingRequest(BaseModel):
-    data: NewStateNameMapping
-
 class NewBranchRequest(BaseModel):
     data: NewBranch
+
+class NewMappingRequest(BaseModel):
+    data: NewMapping
 
 
 @dataclass
 class RequestModels:
     new_customer_name_mapping = NewCustomerNameMappingRequest
-    new_city_name_mapping = NewCityNameMappingRequest
-    new_state_name_mapping = NewStateNameMappingRequest
     branch_modification = BranchModificationRequest
     new_customer = NewCustomerRequest
-    new_city = NewCityRequest
-    new_state = NewStateRequest
     new_branch = NewBranchRequest
+    new_mapping = NewMappingRequest
 
 
 def convert_to_jsonapi(query: dict) -> dict:

@@ -9,12 +9,12 @@ router = APIRouter(prefix="/branches", route_class=JSONAPIRoute)
 @router.get("", tags=["branches"])
 async def all_branches(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_many_branches_jsonapi(db,jsonapi_query, user)
+    return api.get_branch(db,jsonapi_query, user)
 
 @router.get("/{branch_id}", tags=["branches"])
 async def branch_by_id(branch_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_branch(db, branch_id, jsonapi_query, user)
+    return api.get_branch(db, jsonapi_query, user, branch_id)
 
 @router.patch("/{branch_id}", tags=["branches"])
 async def modify_branch(branch_id: int, branch: BranchModificationRequest, db: Session=Depends(get_db), user: User=Depends(get_user)):

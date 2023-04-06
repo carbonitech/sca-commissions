@@ -9,12 +9,12 @@ router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
 @router.get("", tags=["customers"])
 async def all_customers(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_many_customers_jsonapi(db,jsonapi_query, user)
+    return api.get_customers(db,jsonapi_query, user)
 
 @router.get("/{customer_id}", tags=["customers"])
 async def customer_by_id(customer_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_customer_jsonapi(db, customer_id, jsonapi_query, user)
+    return api.get_customers(db, customer_id, jsonapi_query, user)
    
 @router.patch("/{customer_id}", tags=["customers"])
 async def modify_customer(customer_id: int,

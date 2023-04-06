@@ -43,6 +43,9 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
     if table == model.CustomerBranch:
         error_type = error.ErrorType(4)
         assert update_new_customer_branch_with_loc_id(session, kwargs.get("id_"))
+
+    if table == model.IDStringMatch:
+        error_type = error.ErrorType(4)
     
     if error_type:
         errors = api.get_errors(session, user)

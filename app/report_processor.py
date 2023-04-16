@@ -25,13 +25,11 @@ class ReportProcessor:
     and does manufacturer-specific preprocessing steps. The preprocessor is expected to return the same format 
     for all manufacturers.
 
-    Data Processing is achieved by gathering name mappings (Customer, City, State, and Branches)
-    and using those mappings to find id numbers in the database. On the happy path, commission 
-    data (invoiced and commission amounts) are recorded in the database with an id and a branch id.
-    If a mapping match isn't found for names (Customer, City, State), the data is placed in an 'errors'
-    table as-is for reprocessing attempts later. If a row maps all names but the ids aren't associated with one
-    another as a branch, a new branch is added to the database without a rep assignment. (While this 
-    does need user attention to add a rep assignment, it's not going to the error's table)
+    Alternatively, this class is used to attempt to integrate data that was previously kicked out due to no
+    existing mapping.
+
+    Output: Submission ID or None
+            Either commission data, failed matches, or both, are written to a database
 
     """
     def __init__(

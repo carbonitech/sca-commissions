@@ -30,9 +30,7 @@ class PreProcessor(AbstractPreProcessor):
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100
 
-        for col in [customer_name_col,city_name_col]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result = result.apply(self.upper_all_str)
         
         col_names = ["customer", "city", "inv_amt", "comm_amt"]
         result.columns = col_names
@@ -43,23 +41,21 @@ class PreProcessor(AbstractPreProcessor):
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Famco Johnstone report"""
 
-        default_customer_name: str = "JOHNSTONE"
-        store_number_col: str = ""
-        city_name_col: str = ""
-        state_name_col: str = ""
-        inv_col: str = ""
-        comm_col: str = ""
+        store_number_col: str = "storeno"
+        city_name_col: str = "storename"
+        state_name_col: str = "storestate"
+        inv_col: str = "lastmocogs"
+        comm_rate = kwargs.get("standard_commission_rate",0)
 
-        raise NotImplementedError
-        
-        result.loc[:,inv_col] = result[inv_col]*100
-        result.loc[:,comm_col] = result[comm_col]*100
-        
-        for col in [city_name_col,state_name_col]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result_cols = [store_number_col, city_name_col, state_name_col, inv_col]
+        result = data.loc[:,result_cols]
 
-        result.columns = ["store_number"] + self.result_columns
+
+        result.loc[:,inv_col] *= 100
+        result.loc[:,"comm_amt"] = result[inv_col]*comm_rate
+        
+        result = result.apply(self.upper_all_str)
+        result["id_string"] = result[result_cols[:-1]].apply("_".join, axis=1)
         return PreProcessedData(result)
 
 

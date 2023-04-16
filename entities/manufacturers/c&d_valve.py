@@ -66,9 +66,7 @@ class PreProcessor(AbstractPreProcessor):
 
         # standardize
         result.columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
-        for col in range(3):
-            result.iloc[:, col] = result.iloc[:, col].str.upper()
-            result.iloc[:, col] = result.iloc[:, col].str.strip()
+        result = result.apply(self.upper_all_str)
 
         # without invoice column now, group by branch
         result = result.groupby(result.columns[:3]).sum().reset_index()

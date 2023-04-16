@@ -77,9 +77,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,inv_col] = data[inv_col].fillna(0)
         data.loc[:,inv_col] *= 100
         data.loc[:,comm_col] *= 100
-        for col in result_columns[:3]:
-            data.loc[:, col] = data[col].str.upper()
-            data.loc[:, col] = data[col].str.strip()
+        result = result.apply(self.upper_all_str)
 
         data["id_string"] = data[result_columns[:3]].apply("_".join, axis=1)
         return PreProcessedData(data)
@@ -115,6 +113,7 @@ class PreProcessor(AbstractPreProcessor):
         data["customer"] = default_customer_name
 
         result = data.iloc[:,[store_number_col, customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        result = result.apply(self.upper_all_str)
         result.columns = ["store_number"] + result_columns
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
 

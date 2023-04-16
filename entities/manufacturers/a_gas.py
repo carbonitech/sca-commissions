@@ -33,9 +33,7 @@ class PreProcessor(AbstractPreProcessor):
 
         result.loc[:, inv_col] *= 100
         result.loc[:, comm_col] *= 100
-        for col in [customer_name_col,city_name_col]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result = result.apply(self.upper_all_str)
         
         result = result.dropna(axis=1, how="all")
         result["id_string"] = result[[customer_name_col, city_name_col]].apply("_".join, axis=1)

@@ -28,9 +28,7 @@ class PreProcessor(AbstractPreProcessor):
             result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100
-        for col in [customer_name_col,city_name_col,active_state_col]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result = result.apply(self.upper_all_str)
         result["id_string"] = result[[customer_name_col, city_name_col, active_state_col]].apply("_".join, axis=1)
         result.columns = ["customer","city", "state","inv_col", "comm_col", "id_string"]
         return PreProcessedData(result)

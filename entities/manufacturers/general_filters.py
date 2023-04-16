@@ -67,9 +67,7 @@ class PreProcessor(AbstractPreProcessor):
 
         result["inv_amt"] *= 100
         result["comm_amt"] *= 100
-        for col in ["customer","city","state"]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result = result.apply(self.upper_all_str)
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)

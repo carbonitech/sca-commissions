@@ -43,9 +43,7 @@ class PreProcessor(AbstractPreProcessor):
             aggfunc=np.sum).reset_index()
         
         result = result.drop(columns=["customer","shipto"])
-        for col in [customer_name_col,city_name_col,state_name_col]:
-            result.loc[:, col] = result[col].str.upper()
-            result.loc[:, col] = result[col].str.strip()
+        result = result.apply(self.upper_all_str)
 
         result["id_string"] = result[[customer_name_col, city_name_col, state_name_col]].apply("_".join, axis=1)
         result.columns = ["customer", "city", "state", "inv_amt", "comm_amt", "id_string"]
@@ -87,8 +85,7 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.DataFrame([["COBURN",total_inv_adj, total_comm_adj]],
             columns=cols[:-1])
 
-        result.loc[:, cols[0]] = result[cols[0]].str.upper()
-        result.loc[:, cols[0]] = result[cols[0]].str.strip()
+        result = result.apply(self.upper_all_str)
 
         result["id_string"] = result[cols[0]]
         result.columns = cols
@@ -160,8 +157,7 @@ class PreProcessor(AbstractPreProcessor):
         receiving_table = receiving_table.rename(columns={"receiving_city": "city", "receiving_state": "state"})
         # recombine (city, state, customer, inv_amt, comm_amt, direction, store_number)
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
-        result.loc[:,"city"] = result["city"].str.upper()
-        result.loc[:,"state"] = result["state"].str.upper()
+        result = result.apply(self.upper_all_str)
         result["id_string"] = result[["store_number", "customer", "city", "state"]].apply("_".join, axis=1)
         return PreProcessedData(result)
 

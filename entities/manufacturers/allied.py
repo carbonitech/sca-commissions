@@ -24,9 +24,7 @@ class PreProcessor(AbstractPreProcessor):
 
         data.loc[:,inv_col] *= 100
         data.loc[:,"commission"] = data[inv_col]*comm_rate
-        for col in [customer_name_col]:
-            data.loc[:, col] = data[col].str.upper()
-            data.loc[:, col] = data[col].str.strip()
+        data = data.apply(self.upper_all_str)
         
         # get duplicated names
         dup_names = data[data.duplicated(subset="customer")]["customer"].astype(str)

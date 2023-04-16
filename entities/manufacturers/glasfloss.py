@@ -31,6 +31,7 @@ class PreProcessor(AbstractPreProcessor):
 
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         col_names = ["customer", "city", "state", "inv_col", comm_col]
+        result = result.apply(self.upper_all_str)
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
         result.columns = col_names
 

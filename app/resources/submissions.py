@@ -11,12 +11,12 @@ router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
 @router.get("", tags=["submissions"])
 async def get_all_submissions(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_many_submissions_jsonapi(db,jsonapi_query,user)
+    return api.get_submissions(db,jsonapi_query,user)
 
 @router.get("/{submission_id}", tags=["submissions"])
 async def get_submission_by_id(submission_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    raw_result = api.get_submission_jsonapi(db,submission_id,jsonapi_query,user)
+    raw_result = api.get_submissions(db,submission_id,jsonapi_query,user)
     
     ## converting row-data from a string of a dict to an actual dict before sending back in the included object
     def convert_row_data_to_dict(json_obj: dict):

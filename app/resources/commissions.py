@@ -51,12 +51,12 @@ class CommissionDataDownloadParameters(BaseModel):
 @router.get("", tags=['commissions'])
 async def commission_data(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_all_commission_data_jsonapi(db,jsonapi_query, user)
+    return api.get_commission_data(db,jsonapi_query, user)
 
 @router.get("/{row_id}", tags=['commissions'])
 async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_commission_data_by_id_jsonapi(db,row_id,jsonapi_query, user)
+    return api.get_commission_data(db,row_id,jsonapi_query, user)
 
 @router.post("/download", tags=['commissions'])
 async def commission_data_file_link(
@@ -139,7 +139,7 @@ async def process_data_from_a_file(
             user,
             bg_tasks
         )
-    return api.get_submission_jsonapi(db=db, submission_id=new_submission_id,query={}, user=user)
+    return api.get_submissions(db=db, submission_id=new_submission_id,query={}, user=user)
 
 async def process_commissions_file(
         file: bytes,

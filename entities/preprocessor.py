@@ -11,6 +11,7 @@ class AbstractPreProcessor(ABC):
         self.submission_id = submission_id
         self.file = file
 
+    @staticmethod
     def upper_all_str(col: Series) -> Series:
         col_cp = col.copy()
         if col_cp.dtype == "object":
@@ -20,6 +21,7 @@ class AbstractPreProcessor(ABC):
                 pass
         return col_cp
     
+    @staticmethod
     def check_headers_and_fix(cols: str|list[str], df: DataFrame) -> DataFrame:
         """check that a dataframe's headers contain the column name(s)
         supplied in cols. If the dataframe columns do not match,

@@ -74,13 +74,47 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         # without invoice column now, group by branch
         result = result.groupby("id_string").sum().reset_index()
-        
+
+        return PreProcessedData(result)
+    
+
+    def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        monthly_sales: str = "monthlytotal"
+        commissions: str = "comm"
+        store_number: str = "branch#"
+        city: str = "branchcity"
+        state: str = "branchstate"
+
+        data = data.dropna(subset=data.columns[0])
+        data["inv_amt"] = data.loc[:,data.columns.str.startswith(monthly_sales)].fillna(0).sum(axis=1)*100
+        data["comm_amt"] = data.loc[:,data.columns.str.endswith(commissions)].fillna(0).sum(axis=1)*100
+        data["id_string"] = data[[store_number, city, state]].astype(str).apply("_".join, axis=1)
+
+        result = data.loc[:,["id_string", "inv_amt", "comm_amt"]].apply(self.upper_all_str)
+        return PreProcessedData(result)
+
+
+    def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        monthly_sales: str = "cogs"
+        commissions: str = "comm"
+        store_number: str = "storeno"
+        city: str = "storename"
+        state: str = "state"
+
+        data = data.dropna(subset=data.columns[0])
+        data["inv_amt"] = data.loc[:,data.columns.str.endswith(monthly_sales)].fillna(0).sum(axis=1)*100
+        data["comm_amt"] = data.loc[:,data.columns.str.endswith(commissions)].fillna(0).sum(axis=1)*100
+        data["id_string"] = data[[store_number, city, state]].astype(str).apply("_".join, axis=1)
+
+        result = data.loc[:,["id_string", "inv_amt", "comm_amt"]].apply(self.upper_all_str)
         return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": (self._standard_report_preprocessing,2),
+            "baker": (self._baker_report_preprocessing,1),
+            "johnstone": (self._johnstone_report_preprocessing,0),
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:

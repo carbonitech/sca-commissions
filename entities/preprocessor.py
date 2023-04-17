@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from pandas import Series
+from pandas import Series, DataFrame
 from entities.commission_data import PreProcessedData
 from entities.commission_file import CommissionFile
 
@@ -14,8 +14,36 @@ class AbstractPreProcessor(ABC):
     def upper_all_str(col: Series) -> Series:
         col_cp = col.copy()
         if col_cp.dtype == "object":
-            col_cp = col_cp.str.upper().str.strip()
+            try:
+                col_cp = col_cp.str.upper().str.strip()
+            except:
+                pass
         return col_cp
+    
+    def check_headers_and_fix(cols: str|list[str], df: DataFrame) -> DataFrame:
+        """check that a dataframe's headers contain the column name(s)
+        supplied in cols. If the dataframe columns do not match,
+        iterate through the rows to find the first row with column headers
+        and set the dataframe as if all prior rows had been skipped upon loading
+        
+        if the rows never reveal column headers, the original dataframe is returned
+
+        Returns: DataFrame"""
+
+        if isinstance(cols, str):
+            cols = [cols]
+        # check that my columns contain the headers I expect
+        if not set(cols) & set(df.columns):
+            # iterate through the rows until we find the column header
+            for index, row in df.iterrows():
+                row_vals = [str(value).lower() for value in row.values.tolist()]
+                if set(cols) & set(row_vals):
+                    # set the df to use the column row as header
+                    # and next row is the first row
+                    df.columns = row_vals
+                    df = df.iloc[index+1:]
+                    break
+        return df
 
         
     @abstractmethod

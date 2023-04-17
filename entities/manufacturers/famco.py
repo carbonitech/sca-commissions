@@ -47,15 +47,18 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "lastmocogs"
         comm_rate = kwargs.get("standard_commission_rate",0)
 
-        result_cols = [store_number_col, city_name_col, state_name_col, inv_col]
-        result = data.loc[:,result_cols]
+        data_cols = [store_number_col, city_name_col, state_name_col, inv_col]
+        data = data.loc[:,data_cols]
 
-
-        result.loc[:,inv_col] *= 100
-        result.loc[:,"comm_amt"] = result[inv_col]*comm_rate
+        data.loc[:,inv_col] *= 100
+        data.loc[:,"comm_amt"] = data[inv_col]*comm_rate
         
-        result = result.apply(self.upper_all_str)
-        result["id_string"] = result[result_cols[:-1]].apply("_".join, axis=1)
+        data = data.apply(self.upper_all_str)
+        data["id_string"] = data[data_cols[:-1]].astype(str).apply("_".join, axis=1)
+        
+        result_cols = ["inv_amt", "comm_amt","id_string"]
+        result = data.iloc[:,-3:]
+        result.columns = result_cols
         return PreProcessedData(result)
 
 

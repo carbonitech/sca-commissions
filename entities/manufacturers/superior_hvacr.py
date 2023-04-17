@@ -51,9 +51,36 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result)
 
 
+    def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+
+        store_number: str = "branch"
+        city: str = "branchname"
+        state: str = "state"
+        inv_amt: int = -2
+        comm_amt: int = -1
+
+        id_cols = [store_number, city, state]
+        data = self.check_headers_and_fix(id_cols, data)
+        data = data.apply(self.upper_all_str)
+        # fill NaNs in sales and commission columns with 0's
+        data.iloc[:,[inv_amt, comm_amt]] = data.iloc[:,[inv_amt, comm_amt]].fillna(0)
+        data = data.dropna(subset=data.columns[0])
+        data = pd.concat([data.loc[:,id_cols], data.iloc[:,[inv_amt, comm_amt]]], axis=1)
+        data = data.groupby(id_cols).sum(numeric_only=True).reset_index()
+        data["id_string"] = data[id_cols].apply("_".join, axis=1)
+        result = data.iloc[:,-3:]
+        result.columns = ["inv_amt", "comm_amt", "id_string"]
+        new_col_order = result.columns.to_list()
+        new_col_order = [new_col_order.pop()] + new_col_order
+        result = result.loc[:,new_col_order]
+        
+        return PreProcessedData(result)
+
+
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
+            "uri_report": self._united_refrigeration_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

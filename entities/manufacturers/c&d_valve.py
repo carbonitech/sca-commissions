@@ -3,6 +3,7 @@ Manufacturer report preprocessing definition
 for C&D Value
 """
 import pandas as pd
+from numpy import nan
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
 
@@ -101,6 +102,7 @@ class PreProcessor(AbstractPreProcessor):
         city: str = "storename"
         state: str = "state"
 
+        data = data.replace('^\s+$',nan, regex=True) # make sure cells that have only 0-n space characters are also flagged as NaN
         data = data.dropna(subset=data.columns[0])
         data["inv_amt"] = data.loc[:,data.columns.str.endswith(monthly_sales)].fillna(0).sum(axis=1)*100
         data["comm_amt"] = data.loc[:,data.columns.str.endswith(commissions)].fillna(0).sum(axis=1)*100

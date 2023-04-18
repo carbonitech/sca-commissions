@@ -37,8 +37,19 @@ class PreProcessor(AbstractPreProcessor):
             id_data = row_short.iloc[true_id_start:-7]
             id_data = '_'.join(id_data.values.tolist()).upper()
             return id_data
+        
+        def right_justify_num_cols(row: pd.Series):
+            row_short = row.dropna()
+            num_nans = len(row) - len(row_short)
+            if num_nans:
+                # 7 is the num of num cols before id cols from the right side
+                # nan values are on the right-side, so we want to compensate
+                # in order to find the true left boundary of this shift
+                row.iloc[-(7+num_nans):] = row.iloc[-(7+num_nans):].shift(num_nans, fill_value=np.nan)
+            return row
 
         data = data.apply(fix_dollar_numbers, axis=1)
+        data = data.apply(right_justify_num_cols, axis=1)
         data["id_string"] = data.apply(extract_id, axis=1)
 
         result = data.loc[:,["id_string", 24]]

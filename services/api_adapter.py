@@ -389,7 +389,7 @@ class ApiAdapter:
         return self.__get_X(db, query, user, ID_STRINGS, _id)
 
     @jsonapi_error_handling
-    def get_manufacturer_jsonapi(self, db: Session, query: dict, user: User, manuf_id: int=0) -> JSONAPIResponse:
+    def get_manufacturers(self, db: Session, query: dict, user: User, manuf_id: int=0) -> JSONAPIResponse:
         return self.__get_X(db, query, user, MANUFACTURERS, manuf_id)
     
     @jsonapi_error_handling

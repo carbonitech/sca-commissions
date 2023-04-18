@@ -14,7 +14,7 @@ class PreProcessor(AbstractPreProcessor):
         # headers are lost once the df is condensed
         customer_name_col: int = 2
         city_name_col: int = 3
-        inv_col: int = 11
+        inv_col: int = -2
         comm_col: int = -1
 
         data = data.dropna(how="all",axis=1)

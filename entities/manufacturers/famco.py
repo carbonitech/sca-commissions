@@ -14,7 +14,8 @@ class PreProcessor(AbstractPreProcessor):
         # headers are lost once the df is condensed
         customer_name_col: int = 2
         city_name_col: int = 3
-        inv_col: int = -2
+        inv_col_1: int = 11 # before result df
+        inv_col_2: int = -2 # after result df
         comm_col: int = -1
 
         data = data.dropna(how="all",axis=1)
@@ -22,9 +23,9 @@ class PreProcessor(AbstractPreProcessor):
         data = pd.concat([data[col].dropna() for col in data.columns.to_list()], axis=1, ignore_index=True)
         data = data.reset_index(drop=True)
         data = data.dropna(subset=data.columns[0])
-        result = data.iloc[:,[customer_name_col, city_name_col, inv_col, comm_col]]
+        result = data.iloc[:,[customer_name_col, city_name_col, inv_col_1, comm_col]]
 
-        result.iloc[:,inv_col] *= 100
+        result.iloc[:,inv_col_2] *= 100
         result.iloc[:,comm_col] *= 100
 
         result = result.apply(self.upper_all_str)

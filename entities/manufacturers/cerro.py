@@ -43,8 +43,8 @@ class PreProcessor(AbstractPreProcessor):
 
         result = data.loc[:,["id_string", 24]]
         result.columns = ["id_string", "inv_amt"]
-
-        result.loc[:,"inv_amt"] *= 100
+        
+        result.loc[:,"inv_amt"] = result.loc[:,"inv_amt"].astype(float)*100
         result.loc[:,"comm_amt"] = result.loc[:,"inv_amt"]*comm_rate
 
         return PreProcessedData(result)

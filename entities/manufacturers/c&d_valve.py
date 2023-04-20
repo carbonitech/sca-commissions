@@ -42,7 +42,7 @@ class PreProcessor(AbstractPreProcessor):
         data.columns = ["invoice_summary","customer","inv_amt","comm_amt"]
         data["invoice_summary"] = data["invoice_summary"].astype(int)
         data["inv_amt"] = data["inv_amt"].astype(float)*100
-        data["total_comm"] = data["total_comm"].astype(float)*100
+        data["comm_amt"] = data["comm_amt"].astype(float)*100
 
         # in the sales report, inoice numbers are in their own column and share the same index as customer info and sales figure
         invoice_numbers = sales_report.iloc[:,invoice_num_col].dropna()

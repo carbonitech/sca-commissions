@@ -38,18 +38,19 @@ class PreProcessor(AbstractPreProcessor):
         data = data.iloc[:,[customer_name_col, city_name_col, inv_col, comm_col]]
 
         data.columns = ["customer", "city", "inv_amt", "comm_amt"]
+        # from here, all the variable from above have been replaced by strings
         customer_name_col, city_name_col, inv_col, comm_col = data.columns.tolist()
 
         # convert string currency figure to float
-        data.iloc[:, inv_col] = data.iloc[:, inv_col].replace(r'^\(','-', regex=True)
-        data.iloc[:, inv_col] = data.iloc[:, inv_col].replace(r'[^-.0-9]','',regex=True).astype(float)
+        data.loc[:, inv_col] = data[inv_col].replace(r'^\(','-', regex=True)
+        data.loc[:, inv_col] = data[inv_col].replace(r'[^-.0-9]','',regex=True).astype(float)
 
         # convert string currency figure to float
-        data.iloc[:, comm_col] = data.iloc[:, comm_col].replace(r'^\(','-', regex=True)
-        data.iloc[:, comm_col] = data.iloc[:, comm_col].replace(r'[^-.0-9]','',regex=True).astype(float)
+        data.loc[:, comm_col] = data[comm_col].replace(r'^\(','-', regex=True)
+        data.loc[:, comm_col] = data[comm_col].replace(r'[^-.0-9]','',regex=True).astype(float)
 
-        data.iloc[:, inv_col] *= 100
-        data.iloc[:, comm_col] *= 100
+        data.loc[:, inv_col] *= 100
+        data.loc[:, comm_col] *= 100
         data = data.apply(self.upper_all_str)
         
         data = data.dropna(axis=1, how="all")

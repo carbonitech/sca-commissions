@@ -28,6 +28,7 @@ class CustomerBranch(Base):
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")
     id_strings = relationship("IDStringMatch", back_populates="branches")
+    locations = relationship('Location', back_populates="branches")
 
 class Representative(Base):
     __tablename__ = 'representatives'
@@ -185,6 +186,7 @@ class Location(Base):
     state = Column(String(20))
     lat = Column(Numeric)
     long = Column(Numeric)
+    branches = relationship('CustomerBranch', back_populates="locations")
 
 class IDStringMatch(Base):
     __tablename__ = "id_string_matches"

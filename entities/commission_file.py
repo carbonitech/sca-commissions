@@ -29,7 +29,12 @@ class CommissionFile:
                 text_list_compact = [line.strip() for line in text_list if line.strip()]
                 return pd.Series(text_list_compact)
             elif strategy.lower() == "table":
-                return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
+                if combine_sheets:
+                    all_tables = tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip:]
+                    all_tables = [table.T.reset_index().T for table in all_tables]
+                    return pd.concat(all_tables, ignore_index=True)
+                else:
+                    return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
 
         try:
             with pd.ExcelFile(self.file_data, engine="openpyxl") as excel_file:

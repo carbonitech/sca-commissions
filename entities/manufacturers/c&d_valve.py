@@ -88,7 +88,7 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(subset=data.columns[0])
         data["inv_amt"] = data.loc[:,data.columns.str.startswith(monthly_sales)].fillna(0).sum(axis=1)*100
-        data["comm_amt"] = data.loc[:,data.columns.str.endswith(commissions)].fillna(0).sum(axis=1)*100
+        data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
         data["id_string"] = data[[store_number, city, state]].astype(str).apply("_".join, axis=1)
 
         result = data.loc[:,["id_string", "inv_amt", "comm_amt"]].apply(self.upper_all_str)

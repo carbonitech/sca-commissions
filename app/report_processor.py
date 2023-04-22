@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Hashable, Union, Type
 import pandas as pd
 from sqlalchemy.orm import Session
+from Levenshtein import ratio, jaro_winkler
 
 from app import event
 from entities.preprocessor import AbstractPreProcessor
@@ -10,6 +11,9 @@ from entities.submission import NewSubmission
 from entities.error import ErrorType
 from services import api_adapter
 
+
+AUTO_MATCH_THRESHOLD = 0.75     # based on the eye-ball test
+PREFIX_WEIGHT = 0.3             # ditto
 
 class EmptyTableException(Exception):
     pass
@@ -78,6 +82,7 @@ class ReportProcessor:
             return
 
         self.branches = self.api.get_branches(session, user_id=self.user_id)
+        self.id_sting_match_supplement = self.api.generate_string_match_supplement(session, user_id=self.user_id)
         self.id_string_matches = self.api.get_id_string_matches(session, user_id=self.user_id)
 
     def _send_event_by_submission(self, data: pd.DataFrame, event_: Hashable) -> None:
@@ -123,7 +128,9 @@ class ReportProcessor:
         Un-matched rows are added to the customer_branches table
 
         """
-        new_column: str = "customer_branch_id"
+        new_column_cb_id: str = "customer_branch_id"
+        new_column_id_string_id: str = "report_branch_ref"
+        combined_new_cols = [new_column_cb_id, new_column_id_string_id]
 
         if not pipe:
             operating_data = data
@@ -141,8 +148,21 @@ class ReportProcessor:
                 suffixes=(None,"_ref_table")
         ) 
         
-        new_col_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
-        operating_data.loc[:, new_column] = new_col_values
+        new_column_cb_id_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
+        operating_data.loc[:, new_column_cb_id] = new_column_cb_id_values
+
+        new_column_id_string_id_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
+        operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
+
+        # attempt to auto-match the unmatched values
+        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
+        if not unmatched_id_strings.empty:
+            auto_matched = self.attempt_auto_matching(unmatched_rows=unmatched_id_strings)
+            if not auto_matched.empty:
+                # columns: 
+                auto_matched_index = auto_matched.index
+                # fill the data with auto_matched values
+                operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
 
         if pipe:
             operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
@@ -175,7 +195,7 @@ class ReportProcessor:
 
 
     def drop_extra_columns(self) -> 'ReportProcessor':
-        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id"]]
+        self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id","report_branch_ref"]]
         return self
 
     def register_commission_data(self) -> 'ReportProcessor':
@@ -251,6 +271,57 @@ class ReportProcessor:
 
         self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
         return self
+    
+    def attempt_auto_matching(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
+        """automatically matches unmatched id_string values
+            using a combination of methods with equal weights
+            
+            - normalized indel similarity in the range [0, 1], as (1 - normalized_distance)
+            - jaro-winkler
+            - jaro-winkler (reversed)
+            
+            Successfully matched values are registed in the database reference table
+            Customer_branch_id's are returned as a pd.Series"""
+        
+        # create reference table using a combination of existing match strings
+        # and strings generated from the existing customer branches
+        # both tables have matching columns for a union-like join
+        ref_table = pd.concat([self.id_string_matches, self.id_sting_match_supplement], ignore_index=True)
+
+        def score_unmatched(unmatched_value: str, *args, **kwargs) -> pd.Series:
+            """Used for the apply function to score each unmatched row value against
+                the reference table"""
+            
+            ref_table.loc[:,"indel"] = ref_table["match_string"].apply(lambda val: ratio(val,unmatched_value))
+            ref_table.loc[:,"jaro_winkler"] = ref_table["match_string"].apply(lambda val: jaro_winkler(val,unmatched_value,prefix_weight=PREFIX_WEIGHT))
+            ref_table.loc[:,"reverse_jaro_winkler"] = ref_table["match_string"].apply(lambda val: jaro_winkler(val[::-1],unmatched_value[::-1],prefix_weight=PREFIX_WEIGHT))
+            # multiply first_n and full_string scores to calculate composite score
+            ref_table["match_score"] = ref_table["indel"] * ref_table["jaro_winkler"] * ref_table["reverse_jaro_winkler"]
+
+            # grab the customer_branch_id with the highest match_score and return the string
+            over_threshold = ref_table["match_score"] > AUTO_MATCH_THRESHOLD
+            max_value = ref_table["match_score"] == ref_table["match_score"].max()
+
+
+            top_scoring_branch = ref_table.loc[
+                    (over_threshold) & (max_value),
+                    ["customer_branch_id", "match_score"],
+                ]
+            # if more than one match (likely duplicated data), take the lowest customer_branch_id
+            top_scoring_branch = top_scoring_branch.loc[top_scoring_branch["customer_branch_id"] == top_scoring_branch["customer_branch_id"].min(),:]
+            if top_scoring_branch.empty:
+                return pd.Series([0,0])
+            else:
+                return pd.Series(top_scoring_branch.iloc[0].to_list())
+            
+
+        unmatched_rows[["customer_branch_id","match_score"]] = unmatched_rows["id_string"].apply(score_unmatched, result_type="expand")
+        matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
+        if not matched_rows.empty:
+            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows)
+            return matches_w_ids
+        return pd.DataFrame()
+
 
 
     def process_and_commit(self) -> int|None:

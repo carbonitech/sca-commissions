@@ -271,7 +271,38 @@ class ApiAdapter:
         return self.get_all_by_user_id(db, BRANCHES, user_id)
     
     def get_id_string_matches(self, db: Session, user_id: int) -> pd.DataFrame:
-        return self.get_all_by_user_id(db, ID_STRINGS, user_id)
+        return self.get_all_by_user_id(db, ID_STRINGS, user_id).loc[:,["match_string","report_id","customer_branch_id","id"]]
+    
+    def generate_string_match_supplement(self, db: Session, user_id: int) -> pd.DataFrame:
+        branches_expanded_sql = sqlalchemy.select(CUSTOMERS.name, LOCATIONS.city, LOCATIONS.state, BRANCHES.id)\
+            .select_from(BRANCHES).join(CUSTOMERS).join(LOCATIONS).where(BRANCHES.user_id == user_id)
+        result = pd.read_sql(branches_expanded_sql, con=db.get_bind())
+        # create the match_string from customer name, city, and state
+        result.loc[:,"match_string"] = result[["name", "city", "state"]].apply(
+            lambda row: '_'.join(row.values.astype(str)), axis=1
+        )
+        result = result.rename(columns={"id": "customer_branch_id"})
+        return result.loc[:,["match_string", "customer_branch_id"]]
+    
+    def record_auto_matched_strings(self, db: Session, user_id: int, data: pd.DataFrame) -> None:
+        """
+        record id string matches in the database from auto-matching
+        Return a DataFrame of the inserted values with their id's
+        """
+        data_cp = data.copy().drop_duplicates()
+        data_cp = data_cp.rename(columns={"id_string": "match_string"})
+        data_cp.loc[:, "auto_matched"] = True
+        data_cp.loc[:, "user_id"] = user_id
+        data_cp.loc[:, "created_at"] = datetime.utcnow()
+        # table should have the match_string, report_id, customer_branch_id, auto_matched, user_id, created_at, and match_score
+        data_records = data_cp.to_dict(orient="records")
+        insert_stmt = sqlalchemy.insert(ID_STRINGS)\
+            .values(data_records)\
+            .returning(ID_STRINGS.id, ID_STRINGS.match_string, ID_STRINGS.report_id)
+        return_results = db.execute(insert_stmt).mappings().all()
+        db.commit()
+        return pd.DataFrame(return_results).rename(columns={"id": "report_branch_ref"})
+
     
     def report_id_by_submission(self, db: Session, user_id: int, sub_ids: list):
         all_subs = self.get_all_by_user_id(db, SUBMISSIONS_TABLE, user_id)

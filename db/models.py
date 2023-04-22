@@ -97,8 +97,10 @@ class CommissionData(Base):
     inv_amt = Column(Float)
     comm_amt = Column(Float)
     user_id = Column(Integer, ForeignKey("users.id"))
+    report_branch_ref = Column(Integer, ForeignKey("id_string_matches.id"))
     branch = relationship("CustomerBranch", back_populates="commission_data")
     submission = relationship("Submission", back_populates="commission_data")
+    id_string_matches = relationship("IDStringMatch", back_populates="commission_data")
 
 class FileDownloads(Base):
     __tablename__ = "file_downloads"
@@ -197,7 +199,11 @@ class IDStringMatch(Base):
     created_at = Column(DateTime)
     auto_matched = Column(Boolean)
     user_id = Column(Integer, ForeignKey("users.id"))
+    match_score = Column(Float) # scores are between 0 and 1, but based on threshold, will be [threshold -> 1.0]
+    verified = Column(Boolean) # has the user checked it or not
+    model_successful = Column(Boolean) # as a result of verification, was the model correct or not
     branches = relationship("CustomerBranch", back_populates="id_strings")
+    commission_data = relationship("CommissionData", back_populates="id_string_matches")
     
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x

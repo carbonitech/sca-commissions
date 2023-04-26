@@ -11,3 +11,8 @@ router = APIRouter(prefix="/locations", route_class=JSONAPIRoute)
 async def all_locations(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_location(db,jsonapi_query,user)
+
+@router.get("/{location_id}", tags=["locations"])
+async def all_locations(location_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+    jsonapi_query = convert_to_jsonapi(query)
+    return api.get_location(db,jsonapi_query,user,location_id)

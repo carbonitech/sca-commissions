@@ -431,6 +431,10 @@ class ApiAdapter:
     def get_branch(self, db: Session, query: dict, user: User, branch_id: int=0) -> JSONAPIResponse:
         return self.__get_X(db, query, user, BRANCHES, branch_id)
 
+    @jsonapi_error_handling
+    def get_location(self, db: Session, query: dict, user: User, location_id: int=0) -> JSONAPIResponse:
+        return self.__get_X(db, query, user, LOCATIONS, location_id)
+
 
     @jsonapi_error_handling
     def __create_X(self, db: Session, json_data: dict, user: User, model: models.Base) -> JSONAPIResponse:

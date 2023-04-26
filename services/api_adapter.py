@@ -22,6 +22,8 @@ from entities.error import Error
 from entities.submission import NewSubmission
 from app.jsonapi import jsonapi_error_handling
 
+load_dotenv()
+
 CUSTOMERS = models.Customer
 BRANCHES = models.CustomerBranch
 REPS = models.Representative
@@ -38,10 +40,38 @@ COMMISSION_SPLITS = models.CommissionSplit
 ID_STRINGS = models.IDStringMatch
 LOCATIONS = models.Location
 
-load_dotenv()
+
+
+def hyphenate_name(table_name: str) -> str:
+    return table_name.replace("_","-")
+
+def hyphenated_name(table_obj) -> str:
+    return table_obj.__tablename__.replace("_","-")
+
+all_models = [
+    CUSTOMERS,
+    BRANCHES,
+    REPS,
+    MANUFACTURERS,
+    REPORTS,
+    COMMISSION_DATA_TABLE,
+    SUBMISSIONS_TABLE,
+    ERRORS_TABLE,
+    DOWNLOADS,
+    FORM_FIELDS,
+    USERS,
+    USER_COMMISSIONS,
+    COMMISSION_SPLITS,
+    ID_STRINGS,
+    LOCATIONS]
+
+# this table allows for a lookup of the model by it's JSONAPI resource name
+models_dict = {hyphenated_name(model): model for model in all_models} 
+
 
 class UserMisMatch(Exception):
     pass
+
 
 @dataclass
 class User:
@@ -99,11 +129,6 @@ def cache_token(access_token: str, nickname: str, name: str, email: str, verifie
     session.commit()
     session.close()
 
-def hyphenate_name(table_name: str) -> str:
-    return table_name.replace("_","-")
-
-def hyphenated_name(table_obj) -> str:
-    return table_obj.__tablename__.replace("_","-")
 
 def hyphenate_json_obj_keys(json_data: dict) -> dict:
     for hi_level in json_data["data"].keys():
@@ -377,15 +402,23 @@ class ApiAdapter:
     def matched_user(user: User, model, reference_id: int, db: Session) -> bool:
         try:
             return user.id(db) == db.query(model.user_id).filter(model.id == reference_id).scalar()
-        except:
+        except AttributeError: # unreliable as a catch for no user_id. # NOTE consider inspecting the error before returning True
+            return True  # if the model doesn't have user_id in it, return a truthy answer anyway
+        except Exception:
             return False
     
     @jsonapi_error_handling
     def get_related(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
+        model = models_dict[primary]
+        if not self.matched_user(user, model, id_, db):
+            raise UserMisMatch()
         return models.serializer.get_related(db,{},primary,id_,secondary)
     
     @jsonapi_error_handling
     def get_relationship(self, db: Session, primary: str, id_: int, secondary: str, user: User) -> JSONAPIResponse:
+        model = models_dict[primary]
+        if not self.matched_user(user, model, id_, db):
+            raise UserMisMatch()
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
     
     @jsonapi_error_handling

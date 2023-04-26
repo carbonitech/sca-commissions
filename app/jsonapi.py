@@ -311,7 +311,10 @@ class JSONAPI_(JSONAPI):
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
         collection = self._filter_deleted(model, collection)
-        collection = collection.filter(model.user_id == user_id)
+        try:
+            collection = collection.filter(model.user_id == user_id)
+        except AttributeError:
+            pass
         query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection)
 
         for attr in sorts:

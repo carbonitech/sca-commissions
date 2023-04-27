@@ -68,7 +68,7 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns[0])
         data = pd.concat([data.loc[:,id_cols], data.iloc[:,[inv_amt, comm_amt]]], axis=1)
         data = data.groupby(id_cols).sum(numeric_only=True).reset_index()
-        data["customer"] = DEFAULT_NAME
+        data.insert(0,"customer",DEFAULT_NAME)
         id_cols = [store_number, "customer", city, state]
         data["id_string"] = data[id_cols].apply("_".join, axis=1)
         result = data.iloc[:,-3:]

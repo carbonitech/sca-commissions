@@ -53,6 +53,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
+        DEFAULT_NAME = "UNITED REFRIGERATION" # important for trying to auto-match
         store_number: str = "branch"
         city: str = "branchname"
         state: str = "state"
@@ -67,6 +68,8 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns[0])
         data = pd.concat([data.loc[:,id_cols], data.iloc[:,[inv_amt, comm_amt]]], axis=1)
         data = data.groupby(id_cols).sum(numeric_only=True).reset_index()
+        data["customer"] = DEFAULT_NAME
+        id_cols = [store_number, "customer", city, state]
         data["id_string"] = data[id_cols].apply("_".join, axis=1)
         result = data.iloc[:,-3:]
         result.columns = ["inv_amt", "comm_amt", "id_string"]

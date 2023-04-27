@@ -159,7 +159,6 @@ class ReportProcessor:
         if not unmatched_id_strings.empty:
             auto_matched = self.attempt_auto_matching(unmatched_rows=unmatched_id_strings)
             if not auto_matched.empty:
-                # columns: 
                 auto_matched_index = auto_matched.index
                 # fill the data with auto_matched values
                 operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]

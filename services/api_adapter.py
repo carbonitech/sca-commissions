@@ -323,7 +323,12 @@ class ApiAdapter:
         data_records = data_cp.to_dict(orient="records")
         insert_stmt = sqlalchemy.insert(ID_STRINGS)\
             .values(data_records)\
-            .returning(ID_STRINGS.id, ID_STRINGS.match_string, ID_STRINGS.report_id)
+            .returning(
+                ID_STRINGS.id,
+                ID_STRINGS.match_string,
+                ID_STRINGS.report_id,
+                ID_STRINGS.customer_branch_id
+            )
         return_results = db.execute(insert_stmt).mappings().all()
         db.commit()
         return pd.DataFrame(return_results).rename(columns={"id": "report_branch_ref"})

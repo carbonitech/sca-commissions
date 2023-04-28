@@ -55,9 +55,6 @@ class ReportProcessor:
         self.user_id = user.id(self.session) if user.verified else None
         self.submission_id = submission_id
 
-        if not submission_id:
-            del self.submission_id
-        
         if preprocessor and submission:
             if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
                 self.submission = submission
@@ -108,7 +105,7 @@ class ReportProcessor:
         table_target_errors = self.error_table.loc[mask,:]
         self.error_ids = table_target_errors["id"].to_list()
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
-        self.staged_data = self.error_table.copy()
+        self.staged_data = self.error_table.copy().loc[:,["submission_id", "user_id", "id_string", "inv_amt", "comm_amt"]]
         if table_target_errors.empty:
             raise EmptyTableException
         self.report_id_by_submission = self.api.report_id_by_submission(
@@ -147,13 +144,12 @@ class ReportProcessor:
                 right_on=["match_string", "report_id"],
                 suffixes=(None,"_ref_table")
         ) 
-        
         new_column_cb_id_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
         operating_data.loc[:, new_column_cb_id] = new_column_cb_id_values
 
+        # 'id' is the id column of id_string_matches
         new_column_id_string_id_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
         operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
-
         # attempt to auto-match the unmatched values
         unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
         if not unmatched_id_strings.empty:
@@ -317,7 +313,8 @@ class ReportProcessor:
         unmatched_rows[["customer_branch_id","match_score"]] = unmatched_rows["id_string"].apply(score_unmatched, result_type="expand")
         matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
         if not matched_rows.empty:
-            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows)
+            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # breaks index
+            matches_w_ids = matches_w_ids.set_index(matched_rows.index) # borrow index from the input data to the previous step. NOTE is order the same?
             return matches_w_ids
         return pd.DataFrame()
 

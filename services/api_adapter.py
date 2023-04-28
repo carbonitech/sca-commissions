@@ -309,7 +309,7 @@ class ApiAdapter:
         result = result.rename(columns={"id": "customer_branch_id"})
         return result.loc[:,["match_string", "customer_branch_id"]]
     
-    def record_auto_matched_strings(self, db: Session, user_id: int, data: pd.DataFrame) -> None:
+    def record_auto_matched_strings(self, db: Session, user_id: int, data: pd.DataFrame) -> pd.DataFrame:
         """
         record id string matches in the database from auto-matching
         Return a DataFrame of the inserted values with their id's

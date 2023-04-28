@@ -76,7 +76,9 @@ class PreProcessor(AbstractPreProcessor):
         new_col_order = result.columns.to_list()
         new_col_order = [new_col_order.pop()] + new_col_order
         result = result.loc[:,new_col_order]
-        
+        result["inv_amt"] *= 100
+        result["comm_amt"] *= 100
+
         return PreProcessedData(result)
 
 

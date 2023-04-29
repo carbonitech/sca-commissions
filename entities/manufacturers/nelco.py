@@ -60,7 +60,7 @@ class PreProcessor(AbstractPreProcessor):
 
         result = pd.DataFrame(compiled_data)
         result.loc[:,"inv_amt"] *= 100
-        result.loc[:,"comm_amt"] *= comm_rate
+        result.loc[:,"comm_amt"] = result.loc[:,"inv_amt"]*comm_rate
         result = result.apply(self.upper_all_str)
 
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]

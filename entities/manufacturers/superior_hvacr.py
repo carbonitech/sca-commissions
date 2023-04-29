@@ -15,8 +15,14 @@ class PreProcessor(AbstractPreProcessor):
         customer_name_col_comm_file: str = "customer"
         customer_number_col_comm_file: str = "to"
         inv_col_comm_file: str = "mth_sales"
-        comm_col_comm_file: str = "commission"
 
+        all_named_cols = [customer_name_col_comm_file,
+                    customer_number_col_comm_file,
+                    inv_col_comm_file
+                    ]
+        
+        data = self.check_headers_and_fix(all_named_cols, data)
+        comm_col_comm_file: str = data.columns[-1]
         ## sales file
         sales_file: pd.DataFrame
         if sales_file := kwargs.get("additional_file_1", None):

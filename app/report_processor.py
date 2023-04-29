@@ -105,7 +105,10 @@ class ReportProcessor:
         table_target_errors = self.error_table.loc[mask,:]
         self.error_ids = table_target_errors["id"].to_list()
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
-        self.staged_data = self.error_table.copy().loc[:,["submission_id", "user_id", "id_string", "inv_amt", "comm_amt"]]
+        self.staged_data = self.error_table.copy()
+        self.staged_data = self.staged_data.loc[:,
+                                self.staged_data.columns.isin(["submission_id", "user_id", "id_string", "inv_amt", "comm_amt", "direction"])
+                            ]
         if table_target_errors.empty:
             raise EmptyTableException
         self.report_id_by_submission = self.api.report_id_by_submission(
@@ -182,9 +185,9 @@ class ReportProcessor:
     def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, error_type: ErrorType) -> pd.DataFrame:
         if data.empty:
             return data
-        mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt","row_index"])].all('columns')
+        mask = data.loc[:,~data.columns.isin(["submission_id","inv_amt","comm_amt"])].all('columns')
         data_remaining = data[mask]
-        data_removed = data.loc[~mask, ~data.columns.isin(['customer_branch_id'])]
+        data_removed: pd.DataFrame = data.loc[~mask, ~data.columns.isin(['customer_branch_id'])]
         self._send_event_by_submission(data_removed, error_type)
         return data_remaining
 
@@ -256,6 +259,13 @@ class ReportProcessor:
         return self
 
     def set_submission_status(self, status: str) -> 'ReportProcessor':
+        """
+        sets the status of the submission to an enum value.
+        When an attempt is made to change the status, checks are made based on
+        the processing scheme and status value provided to prevent erroneously assigned
+        status values. Primary concern is that a submission will be labeled "COMPLETE" while
+        processing errors are still found in the database
+        """
         if self.reintegration:
             table = self.staged_data
             for sub_id in table["submission_id"].unique().tolist():
@@ -263,10 +273,15 @@ class ReportProcessor:
                     continue
                 self.api.alter_sub_status(db=self.session, submission_id=sub_id, status=status)
             return self
-
-        self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
-        return self
-    
+        elif status == 'COMPLETE':
+            if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id", {"sub_id": self.submission_id}).fetchone():
+                return self
+            else:
+                self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+                return self
+        else:
+            self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+            return self
     def attempt_auto_matching(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """automatically matches unmatched id_string values
             using a combination of methods with equal weights
@@ -277,6 +292,8 @@ class ReportProcessor:
             
             Successfully matched values are registed in the database reference table
             Customer_branch_id's are returned as a pd.Series"""
+        
+        # columns in data: ["id_string","customer_branch_id","report_id"]
         
         # create reference table using a combination of existing match strings
         # and strings generated from the existing customer branches
@@ -309,13 +326,19 @@ class ReportProcessor:
             else:
                 return pd.Series(top_scoring_branch.iloc[0].to_list())
             
-
         unmatched_rows[["customer_branch_id","match_score"]] = unmatched_rows["id_string"].apply(score_unmatched, result_type="expand")
+        # columns in data: ["id_string","customer_branch_id","report_id", "match_score"]  -- customer_branch_id has been updated
         matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
         if not matched_rows.empty:
+            # columns in this data: ["report_branch_ref"/id, "match_string", "report_id", "customer_branch_id"]
             matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # breaks index
-            matches_w_ids = matches_w_ids.set_index(matched_rows.index) # borrow index from the input data to the previous step. NOTE is order the same?
-            return matches_w_ids
+            matched_rows = matched_rows\
+                .reset_index()\
+                .merge(matches_w_ids[["report_branch_ref","customer_branch_id","report_id"]],
+                                        on=["customer_branch_id", "report_id"])
+            # recover index after merge
+            result = matched_rows.set_index("index")
+            return result
         return pd.DataFrame()
 
 
@@ -345,7 +368,7 @@ class ReportProcessor:
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
             else:
-                    self.add_branch_id()
+                self.add_branch_id()
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
@@ -362,5 +385,6 @@ class ReportProcessor:
             self.drop_extra_columns()\
                 .insert_recorded_at_column()\
                 .register_commission_data()\
+                .set_submission_status("NEEDS_ATTENTION")\
                 .set_submission_status("COMPLETE")
         return self.submission_id if not self.reintegration else None

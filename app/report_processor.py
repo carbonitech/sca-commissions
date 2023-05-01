@@ -212,9 +212,8 @@ class ReportProcessor:
         else:
             col_list = self.ppdata.data.columns.to_list()
 
-        match col_list:
-            case [*other_cols, "direction"]:
-                self.inter_warehouse_transfer = True
+        if "direction" in col_list:
+            self.inter_warehouse_transfer = True
         
         return self
 

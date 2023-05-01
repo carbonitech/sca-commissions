@@ -65,6 +65,7 @@ class PreProcessor(AbstractPreProcessor):
         na_filter_col = "date"
         branch_total_amount_filter = "amount"
         key_cols = ["amount","branch","location","commission"]
+        data = self.check_headers_and_fix(key_cols[:3],data)
         data = data[data[na_filter_col].isna()].loc[:,data.columns.isin(key_cols)]
         data = data[~data[branch_total_amount_filter].isna()]
 
@@ -165,7 +166,7 @@ class PreProcessor(AbstractPreProcessor):
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "detail": (self._standard_report_preprocessing,0),
-            "coburn_pos": (self._coburn_report_preprocessing,3),
+            "coburn_pos": (self._coburn_report_preprocessing,0),
             "lennox_pos": (self._lennox_report_preprocessing,0),
             "re_michel_pos": (self._re_michel_report_preprocessing,2)
         }

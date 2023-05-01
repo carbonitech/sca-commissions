@@ -176,7 +176,7 @@ class ReportProcessor:
         """
         for money_col in ["inv_amt", "comm_amt"]:
             self.staged_data.loc[:,money_col] = self.staged_data.apply(
-                lambda row: row[money_col] if row["direction"] == "receiving" else -row[money_col],
+                lambda row: row[money_col] if row["direction"] == "RECEIVING" else -row[money_col],
                 axis=1
             )
         return self

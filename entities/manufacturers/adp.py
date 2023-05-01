@@ -124,10 +124,10 @@ class PreProcessor(AbstractPreProcessor):
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         data = data.dropna(subset=data.columns.tolist()[0])
-        data.loc[:,"receiving"] = data["Plnt"]
-        data.loc[:,"receiving_city"] = data["City"]
-        data.loc[:,"receiving_state"] = data["Rg"]
-        data.loc[:,"sending"] = data["SPlt"]
+        data.loc[:,"receiving"] = data["plnt"]
+        data.loc[:,"receiving_city"] = data["city"]
+        data.loc[:,"receiving_state"] = data["rg"]
+        data.loc[:,"sending"] = data["splt"]
         data = data.merge(
             data["Warehouse"].apply(
                 lambda value: pd.Series({"sending_city": value.split(", ")[0], "sending_state": value.split(", ")[1]})
@@ -135,8 +135,8 @@ class PreProcessor(AbstractPreProcessor):
             left_index=True,
             right_index=True
         )
-        data.loc[:,"inv_amt"] = data["Ext Price"]*100
-        data.loc[:,"comm_amt"] = data["Commission"]*100
+        data.loc[:,"inv_amt"] = data["extprice"]*100
+        data.loc[:,"comm_amt"] = data["commission"]*100
         data.loc[:,"customer"] = "LENNOX"
         result_cols = ["receiving_city", "receiving_state", "sending_city", "sending_state",
                        "customer", "inv_amt", "comm_amt", "receiving", "sending"]
@@ -160,6 +160,7 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[["store_number", "customer", "city", "state"]].apply("_".join, axis=1)
+        result = result.drop(columns=["store_number", "customer", "city", "state"])
         return PreProcessedData(result)
 
 

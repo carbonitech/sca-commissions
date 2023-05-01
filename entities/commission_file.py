@@ -49,7 +49,8 @@ class CommissionFile:
                             ]
                     result = pd.concat(data, ignore_index=True)
                 if split_sheets:
-                    return {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in visible_sheets}
+                    data_sheets: dict[str,pd.DataFrame] = {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in visible_sheets}
+                    return {sheet: data.rename(columns=lambda col: str(col).replace(" ","").lower()) for sheet, data in data_sheets.items()}
                 
                 result: pd.DataFrame = pd.read_excel(self.file_data, sheet_name=visible_sheets[0], skiprows=skip)
         except:

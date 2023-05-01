@@ -44,7 +44,7 @@ class CommissionFile:
                     # columns are treated by lowering and de-spacing before combination
                     data = [
                         excel_file.parse(sheet, skiprows=skip)\
-                                .rename(columns=lambda col: col.replace(" ","").lower())
+                                .rename(columns=lambda col: str(col).replace(" ","").lower())
                             for sheet in visible_sheets
                             ]
                     result = pd.concat(data, ignore_index=True)
@@ -60,7 +60,7 @@ class CommissionFile:
                     # columns are treated by lowering and de-spacing before combination
                     data = [
                         excel_file.parse(sheet, skiprows=skip)\
-                            .rename(columns=lambda col: col.replace(" ","").lower())
+                            .rename(columns=lambda col: str(col).replace(" ","").lower())
                         for sheet in excel_file.sheet_names
                         ]
                     result =  pd.concat(data, ignore_index=True)
@@ -68,4 +68,4 @@ class CommissionFile:
                     return {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in excel_file.sheet_names}
                 result =  pd.read_excel(self.file_data, skiprows=skip)
 
-        return result.rename(columns=lambda col: col.lower().replace(" ", ""))
+        return result.rename(columns=lambda col: str(col).replace(" ","").lower())

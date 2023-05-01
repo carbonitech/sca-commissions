@@ -129,7 +129,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:,"receiving_state"] = data["rg"]
         data.loc[:,"sending"] = data["splt"]
         data = data.merge(
-            data["Warehouse"].apply(
+            data["warehouse"].apply(
                 lambda value: pd.Series({"sending_city": value.split(", ")[0], "sending_state": value.split(", ")[1]})
             ),
             left_index=True,

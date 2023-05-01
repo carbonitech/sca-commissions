@@ -20,9 +20,9 @@ class PreProcessor(AbstractPreProcessor):
 
         data.iloc[:,5:] = data.iloc[:,5:].shift(-1) # line up customer names with values
         data = data.dropna(subset=customer_col)\
-                    .dropna(axis=1, how="all")\
-                    .rename(columns={data.columns[comm_col_i]: comm_col})
-        data.loc[:,comm_col] = data[comm_col].astype(float)
+                    .dropna(axis=1, how="all")
+        data = data.rename(columns={data.columns[comm_col_i]: comm_col})
+        data[comm_col] = data[comm_col].astype(float)
         data["id_string"] = data[customer_col]
         result = data.loc[:,["id_string", inv_col, comm_col]]
         

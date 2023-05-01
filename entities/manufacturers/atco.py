@@ -35,8 +35,8 @@ class PreProcessor(AbstractPreProcessor):
         inv_comm_col: str = "commissionearned"
 
         # std cols
-        inv_col = "inv_col"
-        comm_col = "comm_col"
+        inv_col = "inv_amt"
+        comm_col = "comm_amt"
         result_columns = ["customer", "city", "state", inv_col, comm_col]
 
         df_list = []
@@ -53,10 +53,10 @@ class PreProcessor(AbstractPreProcessor):
                 df_list.append(extracted_data)
             elif re.match(inv_tab_name_re, sheet, 2):
                 # move the special row value that sums POS to customer name so it isn't dropped later
-                df = df.dropna(subset=["Invoice"])
-                df["Invoice"] = df["Invoice"].astype(str)
-
                 # removing because REM POS is back
+                # df = df.dropna(subset=["Invoice"])
+                # df["Invoice"] = df["Invoice"].astype(str)
+
                 # df.loc[df["Invoice"].str.contains(r"[^0-9]"),inv_customer_name_col] = df.loc[df["Invoice"].str.contains(r"[^0-9]"),"Invoice"].values
                 extracted_data = df.loc[:,
                     [inv_customer_name_col,
@@ -72,15 +72,13 @@ class PreProcessor(AbstractPreProcessor):
             raise Exception("no data loaded")
         
         data = pd.concat(df_list)
-
         data = data.dropna(subset=data.columns.to_list()[0])
-        data.loc[:,inv_col] = data[inv_col].fillna(0)
-        data.loc[:,inv_col] *= 100
-        data.loc[:,comm_col] *= 100
-        result = result.apply(self.upper_all_str)
-
+        data[inv_col] = data[inv_col].fillna(0)
+        data[inv_col] *= 100
+        data[comm_col] *= 100
         data["id_string"] = data[result_columns[:3]].apply("_".join, axis=1)
-        return PreProcessedData(data)
+        result = data.loc[:,["id_string"] + result_columns[-2:]].apply(self.upper_all_str)
+        return PreProcessedData(result)
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -96,7 +94,7 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: int = 7
         customer_name_col: int = -1
         comm_col: int = customer_name_col-1
-        result_columns = ["customer", "city", "state", "inv_col", "comm_col"]
+        result_columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
 
         def isolate_city_name(row: pd.Series) -> str:
             city_state: str = row[city_name_col]

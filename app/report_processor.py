@@ -161,7 +161,6 @@ class ReportProcessor:
                 auto_matched_index = auto_matched.index
                 # fill the data with auto_matched values
                 operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
-
         if pipe:
             operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
             self.staged_data = operating_data
@@ -208,7 +207,7 @@ class ReportProcessor:
 
     def set_switches(self) -> 'ReportProcessor':
         if self.reintegration:
-            col_list = self.staged_data.columns.to_list()
+            return self
         else:
             col_list = self.ppdata.data.columns.to_list()
 
@@ -366,8 +365,7 @@ class ReportProcessor:
             self.set_switches()
             if self.inter_warehouse_transfer:
                 self.assign_value_by_transfer_direction()
-            else:
-                self.add_branch_id()
+            self.add_branch_id()
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:

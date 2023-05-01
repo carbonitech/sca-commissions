@@ -21,8 +21,8 @@ class PreProcessor(AbstractPreProcessor):
         customer_col_name: str = "customer"
         city_col_name: str = "city"
         state_col_name: str = "state"
-        inv_col_name: str = "inv"
-        comm_col_name: str = "comm"
+        inv_col_name: str = "inv_amt"
+        comm_col_name: str = "comm_amt"
 
         customer_boundaries: list[int] = data.loc[data.str.contains(customer_boundary_value)].index.tolist()
         dfs = []
@@ -50,6 +50,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = [customer_col_name, city_col_name, state_col_name, inv_col_name, comm_col_name]
         result["id_string"] = result[[customer_col_name, city_col_name, state_col_name]].apply("_".join, axis=1)
+        result = result.iloc[:,-3:]
         return PreProcessedData(result)
 
 

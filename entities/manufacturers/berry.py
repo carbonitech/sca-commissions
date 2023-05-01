@@ -39,13 +39,14 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "commission"
 
         data = data.dropna(subset=data.columns.to_list()[0])
-        data = data[data["STATUS"] == "CLSD"]
+        data = data[data["status"] == "CLSD"]
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100
         result = result.apply(self.upper_all_str)
         result.columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
-        result["id_string"] = result[result.columns.tolist()[:3]].apply("_".join, axis=1)
+        result["id_string"] = result[result.columns[:3]].apply("_".join, axis=1)
+        result = result.iloc[:,-3:]
         return PreProcessedData(result)
 
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

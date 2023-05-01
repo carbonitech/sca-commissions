@@ -330,12 +330,12 @@ class ReportProcessor:
         # columns in data: ["id_string","customer_branch_id","report_id", "match_score"]  -- customer_branch_id has been updated
         matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
         if not matched_rows.empty:
-            # columns in this data: ["report_branch_ref"/id, "match_string", "report_id", "customer_branch_id"]
-            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # breaks index
+            # columns in this data: ["report_branch_ref"/id, "id_string"/"match_string", "report_id", "customer_branch_id"]
+            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # returns unique rows with id nums
             matched_rows = matched_rows\
                 .reset_index()\
-                .merge(matches_w_ids[["report_branch_ref","customer_branch_id","report_id"]],
-                                        on=["customer_branch_id", "report_id"])
+                .merge(matches_w_ids[["report_branch_ref","id_string","report_id"]],
+                                        on=["id_string", "report_id"])
             # recover index after merge
             result = matched_rows.set_index("index")
             return result

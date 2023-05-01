@@ -331,7 +331,10 @@ class ApiAdapter:
             )
         return_results = db.execute(insert_stmt).mappings().all()
         db.commit()
-        return pd.DataFrame(return_results).rename(columns={"id": "report_branch_ref"})
+        return pd.DataFrame(return_results).rename(columns={
+                "id": "report_branch_ref",
+                "match_string": "id_string"
+            })
 
     
     def report_id_by_submission(self, db: Session, user_id: int, sub_ids: list):

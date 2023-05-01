@@ -71,7 +71,7 @@ class PreProcessor(AbstractPreProcessor):
         if not df_list:
             raise Exception("no data loaded")
         
-        data = pd.concat(df_list)
+        data = pd.concat(df_list, ignore_index=True)
         data = data.dropna(subset=data.columns.to_list()[0])
         data[inv_col] = data[inv_col].fillna(0)
         data[inv_col] *= 100

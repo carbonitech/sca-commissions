@@ -124,10 +124,12 @@ class PreProcessor(AbstractPreProcessor):
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
         data = data.dropna(subset=data.columns.tolist()[0])
-        data.loc[:,"receiving"] = data["plnt"]
-        data.loc[:,"receiving_city"] = data["city"]
-        data.loc[:,"receiving_state"] = data["rg"]
-        data.loc[:,"sending"] = data["splt"]
+        data = data.rename(columns={
+            "plnt": "receiving",
+            "city": "receiving_city",
+            "rg": "receiving_state",
+            "splt": "sending"
+        })
         data = data.merge(
             data["warehouse"].apply(
                 lambda value: pd.Series({"sending_city": value.split(", ")[0], "sending_state": value.split(", ")[1]})

@@ -19,7 +19,7 @@ class PreProcessor(AbstractPreProcessor):
         data = self.check_headers_and_fix([customer_col, inv_col], data)
 
         data.iloc[:,5:] = data.iloc[:,5:].shift(-1) # line up customer names with values
-        data = data.dropna(subset=data.columns[0])\
+        data = data.dropna(subset=customer_col)\
                     .dropna(axis=1, how="all")\
                     .rename(columns={data.columns[comm_col_i]: comm_col})
         data.loc[:,comm_col] = data[comm_col].astype(float)

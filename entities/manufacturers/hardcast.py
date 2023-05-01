@@ -27,17 +27,20 @@ class PreProcessor(AbstractPreProcessor):
         data = data.loc[~(data["commrate"] == "*"),:]
         data = data.dropna(how="all")
         data = data.fillna(method="ffill")
-        data = data[data[customer_name_col].str.contains(customer_name_col) == False]
+        # make sure to remove duplicate header rows
+        data = data[data[customer_name_col].str.replace(' ','').str.lower().str.contains(customer_name_col) == False]
 
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] *= 100
-        result.loc[:,comm_col] *= 100
+        result[[inv_col, comm_col]] = result[[inv_col, comm_col]].astype(float)
+        result[inv_col] *= 100
+        result[comm_col] *= 100
 
         result = result.apply(self.upper_all_str)
 
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        result = result.loc[:, ["id_string"]+col_names[-2:]] # only return id string and dollar amounts
         return PreProcessedData(result)
 
 

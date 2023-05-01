@@ -25,6 +25,8 @@ class PreProcessor(AbstractPreProcessor):
         data[comm_col] = data[comm_col].astype(float)
         data["id_string"] = data[customer_col]
         result = data.loc[:,["id_string", inv_col, comm_col]]
+        result[inv_col] *= 100
+        result[comm_col] *= 100
         
         return PreProcessedData(result)
 

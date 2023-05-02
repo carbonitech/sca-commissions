@@ -23,7 +23,8 @@ class PreProcessor(AbstractPreProcessor):
         data = data.iloc[:,[0,-1]]  # get most recent month only
         data.columns = [customer_name_col, inv_col]
 
-        data[inv_col] = data[inv_col].replace('[^-.0-9]','', regex=True).astype(float)*100
+        data[inv_col] = data[inv_col].replace(r'\(','-', regex=True)
+        data[inv_col] = data[inv_col].replace(r'[^-.0-9]','', regex=True).astype(float)*100
         data["comm_amt"] = data[inv_col]*comm_rate
         data = data.apply(self.upper_all_str)
         # get duplicated names
@@ -46,6 +47,6 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(skip=skip_param, pdf="table"), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param, pdf="table", combine_sheets=True), **kwargs)
         else:
             return

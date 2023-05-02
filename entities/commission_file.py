@@ -32,7 +32,8 @@ class CommissionFile:
                 if combine_sheets:
                     all_tables = tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip:]
                     all_tables = [table.T.reset_index().T for table in all_tables]
-                    return pd.concat(all_tables, ignore_index=True)
+                    combined =  pd.concat(all_tables, ignore_index=True)
+                    return combined[~combined.loc[:,0].str.startswith('Unnamed')]
                 else:
                     return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
 

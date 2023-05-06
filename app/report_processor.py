@@ -23,7 +23,7 @@ class FileProcessingError(Exception):
         super().__init__(*args)
         self.submission_id: int = kwargs.get("submission_id")
 
-class ReportProcessor:
+class Processor:
     """
     Handles processing of data delivered through a preprocessor, which itself recieves the file
     and does manufacturer-specific preprocessing steps. The preprocessor is expected to return the same format 
@@ -36,51 +36,33 @@ class ReportProcessor:
             Either commission data, failed matches, or both, are written to a database
 
     """
-    def __init__(
-            self,
-            session: Session,
-            user: api_adapter.User,
-            preprocessor: Type[AbstractPreProcessor] = None,
-            submission: NewSubmission = None,
-            target_err: ErrorType = None,
-            error_table: pd.DataFrame = pd.DataFrame(),
-            submission_id: int|None = None
-        ):
+    skip: bool
+    reintegration: bool
+    inter_warehouse_transfer: bool
+    session: Session
+    api: api_adapter.ApiAdapter
+    user_id: int|None
+    submission_id: int|None
+    submission: NewSubmission
+    preprocessor = Type[AbstractPreProcessor]
+    report_id: int
+    standard_commission_rate: float|None
+    split: float
+    reintegration = True
+    target_err: ErrorType
+    error_table: pd.DataFrame
+    branches: pd.DataFrame
+    id_sting_match_supplement: pd.DataFrame
+    id_string_matches: pd.DataFrame
 
-        self.skip = False
-        self.reintegration = False
-        self.inter_warehouse_transfer = False
-        self.session = session
-        self.api = api_adapter.ApiAdapter()
-        self.user_id = user.id(self.session) if user.verified else None
-        self.submission_id = submission_id
+    def __init__(self, session: Session, user_id: int):
+        self.branches = self.api.get_branches(session, user_id=user_id)
+        self.id_sting_match_supplement = self.api.generate_string_match_supplement(session, user_id=user_id)
+        self.id_string_matches = self.api.get_id_string_matches(session, user_id=user_id)
 
-        if preprocessor and submission:
-            if issubclass(preprocessor, AbstractPreProcessor) and isinstance(submission, NewSubmission):
-                self.submission = submission
-                self.preprocessor = preprocessor
-                self.report_id = submission.report_id
-                self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
-                self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
 
-        elif target_err and isinstance(error_table, pd.DataFrame):
-            if isinstance(target_err, ErrorType):
-                self.reintegration = True
-                self.target_err = target_err
-                self.error_table: pd.DataFrame = pd.concat(   # expand row_data into dataframe columns
-                    [
-                        error_table, 
-                        pd.json_normalize(error_table.pop("row_data"),max_level=1)
-                    ], 
-                    axis=1)
-                self.error_table = self.error_table.reset_index(drop=True)
-        else:
-            self.skip = True
-            return
-
-        self.branches = self.api.get_branches(session, user_id=self.user_id)
-        self.id_sting_match_supplement = self.api.generate_string_match_supplement(session, user_id=self.user_id)
-        self.id_string_matches = self.api.get_id_string_matches(session, user_id=self.user_id)
+    def insert_report_id(self) -> 'Processor':
+        pass
 
     def _send_event_by_submission(self, data: pd.DataFrame, event_: Hashable) -> None:
         """
@@ -100,15 +82,16 @@ class ReportProcessor:
             )
 
 
-    def _filter_for_existing_records_with_target_error_type(self) -> 'ReportProcessor':
+    def _filter_for_existing_records_with_target_error_type(self) -> 'Processor':
         mask = self.error_table["reason"] == self.target_err.value
         table_target_errors = self.error_table.loc[mask,:]
         self.error_ids = table_target_errors["id"].to_list()
         self.error_table = table_target_errors.reset_index(drop=True) # fixes for id merging strategy
         self.staged_data = self.error_table.copy()
-        self.staged_data = self.staged_data.loc[:,
-                                self.staged_data.columns.isin(["submission_id", "user_id", "id_string", "inv_amt", "comm_amt", "direction"])
-                            ]
+        self.staged_data: pd.DataFrame = self.staged_data.loc[
+                :,
+                self.staged_data.columns.isin(["submission_id", "user_id", "id_string", "inv_amt", "comm_amt", "direction"])
+            ]
         if table_target_errors.empty:
             raise EmptyTableException
         self.report_id_by_submission = self.api.report_id_by_submission(
@@ -118,11 +101,11 @@ class ReportProcessor:
             )
         return self
 
-    def remove_error_db_entries(self) -> 'ReportProcessor':
+    def remove_error_db_entries(self) -> 'Processor':
         self.api.delete_errors(db=self.session, record_ids=self.error_ids)
         return self
 
-    def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['ReportProcessor',pd.DataFrame]:
+    def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['Processor',pd.DataFrame]:
         """
         Adds the customer's branch id, if the assignment exists.
         Un-matched rows are added to the customer_branches table
@@ -168,16 +151,18 @@ class ReportProcessor:
         else:
             return operating_data
 
-    def assign_value_by_transfer_direction(self) -> 'ReportProcessor':
+    def assign_value_by_transfer_direction(self) -> 'Processor':
         """
         if receiver (+)
         if sender (-)
         """
-        for money_col in ["inv_amt", "comm_amt"]:
-            self.staged_data.loc[:,money_col] = self.staged_data.apply(
-                lambda row: row[money_col] if row["direction"] == "RECEIVING" else -row[money_col],
-                axis=1
-            )
+        if self.inter_warehouse_transfer:
+            for money_col in ["inv_amt", "comm_amt"]:
+                self.staged_data.loc[:,money_col] = self.staged_data.apply(
+                    lambda row: row[money_col] if row["direction"] == "RECEIVING" else -row[money_col],
+                    axis=1
+                )
+            return self
         return self
 
 
@@ -191,11 +176,11 @@ class ReportProcessor:
         return data_remaining
 
 
-    def drop_extra_columns(self) -> 'ReportProcessor':
+    def drop_extra_columns(self) -> 'Processor':
         self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id","report_branch_ref"]]
         return self
 
-    def register_commission_data(self) -> 'ReportProcessor':
+    def register_commission_data(self) -> 'Processor':
         if self.staged_data.empty:
             # my method for removing rows checks for existing rows with falsy values.
             # Avoid writing a blank row in the database from an empty dataframe
@@ -205,18 +190,15 @@ class ReportProcessor:
         self.api.record_final_data(db=self.session, data=self.staged_data)
         return self
 
-    def set_switches(self) -> 'ReportProcessor':
-        if self.reintegration:
-            return self
-        else:
-            col_list = self.ppdata.data.columns.to_list()
+    def set_switches(self) -> 'Processor':
+        col_list = self.ppdata.data.columns.to_list()
 
         if "direction" in col_list:
             self.inter_warehouse_transfer = True
         
         return self
 
-    def preprocess(self) -> 'ReportProcessor':
+    def preprocess(self) -> 'Processor':
         report_name = self.api.get_report_name_by_id(db=self.session, report_id=self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
@@ -237,49 +219,22 @@ class ReportProcessor:
         self.staged_data = ppdata.data.copy()
         return self
 
-    def insert_submission_id(self) -> 'ReportProcessor':
+    def insert_submission_id(self) -> 'Processor':
         self.staged_data.insert(0,"submission_id",self.submission_id)
         return self
     
-    def insert_report_id(self) -> 'ReportProcessor':
-        if self.reintegration:
-            new_col = self.staged_data.loc[:,["submission_id"]].merge(self.report_id_by_submission, how="left", on="submission_id").loc[:,["report_id"]]
-            self.staged_data["report_id"] = new_col
-        else:
-            self.staged_data.insert(0,"report_id", self.report_id)
-
-    def insert_recorded_at_column(self) -> 'ReportProcessor':
+    def insert_recorded_at_column(self) -> 'Processor':
         self.staged_data["recorded_at"] = datetime.utcnow()
         return self
 
-    def insert_user_id(self) -> 'ReportProcessor':
+    def insert_user_id(self) -> 'Processor':
         self.staged_data["user_id"] = self.user_id
         return self
 
-    def set_submission_status(self, status: str) -> 'ReportProcessor':
-        """
-        sets the status of the submission to an enum value.
-        When an attempt is made to change the status, checks are made based on
-        the processing scheme and status value provided to prevent erroneously assigned
-        status values. Primary concern is that a submission will be labeled "COMPLETE" while
-        processing errors are still found in the database
-        """
-        if self.reintegration:
-            table = self.staged_data
-            for sub_id in table["submission_id"].unique().tolist():
-                if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id", {"sub_id": sub_id}).fetchone():
-                    continue
-                self.api.alter_sub_status(db=self.session, submission_id=sub_id, status=status)
-            return self
-        elif status == 'COMPLETE':
-            if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id", {"sub_id": self.submission_id}).fetchone():
-                return self
-            else:
-                self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
-                return self
-        else:
-            self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
-            return self
+    def set_submission_status(self, status: str) -> 'Processor':
+        pass
+
+
     def attempt_auto_matching(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """automatically matches unmatched id_string values
             using a combination of methods with equal weights
@@ -297,6 +252,7 @@ class ReportProcessor:
         # and strings generated from the existing customer branches
         # both tables have matching columns for a union-like join
         ref_table = pd.concat([self.id_string_matches, self.id_sting_match_supplement], ignore_index=True)
+
 
         def score_unmatched(unmatched_value: str, *args, **kwargs) -> pd.Series:
             """Used for the apply function to score each unmatched row value against
@@ -322,8 +278,9 @@ class ReportProcessor:
             if top_scoring_branch.empty:
                 return pd.Series([0,0])
             else:
-                return pd.Series(top_scoring_branch.iloc[0].to_list())
-            
+                return pd.Series(top_scoring_branch.iloc[0].to_list())    
+
+
         unmatched_rows[["customer_branch_id","match_score"]] = unmatched_rows["id_string"].apply(score_unmatched, result_type="expand")
         # columns in data: ["id_string","customer_branch_id","report_id", "match_score"]  -- customer_branch_id has been updated
         matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
@@ -338,34 +295,67 @@ class ReportProcessor:
             result = matched_rows.set_index("index")
             return result
         return pd.DataFrame()
-
-
-
+    
     def process_and_commit(self) -> int|None:
-        """
-        Taking preprocessed data, use reference tables from the database
-        to map customer names, city names, state names, and reps
-        by id numbers
+        pass
 
-        Effects: commits the submission data, final commission data, errors, and processing steps
-                to the database 
+
+
+class NewReportStrategy(Processor):
+    def __init__(
+        self,
+        session: Session,
+        user: api_adapter.User,
+        preprocessor: Type[AbstractPreProcessor],
+        submission: NewSubmission,
+        submission_id: int
+    ):
+
+        self.skip = False
+        self.inter_warehouse_transfer = False
+        self.session = session
+        self.api = api_adapter.ApiAdapter()
+        self.user_id = user.id(self.session) if user.verified else None
+        self.submission_id = submission_id
+        self.submission = submission
+        self.preprocessor = preprocessor
+        self.report_id = submission.report_id
+        self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
+        self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
+        super().__init__(session=session, user_id=self.user_id)
+
+    def insert_report_id(self) -> 'Processor':
+        self.staged_data.insert(0,"report_id", self.report_id)
+
+
+    def set_submission_status(self, status: str) -> 'Processor':
         """
-        if self.skip:
-            return
-        try:
-            if not self.reintegration:
-                self.set_submission_status("PROCESSING")\
-                    .preprocess()\
-                    .insert_submission_id()\
-                    .insert_user_id()\
-                    .insert_report_id()
+        sets the status of the submission to an enum value.
+        When an attempt is made to change the status, checks are made based on
+        the processing scheme and status value provided to prevent erroneously assigned
+        status values. Primary concern is that a submission will be labeled "COMPLETE" while
+        processing errors are still found in the database
+        """
+        if status == 'COMPLETE':
+            if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id LIMIT 1;", {"sub_id": self.submission_id}).fetchone():
+                return self
             else:
-                self._filter_for_existing_records_with_target_error_type()\
-                    .insert_report_id()
-            self.set_switches()
-            if self.inter_warehouse_transfer:
-                self.assign_value_by_transfer_direction()
-            self.add_branch_id()
+                self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+                return self
+        else:
+            self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+            return self
+
+
+    def process_and_commit(self) -> int:
+        try:
+            self.set_submission_status("PROCESSING")\
+                .preprocess()\
+                .insert_submission_id()\
+                .insert_user_id()\
+                .insert_report_id()\
+                .assign_value_by_transfer_direction()\
+                .add_branch_id()
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
@@ -377,11 +367,79 @@ class ReportProcessor:
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
         else:
-            if self.reintegration:
-                self.remove_error_db_entries()
             self.drop_extra_columns()\
                 .insert_recorded_at_column()\
                 .register_commission_data()\
                 .set_submission_status("NEEDS_ATTENTION")\
                 .set_submission_status("COMPLETE")
-        return self.submission_id if not self.reintegration else None
+        return self.submission_id
+    
+class ErrorReintegrationStrategy(Processor):
+        
+    def __init__(
+        self,
+        session: Session,
+        user: api_adapter.User,
+        target_err: ErrorType = None,
+        error_table: pd.DataFrame = pd.DataFrame(),
+    ):
+
+        self.skip = False
+        self.session = session
+        self.api = api_adapter.ApiAdapter()
+        self.user_id = user.id(self.session) if user.verified else None
+        self.target_err = target_err
+        # expand row_data into dataframe columns
+        self.error_table: pd.DataFrame = pd.concat(   
+            [
+                error_table, 
+                pd.json_normalize(error_table.pop("row_data"),max_level=1)
+            ], 
+            axis=1)
+        self.error_table = self.error_table.reset_index(drop=True)
+        super().__init__(session=session, user_id=self.user_id)
+
+
+    def insert_report_id(self) -> 'Processor':
+        new_col = self.staged_data.loc[:,["submission_id"]].merge(self.report_id_by_submission, how="left", on="submission_id").loc[:,["report_id"]]
+        self.staged_data["report_id"] = new_col
+
+    def set_submission_status(self, status: str) -> 'Processor':
+        """
+        sets the status of the submission to an enum value.
+        When an attempt is made to change the status, checks are made based on
+        the processing scheme and status value provided to prevent erroneously assigned
+        status values. Primary concern is that a submission will be labeled "COMPLETE" while
+        processing errors are still found in the database
+        """
+        table = self.staged_data
+        for sub_id in table["submission_id"].unique().tolist():
+            if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id LIMIT 1;", {"sub_id": sub_id}).fetchone():
+                continue
+            self.api.alter_sub_status(db=self.session, submission_id=sub_id, status=status)
+        return self
+
+
+    def process_and_commit(self) -> None:
+        try:
+            self._filter_for_existing_records_with_target_error_type()\
+                .insert_report_id()\
+                .set_switches()\
+                .add_branch_id()
+        except EmptyTableException:
+            pass
+        except Exception as err:
+            self.set_submission_status("FAILED")
+            import traceback
+            # BUG background task conversion up-stack means now I'm losing the capture of this traceback
+            # so while this error is raised, nothing useful is happening with it currently
+            # this print is so I can see it in heroku logs
+            print(f"from print: {traceback.format_exc()}")
+            raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
+        else:
+            self.remove_error_db_entries()\
+                .drop_extra_columns()\
+                .insert_recorded_at_column()\
+                .register_commission_data()\
+                .set_submission_status("COMPLETE")
+        return

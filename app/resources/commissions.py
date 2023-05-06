@@ -180,11 +180,11 @@ async def process_commissions_file(
 
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     submission_id = api.record_submission(db=session, submission=new_sub)
-    mfg_report_processor = report_processor.ReportProcessor(
-        preprocessor=mfg_preprocessor,
-        submission=new_sub,
+    mfg_report_processor = report_processor.NewReportStrategy(
         session=session,
         user=user,
+        preprocessor=mfg_preprocessor,
+        submission=new_sub,
         submission_id=submission_id
     )
     bg_tasks.add_task(mfg_report_processor.process_and_commit)

@@ -48,8 +48,7 @@ class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
 class BranchRelatonshipFull(BaseModel):
     customers: JSONAPIRelationshipObject|None
-    city_name: JSONAPIRelationshipObject|None
-    state_name: JSONAPIRelationshipObject|None
+    locations: JSONAPIRelationshipObject|None
     representative: JSONAPIRelationshipObject|None
 class BranchModification(JSONAPIBaseModification):
     id: int

@@ -234,7 +234,8 @@ class JSONAPI_(JSONAPI):
                 offset = (number-1) * size
             elif {'size'} == set(passed_args.keys()):
                 number = 1
-                offset = size
+                size = min(int(passed_args['size']), MAX_PAGE_SIZE)
+                offset = (number-1) * size      # == 0
 
         total_pages = -(row_count // -size) # ceiling division
         if total_pages == 1:        # remove pagination if there is only one page to show

@@ -21,6 +21,7 @@ from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_pe
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
+MAX_RECORDS: int = 15000
 
 class Query(BaseModel):
     include: str|None = None
@@ -217,6 +218,8 @@ class JSONAPI_(JSONAPI):
                 number = int(passed_args['number'])
                 if number == 0:
                     query = {k:v for k,v in query.items() if not k.startswith("page")} 
+                    if row_count > MAX_RECORDS:
+                        raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
                     return query, {"meta": {}}
                 size = min(int(passed_args['size']), MAX_PAGE_SIZE)
                 offset = (number-1) * size
@@ -229,6 +232,8 @@ class JSONAPI_(JSONAPI):
                 number = int(passed_args['number'])
                 if number == 0:
                     query = {k:v for k,v in query.items() if not k.startswith("page")} 
+                    if row_count > MAX_RECORDS:
+                        raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
                     return query, {"meta": {}}
                 size = MAX_PAGE_SIZE
                 offset = (number-1) * size
@@ -480,6 +485,8 @@ def jsonapi_error_handling(route_function):
         except BaseError as err:
             import traceback
             raise HTTPException(**format_error(err, traceback.format_exc()))
+        except HTTPException as http_e:
+            raise http_e
         except Exception as err:
             import traceback
             detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":"An error occurred. Contact joe@carbonitech.com with the id number"}]}

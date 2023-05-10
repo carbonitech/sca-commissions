@@ -325,7 +325,11 @@ class JSONAPI_(JSONAPI):
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
         collection = self._filter_deleted(model, collection)
+
+        # for pagination, use count query instead of pulling in all of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
+        collection_count = self._apply_filter(model,collection_count, query_params=query)
+        collection_count = self._filter_deleted(model, collection_count)
         try:
             collection = collection.filter(model.user_id == user_id)
         except AttributeError:

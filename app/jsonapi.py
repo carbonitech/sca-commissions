@@ -207,20 +207,35 @@ class JSONAPI_(JSONAPI):
         size = MAX_PAGE_SIZE
         offset = 0
 
+        class NoPagination:
+            def __init__(self, query: dict):
+                self.query = {k:v for k,v in query.items() if not k.startswith("page")}
+                self.metadata = {"meta":{}}
+
+            def return_disabled_pagination(self, row_count: int):
+                if row_count > MAX_RECORDS:
+                    raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
+                return self.query, self.metadata
+            
+            def return_one_page(self):
+                self.metadata = {"meta":{"totalPages": 1, "currentPage": 1}}
+                return self.query, self.metadata
+            
+            def return_zero_page(self):
+                self.metadata = {"meta":{"totalPages": 0, "currentPage": 0}}
+                return self.query, self.metadata
+
+
         row_count: int = db.execute(sa_query.statement).fetchone()[0]
         if row_count == 0:      # remove any pagination if no results in the query
-            query = {k:v for k,v in query.items() if not k.startswith("page")} 
-            return query, {"meta":{"totalPages": 0, "currentPage": 0}}
+            return NoPagination(query).return_zero_page()
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
         link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
         if passed_args:
             if {'number', 'size'} == set(passed_args.keys()):
                 number = int(passed_args['number'])
                 if number == 0:
-                    query = {k:v for k,v in query.items() if not k.startswith("page")} 
-                    if row_count > MAX_RECORDS:
-                        raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
-                    return query, {"meta": {}}
+                    return NoPagination(query).return_disabled_pagination(row_count=row_count) 
                 size = min(int(passed_args['size']), MAX_PAGE_SIZE)
                 offset = (number-1) * size
             elif {'limit', 'offset'} == set(passed_args.keys()):
@@ -231,10 +246,7 @@ class JSONAPI_(JSONAPI):
             elif {'number'} == set(passed_args.keys()): 
                 number = int(passed_args['number'])
                 if number == 0:
-                    query = {k:v for k,v in query.items() if not k.startswith("page")} 
-                    if row_count > MAX_RECORDS:
-                        raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
-                    return query, {"meta": {}}
+                    return NoPagination(query).return_disabled_pagination(row_count=row_count) 
                 size = MAX_PAGE_SIZE
                 offset = (number-1) * size
             elif {'size'} == set(passed_args.keys()):
@@ -244,9 +256,7 @@ class JSONAPI_(JSONAPI):
 
         total_pages = -(row_count // -size) # ceiling division
         if total_pages == 1:        # remove pagination if there is only one page to show
-            query = {k:v for k,v in query.items() if not k.startswith("page")} 
-            # include info that there's only one "page" even though no pagination occurred
-            return query, {"meta":{"totalPages": 1, "currentPage": 1}} 
+            return NoPagination(query=query).return_one_page()
         else:
             current_page = (offset // size) + 1
             first_page = 1

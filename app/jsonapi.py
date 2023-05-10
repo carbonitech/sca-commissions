@@ -13,7 +13,7 @@ from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
 from fastapi import Request, Response, HTTPException
 from fastapi.routing import APIRoute
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
@@ -206,15 +206,18 @@ class JSONAPI_(JSONAPI):
         size = MAX_PAGE_SIZE
         offset = 0
 
-        row_count: int = len(db.execute(sa_query.statement).all())
-        if row_count == 0:
-            query = {k:v for k,v in query.items() if not k.startswith("page")} # remove any pagination if there aren't any pages
+        row_count: int = db.execute(sa_query.statement).fetchone()[0]
+        if row_count == 0:      # remove any pagination if no results in the query
+            query = {k:v for k,v in query.items() if not k.startswith("page")} 
             return query, {"meta":{"totalPages": 0, "currentPage": 0}}
         passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
         link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
         if passed_args:
             if {'number', 'size'} == set(passed_args.keys()):
                 number = int(passed_args['number'])
+                if number == 0:
+                    query = {k:v for k,v in query.items() if not k.startswith("page")} 
+                    return query, {"meta": {}}
                 size = min(int(passed_args['size']), MAX_PAGE_SIZE)
                 offset = (number-1) * size
             elif {'limit', 'offset'} == set(passed_args.keys()):
@@ -222,11 +225,22 @@ class JSONAPI_(JSONAPI):
                 limit = int(passed_args['limit'])
                 size = min(limit, MAX_PAGE_SIZE)
                 link_template = "/{resource_name}?page[offset]={offset}&page[limit]={limit}"
+            elif {'number'} == set(passed_args.keys()): 
+                number = int(passed_args['number'])
+                if number == 0:
+                    query = {k:v for k,v in query.items() if not k.startswith("page")} 
+                    return query, {"meta": {}}
+                size = MAX_PAGE_SIZE
+                offset = (number-1) * size
+            elif {'size'} == set(passed_args.keys()):
+                number = 1
+                offset = size
 
         total_pages = -(row_count // -size) # ceiling division
-        if total_pages == 1:
-            query = {k:v for k,v in query.items() if not k.startswith("page")} # remove any pagination if there aren't any pages
-            return query, {"meta":{"totalPages": 1, "currentPage": 1}} # include info that there's only one "page" even though no pagination occurred
+        if total_pages == 1:        # remove pagination if there is only one page to show
+            query = {k:v for k,v in query.items() if not k.startswith("page")} 
+            # include info that there's only one "page" even though no pagination occurred
+            return query, {"meta":{"totalPages": 1, "currentPage": 1}} 
         else:
             current_page = (offset // size) + 1
             first_page = 1
@@ -310,11 +324,12 @@ class JSONAPI_(JSONAPI):
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model,collection,query)
         collection = self._filter_deleted(model, collection)
+        collection_count: sqlQuery = session.query(func.count(model.id))
         try:
             collection = collection.filter(model.user_id == user_id)
         except AttributeError:
             pass
-        query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection)
+        query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection_count)
 
         for attr in sorts:
             if attr == '':

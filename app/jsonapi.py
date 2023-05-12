@@ -42,9 +42,6 @@ class JSONAPIRelationshipObject(BaseModel):
     data: JSONAPIBaseRelationship
 
 ## branch ##
-class Branch(BaseModel):
-    deleted: datetime|None = None
-    store_number: int|None = None
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
 class BranchRelatonshipFull(BaseModel):
@@ -53,10 +50,10 @@ class BranchRelatonshipFull(BaseModel):
     representative: JSONAPIRelationshipObject|None
 class BranchModification(JSONAPIBaseModification):
     id: int
-    attributes: Branch|dict|None = {}
+    attributes: None
     relationships: BranchRelationship|dict|None = {}
 class NewBranch(JSONAPIBaseModification):
-    attributes: Branch
+    attributes: dict|None
     relationships:BranchRelatonshipFull
 
 ## mapping ##
@@ -415,6 +412,10 @@ class JSONAPI_(JSONAPI):
         return super().get_related(session, query, api_type, obj_id, rel_key).data
 
     def post_collection(self, session, data, api_type, user_id):
+        # in all cases, an attributes object should be instantiated and set to an empty dict if it isn't populated
+        data['data'].setdefault('attributes',{})
+        if data['data']['attributes'] is None: 
+            data['data']['attributes'] = {}
         data["data"]["attributes"]["user-id"] = user_id
         return super().post_collection(session, data, api_type)
 

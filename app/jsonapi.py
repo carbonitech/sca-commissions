@@ -58,11 +58,11 @@ class NewBranch(JSONAPIBaseModification):
 
 ## mapping ##
 class Mapping(BaseModel):
-    report_id: int
     match_string: str
     created_at: datetime
 class MappingRelationship(BaseModel):
     branches: JSONAPIRelationshipObject
+    manufacturers_reports: JSONAPIRelationshipObject
 class NewMapping(JSONAPIBaseModification):
     attributes: Mapping
     relationships:MappingRelationship

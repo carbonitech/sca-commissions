@@ -1,7 +1,6 @@
 import db.models as model
 from app import event, report_processor
-from services.api_adapter import ApiAdapter, User
-from sqlalchemy.orm import Session
+from services.api_adapter import ApiAdapter
 from entities import error
 
 api = ApiAdapter()

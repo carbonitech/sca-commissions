@@ -20,7 +20,7 @@ from app import event
 from db import models
 from entities.error import Error
 from entities.submission import NewSubmission
-from app.jsonapi import jsonapi_error_handling
+from jsonapi.jsonapi import jsonapi_error_handling
 
 load_dotenv()
 

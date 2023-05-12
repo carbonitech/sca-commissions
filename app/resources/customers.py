@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, get_user, User
-from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute, CustomerModificationRequest, RequestModels
+from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+from jsonapi.request_models import CustomerModificationRequest, RequestModels
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)

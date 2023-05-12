@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, User, get_user
-from app.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute
+from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute
 
 
 api = ApiAdapter()

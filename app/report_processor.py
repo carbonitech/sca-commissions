@@ -326,6 +326,7 @@ class NewReportStrategy(Processor):
 
     def insert_report_id(self) -> 'Processor':
         self.staged_data.insert(0,"report_id", self.report_id)
+        return self
 
 
     def set_submission_status(self, status: str) -> 'Processor':
@@ -403,6 +404,7 @@ class ErrorReintegrationStrategy(Processor):
     def insert_report_id(self) -> 'Processor':
         new_col = self.staged_data.loc[:,["submission_id"]].merge(self.report_id_by_submission, how="left", on="submission_id").loc[:,["report_id"]]
         self.staged_data["report_id"] = new_col
+        return self
 
     def set_submission_status(self, status: str) -> 'Processor':
         """
@@ -424,7 +426,6 @@ class ErrorReintegrationStrategy(Processor):
         try:
             self._filter_for_existing_records_with_target_error_type()\
                 .insert_report_id()\
-                .set_switches()\
                 .add_branch_id()
         except EmptyTableException:
             pass
@@ -435,7 +436,7 @@ class ErrorReintegrationStrategy(Processor):
             # so while this error is raised, nothing useful is happening with it currently
             # this print is so I can see it in heroku logs
             print(f"from print: {traceback.format_exc()}")
-            raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
+            raise FileProcessingError(err, submission_id=None)
         else:
             self.remove_error_db_entries()\
                 .drop_extra_columns()\

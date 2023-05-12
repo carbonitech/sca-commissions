@@ -16,7 +16,7 @@ from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
 from services.api_adapter import ApiAdapter, get_db, User, get_user
 from app.resources.pydantic_form import as_form
-from app.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 
 load_dotenv()
 api = ApiAdapter()

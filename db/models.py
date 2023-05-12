@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from app.jsonapi import JSONAPI_
+from jsonapi.jsonapi import JSONAPI_
 
 Base = declarative_base()
 

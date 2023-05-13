@@ -13,6 +13,8 @@ class JSONAPIRelationshipObject(BaseModel):
     data: JSONAPIBaseRelationship
 
 ## branch ##
+class Branch(BaseModel):
+    deleted: datetime
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
 class BranchRelatonshipFull(BaseModel):
@@ -21,7 +23,7 @@ class BranchRelatonshipFull(BaseModel):
     representative: JSONAPIRelationshipObject|None
 class BranchModification(JSONAPIBaseModification):
     id: int
-    attributes: None
+    attributes: Branch|None
     relationships: BranchRelationship|dict|None = {}
 class NewBranch(JSONAPIBaseModification):
     attributes: dict|None

@@ -24,6 +24,7 @@ class CustomerBranch(Base):
     rep_id = Column(Integer, ForeignKey("representatives.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
     location_id = Column(Integer, ForeignKey("locations.id"))
+    deleted = Column(DateTime)
     customers = relationship("Customer", back_populates="customer_branches")
     representative = relationship("Representative", back_populates="branch")
     commission_data = relationship("CommissionData", back_populates="branch")

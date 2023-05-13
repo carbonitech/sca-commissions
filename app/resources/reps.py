@@ -27,6 +27,6 @@ async def modify_a_rep():
     ...
 
 @router.delete("/{rep_id}", tags=["reps"])
-async def delete_rep(rep_id: int):
+async def delete_rep(rep_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
     # soft delete
-    ...
+    return api.delete_representative(db=db, rep_id=rep_id)

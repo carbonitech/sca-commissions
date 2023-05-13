@@ -560,6 +560,14 @@ class ApiAdapter:
         db.commit()
         return
 
+    def delete_representative(self, db: Session, rep_id: int) -> None:
+        current_time = datetime.utcnow()
+        sql = """UPDATE representatives SET deleted = :current_time WHERE id = :rep_id;"""
+        db.execute(sql, {"current_time": current_time, "rep_id": rep_id})
+        db.commit()
+        return
+
+
     def get_errors(self, db: Session, user: User, submission_id: int=0) -> pd.DataFrame:
         """get all report processing errors for all submissions by user, or a specific submission"""
         sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.user_id == user.id(db=db))

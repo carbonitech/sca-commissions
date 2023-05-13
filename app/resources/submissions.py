@@ -42,5 +42,5 @@ async def modify_submission_by_id():
 @router.delete("/{submission_id}", tags=["submissions"])
 async def delete_submission_by_id(submission_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
     # hard delete
-    # hard deletes commission data, errors, and steps along with it
+    # hard deletes commission data and errors along with it
     api.delete_submission(submission_id, session=db, user=user)

@@ -30,4 +30,5 @@ async def new_customer(jsonapi_obj: RequestModels.new_customer, db: Session=Depe
 
 @router.delete("/{customer_id}", tags=["customers"])
 async def delete_customer(customer_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
-    ...
+    # soft delete
+    return api.delete_customer(db=db,customer_id=customer_id)

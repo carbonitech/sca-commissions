@@ -538,10 +538,20 @@ class ApiAdapter:
     
     @jsonapi_error_handling
     def delete_mapping(self, db: Session, mapping_id: int) -> None:
+        # TODO should be soft delete if an id string will ultimately become the link between customer info and commission_data
         sql = sqlalchemy.delete(ID_STRINGS).where(ID_STRINGS.id == mapping_id)
         db.execute(sql)
         db.commit()
         return
+
+    @jsonapi_error_handling
+    def delete_customer(self, db: Session, customer_id: int) -> None:
+        current_time = datetime.utcnow()
+        sql = """UPDATE customers SET deleted = :current_time WHERE id = :customer_id;"""
+        db.execute(sql, {"current_time": current_time, "customer_id": customer_id})
+        db.commit()
+        return
+    
 
     def get_errors(self, db: Session, user: User, submission_id: int=0) -> pd.DataFrame:
         """get all report processing errors for all submissions by user, or a specific submission"""

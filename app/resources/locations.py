@@ -1,3 +1,5 @@
+"""Access locations table provided by Geonames. 
+    No modification of the table is allowed, so only GET methods are allowed"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, User, get_user

@@ -551,7 +551,14 @@ class ApiAdapter:
         db.execute(sql, {"current_time": current_time, "customer_id": customer_id})
         db.commit()
         return
-    
+
+    @jsonapi_error_handling
+    def delete_manufacturer(self, db: Session, manuf_id: int) -> None:
+        current_time = datetime.utcnow()
+        sql = """UPDATE manufacturers SET deleted = :current_time WHERE id = :manuf_id;"""
+        db.execute(sql, {"current_time": current_time, "manuf_id": manuf_id})
+        db.commit()
+        return
 
     def get_errors(self, db: Session, user: User, submission_id: int=0) -> pd.DataFrame:
         """get all report processing errors for all submissions by user, or a specific submission"""

@@ -23,5 +23,4 @@ async def new_mapping(jsonapi_obj: RequestModels.new_mapping, db: Session=Depend
 
 @router.delete("/{mapping_id}", tags=['mappings'])
 async def delete_mapping_by_id(mapping_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
-    # soft delete
     return api.delete_mapping(db, mapping_id=mapping_id)

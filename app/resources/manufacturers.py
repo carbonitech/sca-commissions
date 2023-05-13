@@ -21,5 +21,6 @@ async def add_a_manufacturer():
     ...
 
 @router.delete("/{manuf_id}", tags=["manufacturers"])
-async def delete_manufacturer_by_id(manuf_id: int):
-    ...
+async def delete_manufacturer_by_id(manuf_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
+    # soft delete
+    return api.delete_manufacturer(db=db, manuf_id=manuf_id)

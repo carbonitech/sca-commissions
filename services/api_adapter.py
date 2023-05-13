@@ -184,26 +184,29 @@ class ApiAdapter:
         branches = BRANCHES
         customers = CUSTOMERS
         locations = LOCATIONS
-        sql = sqlalchemy.select(commission_data_raw.id, commission_data_raw.submission_id,
-            submission_data.reporting_year, submission_data.reporting_month,
-            manufacturers.name, reps.initials, customers.name,
-            locations.city, locations.state, commission_data_raw.inv_amt,
-            commission_data_raw.comm_amt
-            ).select_from(commission_data_raw) \
-            .join(submission_data, commission_data_raw.submission_id == submission_data.id)\
-            .join(reports)                      \
-            .join(manufacturers, reports.manufacturer_id == manufacturers.id)\
-            .join(branches, commission_data_raw.customer_branch_id == branches.id)\
-            .join(reps)                        \
-            .join(customers)                   \
-            .join(locations)                      \
-            .where(commission_data_raw.user_id == kwargs.get("user_id"))\
-            .order_by(
-                submission_data.reporting_year.desc(),
-                submission_data.reporting_month.desc(),
-                customers.name.asc(),
-                locations.city.asc(),
-                locations.state.asc()
+        sql = (sqlalchemy
+                .select(commission_data_raw.id, commission_data_raw.submission_id,
+                    submission_data.reporting_year, submission_data.reporting_month,
+                    manufacturers.name, reps.initials, customers.name,
+                    locations.city, locations.state, commission_data_raw.inv_amt,
+                    commission_data_raw.comm_amt
+                )
+                .select_from(commission_data_raw)
+                .join(submission_data, commission_data_raw.submission_id == submission_data.id)
+                .join(reports)
+                .join(manufacturers, reports.manufacturer_id == manufacturers.id)
+                .join(branches, commission_data_raw.customer_branch_id == branches.id)
+                .join(reps)
+                .join(customers)
+                .join(locations)
+                .where(commission_data_raw.user_id == kwargs.get("user_id"))
+                .order_by(
+                    submission_data.reporting_year.desc(),
+                    submission_data.reporting_month.desc(),
+                    customers.name.asc(),
+                    locations.city.asc(),
+                    locations.state.asc()
+                )
             )
         
         if submission_id:
@@ -268,7 +271,7 @@ class ApiAdapter:
             conn.execute(sql)
         return
 
-    def delete_commission_data_line(self, row_id: int):
+    def delete_commission_data_line(self, row_id: int) -> None:
         sql = sqlalchemy.delete(COMMISSION_DATA_TABLE)\
             .where(COMMISSION_DATA_TABLE.row_id == row_id)
         with self.engine.begin() as conn:
@@ -276,7 +279,7 @@ class ApiAdapter:
         return
 
 
-    def delete_submission(self, submission_id: int, session: Session, user: User):
+    def delete_submission(self, submission_id: int, session: Session, user: User) -> None:
         if not self.matched_user(user, SUBMISSIONS_TABLE, submission_id, session):
             raise UserMisMatch()
         sql_errors = sqlalchemy.delete(ERRORS_TABLE).where(ERRORS_TABLE.submission_id == submission_id)
@@ -286,6 +289,7 @@ class ApiAdapter:
         session.execute(sql_errors)
         session.execute(sql_submission)
         session.commit()
+        return
         
     def get_all_manufacturers(self, db: Session) -> dict:
         sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)

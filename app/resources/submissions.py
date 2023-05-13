@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.api_adapter import ApiAdapter, get_db, User, get_user
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+from jsonapi.request_models import RequestModels
 import json
 import math
 
@@ -35,9 +36,14 @@ async def get_submission_by_id(submission_id: int, query: Query=Depends(), db: S
     raw_result.update({"included": new_included})
     return raw_result
 
-@router.put("/{submission_id}", tags=["submissions"])
-async def modify_submission_by_id():
-    ...
+@router.patch("/{submission_id}", tags=["submissions"])
+async def modify_submission_by_id(
+        submission_id: int,
+        submission: RequestModels.submission_modification,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
+    return api.modify_submission(db, submission_id, submission.dict(), user)
 
 @router.delete("/{submission_id}", tags=["submissions"])
 async def delete_submission_by_id(submission_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):

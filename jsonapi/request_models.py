@@ -58,6 +58,16 @@ class NewCustomerNameMapping(JSONAPIBaseModification):
     attributes: CustomerNameMapping
     relationships: CustomerRelationship
 
+### submissions ###
+class Submission(BaseModel):
+    total_commission_amount: float|int
+    submission_date: datetime
+    reporting_month: int
+    status: str
+    reporting_year: int
+class SubmissionModification(JSONAPIBaseModification):
+    id: int
+    attributes: Submission
 
 ### top level objects ###
 class NewCustomerRequest(BaseModel):
@@ -74,6 +84,9 @@ class NewBranchRequest(BaseModel):
 
 class NewMappingRequest(BaseModel):
     data: NewMapping
+    
+class SubmissionModificationRequest(BaseModel):
+    data: SubmissionModification
 
 
 @dataclass
@@ -83,3 +96,4 @@ class RequestModels:
     new_customer = NewCustomerRequest
     new_branch = NewBranchRequest
     new_mapping = NewMappingRequest
+    submission_modification = SubmissionModificationRequest

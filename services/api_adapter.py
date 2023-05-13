@@ -290,7 +290,15 @@ class ApiAdapter:
         session.execute(sql_submission)
         session.commit()
         return
-        
+
+    @jsonapi_error_handling
+    def modify_submission(self, session: Session, submission_id: int, submission_obj: dict, user: User):
+        if not self.matched_user(user, SUBMISSIONS_TABLE, submission_id, session):
+            raise UserMisMatch()
+        model_name = hyphenated_name(SUBMISSIONS_TABLE)
+        hyphenate_json_obj_keys(submission_obj)
+        return models.serializer.patch_resource(session, submission_obj, model_name, submission_id).data
+
     def get_all_manufacturers(self, db: Session) -> dict:
         sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
         query_result = db.execute(sql).fetchall()

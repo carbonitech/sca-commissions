@@ -190,6 +190,7 @@ async def process_commissions_file(
     bg_tasks.add_task(mfg_report_processor.process_and_commit)
     return submission_id
 
+# TODO MAKE THIS A JSONAPI RESPONSE
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(
         submission_id: int,
@@ -200,8 +201,9 @@ async def add_custom_entry_to_commission_data(
         raise HTTPException(400, detail="report submission does not exist")
     payload = {"map_rep_customer_id": map_rep_customer_id} | data.dict(exclude={"description"})
     row_id = api.set_new_commission_data_entry(submission_id=submission_id, **payload)
-    return {"Success": f"line written to row {row_id}"}
+    return {"Success": f"line written to row {row_id}"} 
 
+# TODO MAKE THIS A JSONAPI RESPONSE
 @router.put("/{row_id}", tags=['commissions'])
 async def modify_an_entry_in_commission_data(
         row_id: int, data:
@@ -212,7 +214,8 @@ async def modify_an_entry_in_commission_data(
         raise HTTPException(400, detail="row does not exist")
     api.modify_commission_data_row(row_id, **data.dict(exclude={"description"}))
 
+
 @router.delete("/{row_id}", tags=['commissions'])
-async def remove_a_line_in_commission_data(row_id: int):
+async def remove_a_line_in_commission_data(row_id: int) -> None:
     # hard delete
     api.delete_commission_data_line(row_id)

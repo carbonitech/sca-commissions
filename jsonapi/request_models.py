@@ -91,9 +91,9 @@ class SubmissionModificationRequest(BaseModel):
 
 @dataclass
 class RequestModels:
-    new_customer_name_mapping = NewCustomerNameMappingRequest
-    branch_modification = BranchModificationRequest
     new_customer = NewCustomerRequest
     new_branch = NewBranchRequest
     new_mapping = NewMappingRequest
+    customer_modification = CustomerModificationRequest
     submission_modification = SubmissionModificationRequest
+    branch_modification = BranchModificationRequest

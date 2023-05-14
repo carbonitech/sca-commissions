@@ -509,9 +509,13 @@ class ApiAdapter:
         json_data["data"]["attributes"]["name"] = new_name.upper().strip()
         return self.__create_X(db, json_data, user, CUSTOMERS)
     
+
+    @jsonapi_error_handling
     def create_branch(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         return self.__create_X(db, json_data, user, BRANCHES)
     
+    
+    @jsonapi_error_handling
     def create_mapping(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         return self.__create_X(db, json_data, user, ID_STRINGS)
     
@@ -542,7 +546,7 @@ class ApiAdapter:
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling
-    def delete_a_branch(self, db: Session, branch_id: int):
+    def delete_a_branch(self, db: Session, branch_id: int) -> None:
         _now = datetime.utcnow()
         db.execute("UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id", {"branch_id": branch_id, "current_time": _now})
         db.commit()

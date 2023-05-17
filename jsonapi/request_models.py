@@ -69,6 +69,15 @@ class SubmissionModification(JSONAPIBaseModification):
     id: int
     attributes: Submission
 
+### manufacturers ###
+class Manufacturer(BaseModel):
+    name: str
+    deleted: datetime|None
+
+class NewManufacturer(JSONAPIBaseModification):
+    attributes: Manufacturer
+    relationships: dict|None = None
+
 ### top level objects ###
 class NewCustomerRequest(BaseModel):
     data: NewCustomer
@@ -88,6 +97,9 @@ class NewMappingRequest(BaseModel):
 class SubmissionModificationRequest(BaseModel):
     data: SubmissionModification
 
+class NewManufacturerRequest(BaseModel):
+    data: NewManufacturer
+
 
 @dataclass
 class RequestModels:
@@ -97,3 +109,4 @@ class RequestModels:
     customer_modification = CustomerModificationRequest
     submission_modification = SubmissionModificationRequest
     branch_modification = BranchModificationRequest
+    new_manufacturer = NewManufacturerRequest

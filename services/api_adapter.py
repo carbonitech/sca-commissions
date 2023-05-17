@@ -521,6 +521,11 @@ class ApiAdapter:
     
 
     @jsonapi_error_handling
+    def create_manufacturer(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        return self.__create_X(db, json_data, user, MANUFACTURERS)
+
+
+    @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict, user: User) -> JSONAPIResponse:
         if not self.matched_user(user, CUSTOMERS, customer_id, db):
             raise UserMisMatch()

@@ -554,6 +554,14 @@ class ApiAdapter:
         return models.serializer.patch_resource(db, json_data, model_name, branch_id).data
 
     @jsonapi_error_handling
+    def modify_rep(self, db: Session, rep_id: int, json_data: dict, user: User) -> JSONAPIResponse:
+        if not self.matched_user(user, REPS, rep_id, db):
+            raise UserMisMatch()
+        model_name = hyphenated_name(REPS)
+        hyphenate_json_obj_keys(json_data)
+        return models.serializer.patch_resource(db, json_data, model_name, rep_id).data
+
+    @jsonapi_error_handling
     def delete_a_branch(self, db: Session, branch_id: int) -> None:
         _now = datetime.utcnow()
         db.execute("UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id", {"branch_id": branch_id, "current_time": _now})

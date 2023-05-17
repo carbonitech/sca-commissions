@@ -88,6 +88,10 @@ class Representative(BaseModel):
 class NewRepresentative(JSONAPIBaseModification):
     attributes: Representative
 
+class RepresentativeModification(JSONAPIBaseModification):
+    id: int
+    attributes: Representative
+
 
 ### top level objects ###
 class NewCustomerRequest(BaseModel):
@@ -114,6 +118,10 @@ class NewManufacturerRequest(BaseModel):
 class NewRepresentativeRequest(BaseModel):
     data: NewRepresentative
 
+class RepresentativeModificationRequest(BaseModel):
+    data: RepresentativeModification
+
+
 @dataclass
 class RequestModels:
     new_customer = NewCustomerRequest
@@ -124,3 +132,4 @@ class RequestModels:
     branch_modification = BranchModificationRequest
     new_manufacturer = NewManufacturerRequest
     new_representative = NewRepresentativeRequest
+    rep_modification = RepresentativeModificationRequest

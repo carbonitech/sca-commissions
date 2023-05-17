@@ -78,6 +78,17 @@ class NewManufacturer(JSONAPIBaseModification):
     attributes: Manufacturer
     relationships: dict|None = None
 
+### representatives ###
+class Representative(BaseModel):
+    initials: str
+    first_name: str
+    last_name: str
+    date_joined: datetime
+    
+class NewRepresentative(JSONAPIBaseModification):
+    attributes: Representative
+
+
 ### top level objects ###
 class NewCustomerRequest(BaseModel):
     data: NewCustomer
@@ -100,6 +111,8 @@ class SubmissionModificationRequest(BaseModel):
 class NewManufacturerRequest(BaseModel):
     data: NewManufacturer
 
+class NewRepresentativeRequest(BaseModel):
+    data: NewRepresentative
 
 @dataclass
 class RequestModels:
@@ -110,3 +123,4 @@ class RequestModels:
     submission_modification = SubmissionModificationRequest
     branch_modification = BranchModificationRequest
     new_manufacturer = NewManufacturerRequest
+    new_representative = NewRepresentativeRequest

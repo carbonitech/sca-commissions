@@ -524,6 +524,9 @@ class ApiAdapter:
     def create_manufacturer(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
         return self.__create_X(db, json_data, user, MANUFACTURERS)
 
+    @jsonapi_error_handling
+    def create_representative(self, db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+        return self.__create_X(db, json_data, user, REPS)
 
     @jsonapi_error_handling
     def modify_customer_jsonapi(self, db: Session, customer_id: int, json_data: dict, user: User) -> JSONAPIResponse:

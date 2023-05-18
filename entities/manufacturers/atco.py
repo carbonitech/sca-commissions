@@ -126,5 +126,5 @@ class PreProcessor(AbstractPreProcessor):
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
             if self.report_name == "standard":
-                return preprocess_method(self.file.to_df(split_sheets=True), **kwargs)
+                return preprocess_method(self.file.to_df(split_sheets=True, treat_headers=True), **kwargs)
             return preprocess_method(self.file.to_df(make_header_a_row=True), **kwargs)

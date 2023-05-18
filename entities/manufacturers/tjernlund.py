@@ -17,7 +17,6 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "comm_amt"
 
         data = self.check_headers_and_fix([customer_col, inv_col], data)
-
         data.iloc[:,5:] = data.iloc[:,5:].shift(-1) # line up customer names with values
         data = data.dropna(subset=customer_col)\
                     .dropna(axis=1, how="all")
@@ -27,6 +26,7 @@ class PreProcessor(AbstractPreProcessor):
         result = data.loc[:,["id_string", inv_col, comm_col]]
         result[inv_col] *= 100
         result[comm_col] *= 100
+        result = result.rename(columns={inv_col: "inv_amt"})
         
         return PreProcessedData(result)
 

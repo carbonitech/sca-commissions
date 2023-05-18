@@ -8,24 +8,46 @@ api = ApiAdapter()
 router = APIRouter(prefix="/branches", route_class=JSONAPIRoute)
 
 @router.get("", tags=["branches"])
-async def all_branches(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def all_branches(
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_branch(db,jsonapi_query, user)
 
 @router.get("/{branch_id}", tags=["branches"])
-async def branch_by_id(branch_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def branch_by_id(
+        branch_id: int,
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_branch(db, jsonapi_query, user, branch_id)
 
 @router.patch("/{branch_id}", tags=["branches"])
-async def modify_branch(branch_id: int, branch: RequestModels.branch_modification, db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def modify_branch(
+        branch_id: int,
+        branch: RequestModels.branch_modification,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     return api.modify_branch(db, branch_id, branch.dict(), user)
 
 @router.post("", tags=['branches'])
-async def new_branch(jsonapi_obj: RequestModels.new_branch, db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def new_branch(
+        jsonapi_obj: RequestModels.new_branch,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     return api.create_branch(db=db, json_data=jsonapi_obj.dict(), user=user)
 
 @router.delete("/{branch_id}", tags=['branches'])
-async def delete_branch_by_id(branch_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def delete_branch_by_id(
+        branch_id: int,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     # soft delete
     return api.delete_a_branch(db, branch_id=branch_id)

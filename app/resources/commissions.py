@@ -49,12 +49,21 @@ class CommissionDataDownloadParameters(BaseModel):
 
 
 @router.get("", tags=['commissions'])
-async def commission_data(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def commission_data(
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_commission_data(db,jsonapi_query, user)
 
 @router.get("/{row_id}", tags=['commissions'])
-async def get_commission_data_row(row_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def get_commission_data_row(
+        row_id: int,
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_commission_data(db,row_id,jsonapi_query, user)
 

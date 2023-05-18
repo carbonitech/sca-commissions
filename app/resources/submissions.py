@@ -10,12 +10,21 @@ api = ApiAdapter()
 router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
 
 @router.get("", tags=["submissions"])
-async def get_all_submissions(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def get_all_submissions(
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     return api.get_submissions(db,jsonapi_query,user)
 
 @router.get("/{submission_id}", tags=["submissions"])
-async def get_submission_by_id(submission_id: int, query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def get_submission_by_id(
+        submission_id: int,
+        query: Query=Depends(),
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     jsonapi_query = convert_to_jsonapi(query)
     raw_result = api.get_submissions(db,jsonapi_query,user,submission_id)
     
@@ -46,7 +55,11 @@ async def modify_submission_by_id(
     return api.modify_submission(db, submission_id, submission.dict(), user)
 
 @router.delete("/{submission_id}", tags=["submissions"])
-async def delete_submission_by_id(submission_id: int, db: Session=Depends(get_db), user: User=Depends(get_user)):
+async def delete_submission_by_id(
+        submission_id: int,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
     # hard delete
     # hard deletes commission data and errors along with it
     api.delete_submission(submission_id, session=db, user=user)

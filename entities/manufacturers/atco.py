@@ -103,7 +103,6 @@ class PreProcessor(AbstractPreProcessor):
             ## found in the next column
             return " ".join(city_state[:city_state.index(row[state_name_col].upper())]).upper()
 
-        data = data.T.reset_index().T   # bring the column headings down to the first row
         data = data.dropna(subset=data.columns.to_list()[0])
         data.iloc[:,city_name_col] = data.apply(isolate_city_name, axis=1)
         data.iloc[:,inv_col] *= 100
@@ -113,8 +112,9 @@ class PreProcessor(AbstractPreProcessor):
         result = data.iloc[:,[store_number_col, customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number"] + result_columns
+        result["store_number"] = result["store_number"].astype(str)
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-
+        result = result.loc[:,["id_string","inv_amt","comm_amt"]]
         return PreProcessedData(result)
 
 
@@ -127,4 +127,4 @@ class PreProcessor(AbstractPreProcessor):
         if preprocess_method:
             if self.report_name == "standard":
                 return preprocess_method(self.file.to_df(split_sheets=True), **kwargs)
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(make_header_a_row=True), **kwargs)

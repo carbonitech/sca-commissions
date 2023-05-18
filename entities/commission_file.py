@@ -58,9 +58,9 @@ class CommissionFile:
         elif treat_headers:
             # if we made a header a row, the headers become integers and this isn't needed, so treatment is an alternative
             if isinstance(excel_data, dict):
-                result = {sheet: data.rename(columns=lambda col: col.lower().replace(' ')) for sheet, data in excel_data.items()}
+                result = {sheet: data.rename(columns=lambda col: str(col).lower().replace(' ')) for sheet, data in excel_data.items()}
             else:
-                result = excel_data.rename(columns=lambda col: col.lower().replace(' '))
+                result = excel_data.rename(columns=lambda col: str(col).lower().replace(' '))
         else:
             result = excel_data
         

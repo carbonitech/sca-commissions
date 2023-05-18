@@ -8,7 +8,15 @@ from io import BytesIO
 class CommissionFile:
     file_data: bytes|BytesIO
 
-    def to_df(self, combine_sheets=False, split_sheets=False, pdf: str=None, skip: int=0) -> pd.DataFrame:
+    def to_df(
+            self,
+            combine_sheets=False,
+            split_sheets=False,
+            pdf: str=None,
+            skip: int=0,
+            treat_headers: bool=True,
+            make_header_a_row: bool=False
+        ) -> pd.DataFrame:
         """
         read only visible sheets in the excel file
         if combine_sheets is True, attempt to UNION all visible sheets
@@ -38,36 +46,51 @@ class CommissionFile:
                     return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
 
         try:
-            with pd.ExcelFile(self.file_data, engine="openpyxl") as excel_file:
-                excel_file: pd.ExcelFile
-                visible_sheets = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
-                if combine_sheets:
-                    # columns are treated by lowering and de-spacing before combination
-                    data = [
-                        excel_file.parse(sheet, skiprows=skip)\
-                                .rename(columns=lambda col: str(col).replace(" ","").lower())
-                            for sheet in visible_sheets
-                            ]
-                    result = pd.concat(data, ignore_index=True)
-                if split_sheets:
-                    data_sheets: dict[str,pd.DataFrame] = {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in visible_sheets}
-                    return {sheet: data.rename(columns=lambda col: str(col).replace(" ","").lower()) for sheet, data in data_sheets.items()}
-                
-                result: pd.DataFrame = pd.read_excel(self.file_data, sheet_name=visible_sheets[0], skiprows=skip)
+            excel_data = self.excel_extract('openpyxl', combine_sheets, skip, split_sheets)
         except:
-            # TODO make sure this fallback using xlrd also ignores hidden sheets
-            with pd.ExcelFile(self.file_data, engine="xlrd") as excel_file:
-                excel_file: pd.ExcelFile
-                if combine_sheets:
-                    # columns are treated by lowering and de-spacing before combination
-                    data = [
-                        excel_file.parse(sheet, skiprows=skip)\
-                            .rename(columns=lambda col: str(col).replace(" ","").lower())
-                        for sheet in excel_file.sheet_names
-                        ]
-                    result =  pd.concat(data, ignore_index=True)
-                if split_sheets:
-                    return {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in excel_file.sheet_names}
-                result =  pd.read_excel(self.file_data, skiprows=skip)
+            excel_data = self.excel_extract('xlrd', combine_sheets, skip, split_sheets)
 
-        return result.rename(columns=lambda col: str(col).replace(" ","").lower())
+        if make_header_a_row:
+            if isinstance(excel_data, dict):
+                result = {sheet: data.T.reset_index().T.reset_index(drop=True) for sheet, data in excel_data.items()}
+            else:
+                result = excel_data.T.reset_index().T.reset_index(drop=True)
+        elif treat_headers:
+            # if we made a header a row, the headers become integers and this isn't needed, so treatment is an alternative
+            if isinstance(excel_data, dict):
+                result = {sheet: data.rename(columns=lambda col: col.lower().replace(' ')) for sheet, data in excel_data.items()}
+            else:
+                result = excel_data.rename(columns=lambda col: col.lower().replace(' '))
+        else:
+            result = excel_data
+        
+        return result
+
+
+    def excel_extract(
+            self,
+            engine: str,
+            combine_sheets: bool=False,
+            skip: int=0,
+            split_sheets: bool=False
+    ) -> pd.DataFrame|dict[str,pd.DataFrame]:
+
+        with pd.ExcelFile(self.file_data, engine=engine) as excel_file:
+            excel_file: pd.ExcelFile
+            if engine == "openpyxl":
+                # use only visible sheets in case some irrelevant ones are hidden, but ahead of line
+                # otherwise a hidden sheet would get pulled in instead of the intended visible one
+                sheets = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
+            elif engine == "xlrd":
+                # NOTE I'm not sure how to grab only visible sheets with xlrd
+                sheets = excel_file.sheet_names
+
+            if combine_sheets:
+                data = [excel_file.parse(sheet, skiprows=skip) for sheet in sheets]
+                result = pd.concat(data, ignore_index=True)
+            elif split_sheets:
+                data_sheets: dict[str,pd.DataFrame] = {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in sheets}
+                result = data_sheets
+            else: 
+                result = pd.read_excel(self.file_data, sheet_name=sheets[0], skiprows=skip)
+        return result

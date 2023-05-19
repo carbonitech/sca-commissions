@@ -86,46 +86,54 @@ def test_allied_preprocessors():
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, allied.PreProcessor)
 
-#def test_ambro_controls_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_atco_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_berry_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_c_d_valve_preprocessors():
-#    # python doesn't allow the '&' symbol directly in a name,
-#    # but we can import a module with the character in it anyway like this
-#    preprocessor_module = import_module('entities.manufacturers.c&d_valve')
-#    preprocessor = preprocessor_module.PreProcessor()
-#def test_cerro_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_clean_comfort_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_famco_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_friedrich_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
+def test_ambro_controls_preprocessors():
+    report_names = ['standard'] # TODO add RE Michel
+    entity = 'ambro_controls'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, ambro_controls.PreProcessor)
+
+def test_atco_preprocessors():
+    report_names = ['standard', 're_michel_pos']
+    entity = 'atco'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, atco.PreProcessor)
+
+def test_berry_preprocessors():
+    report_names = ['standard', 'baker_pos', 'johnstone_pos', 're_michel_pos', 'united_refrigeration_pos', 'winsupply_pos']
+    entity = 'berry'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, berry.PreProcessor)
+
+def test_c_d_valve_preprocessors():
+    # python doesn't allow the '&' symbol directly in a name,
+    # but we can import a module with the character in it anyway like this
+    preprocessor_module = import_module('entities.manufacturers.c&d_valve')
+    preprocessor = preprocessor_module.PreProcessor()
+
+def test_cerro_preprocessors():
+    report_names = ['standard']
+    entity = 'cerro'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, cerro.PreProcessor)
+
+def test_clean_comfort_preprocessors():
+    report_names = ['standard'] # TODO add prostat
+    entity = 'clean_comfort'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, clean_comfort.PreProcessor)
+
+def test_famco_preprocessors():
+    report_names = ['standard', 'johnstone_pos']
+    entity = 'famco'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, famco.PreProcessor)
+
+def test_friedrich_preprocessors():
+    report_names = ['paid', 'johnstone_pos']
+    entity = 'friedrich'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, friedrich.PreProcessor)
+
 #def test_general_filters_preprocessors():
 #    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
 #    entity = 'adp'

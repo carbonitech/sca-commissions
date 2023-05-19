@@ -40,11 +40,11 @@ class PreProcessor(AbstractPreProcessor):
         data.columns = ["customer", "city", "inv_amt", "comm_amt"]
         # from here, all the variable from above have been replaced by strings
         customer_name_col, city_name_col, inv_col, comm_col = data.columns.tolist()
-
         # convert string currency figure to float
         data.loc[:, inv_col] = data[inv_col].replace(r'^\(','-', regex=True)
-        data.loc[:, inv_col] = data[inv_col].replace(r'[^-.0-9]','',regex=True).astype(float)
-
+        data.loc[:, inv_col] = data[inv_col].replace(r'[^-.0-9]','',regex=True)
+        data = data.loc[~(data[inv_col] == '')]
+        data[inv_col] = data[inv_col].astype(float)
         # convert string currency figure to float
         data.loc[:, comm_col] = data[comm_col].replace(r'^\(','-', regex=True)
         data.loc[:, comm_col] = data[comm_col].replace(r'[^-.0-9]','',regex=True).astype(float)

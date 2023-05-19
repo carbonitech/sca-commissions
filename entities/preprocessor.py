@@ -38,7 +38,7 @@ class AbstractPreProcessor(ABC):
         if not set(cols) & set(df.columns):
             # iterate through the rows until we find the column header
             for index, row in df.iterrows():
-                row_vals = [str(value).lower() for value in row.values.tolist()]
+                row_vals = [str(value).lower().replace(' ','') for value in row.values.tolist()]
                 if set(cols) & set(row_vals):
                     # set the df to use the column row as header
                     # and next row is the first row

@@ -176,8 +176,8 @@ class PreProcessor(AbstractPreProcessor):
         preprocess_method, skip = method_by_name.get(self.report_name, None)
         if preprocess_method:
             if self.report_name == "lennox_pos":
-                return preprocess_method(self.file.to_df(combine_sheets=True, skip=skip), **kwargs)
-            return preprocess_method(self.file.to_df(skip=skip), **kwargs)
+                return preprocess_method(self.file.to_df(combine_sheets=True, skip=skip, treat_headers=True), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip, treat_headers=True), **kwargs)
         else:
             return
 

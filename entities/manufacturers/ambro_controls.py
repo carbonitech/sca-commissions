@@ -40,6 +40,6 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(), **kwargs)
+            return preprocess_method(self.file.to_df(treat_headers=True), **kwargs)
         else:
             return

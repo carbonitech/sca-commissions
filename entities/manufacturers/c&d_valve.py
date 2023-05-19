@@ -120,7 +120,7 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param, treat_headers=True), **kwargs)
         else:
             return
 

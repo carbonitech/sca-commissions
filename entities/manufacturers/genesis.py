@@ -136,7 +136,7 @@ class PreProcessor(AbstractPreProcessor):
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:
             if self.report_name == "winsupply_pos":
-                return preprocess_method(self.file.to_df(combine_sheets=True), **kwargs)
-            return preprocess_method(self.file.to_df(skip=skip_param), **kwargs)
+                return preprocess_method(self.file.to_df(combine_sheets=True, treat_headers=True), **kwargs)
+            return preprocess_method(self.file.to_df(skip=skip_param, treat_headers=True), **kwargs)
         else:
             return

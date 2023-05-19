@@ -4,6 +4,8 @@
 tests/db_tables/
 #(CUSTOM) ignore script used for cron job
 tests/*.sql
+# test manufacturer files
+tests/**/*.xls*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

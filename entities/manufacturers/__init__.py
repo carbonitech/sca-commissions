@@ -1,6 +1,7 @@
 import os
 from importlib import import_module
 from services.api_adapter import ApiAdapter, get_db
+from entities.manufacturers import *
 
 api = ApiAdapter()
 db = next(get_db())

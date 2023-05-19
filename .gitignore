@@ -6,7 +6,8 @@ tests/db_tables/
 tests/*.sql
 # test manufacturer files
 tests/**/*.xls*
-
+tests/**/*.pdf
+tests/**/*.PDF
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

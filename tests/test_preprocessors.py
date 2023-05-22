@@ -161,22 +161,23 @@ def test_hardcast_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, hardcast.PreProcessor)
 
 def test_jb_ind_preprocessors():
-    report_names = []
-    entity = ''
+    report_names = ['standard'] 
+    entity = 'jb_ind'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, jb_ind.PreProcessor)
 
 def test_milwaukee_preprocessors():
-    report_names = []
-    entity = ''
+    report_names = ['full_detail_list']
+    entity = 'milwaukee'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, milwaukee.PreProcessor)
 
 def test_nelco_preprocessors():
-    report_names = []
-    entity = ''
+    report_names = ['standard']
+    entity = 'nelco'
+    comm_rate = 0.50 
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, nelco.PreProcessor)
+    assert_tests_for_each_file(files_by_report, entity, nelco.PreProcessor, standard_commission_rate=comm_rate)
 
 def test_superior_hvacr_preprocessors():
     report_names = []

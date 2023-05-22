@@ -155,8 +155,8 @@ def test_glasfloss_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, glasfloss.PreProcessor, file_password=file_password)
 
 def test_hardcast_preprocessors():
-    report_names = []
-    entity = ''
+    report_names = ['standard']
+    entity = 'hardcast'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, hardcast.PreProcessor)
 

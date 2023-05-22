@@ -92,7 +92,7 @@ def test_allied_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, allied.PreProcessor)
 
 def test_ambro_controls_preprocessors():
-    report_names = ['standard'] # TODO add RE Michel
+    report_names = ['standard', 're_michel_pos']
     entity = 'ambro_controls'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, ambro_controls.PreProcessor)

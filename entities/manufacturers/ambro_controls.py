@@ -21,7 +21,7 @@ class PreProcessor(AbstractPreProcessor):
 
         active_state_col = state_name_col # switch will flip to the alternate if there's an error
         data = self.check_headers_and_fix([customer_name_col, city_name_col,inv_col], data)
-        data = data.dropna(subset=data.columns.to_list()[0])
+        data = data.dropna(subset=data.columns[0])
         try: 
             result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
         except KeyError:
@@ -41,7 +41,22 @@ class PreProcessor(AbstractPreProcessor):
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """process the RE Michel report"""
-        raise NotImplementedError
+        customer_name = 'RE MICHEL'
+        city_name_col = 'city'
+        state_name_col = 'state'
+        sales_amt_col = 'remcogs'
+        comm_rate = kwargs.get('standard_commission_rate',0)
+        
+        data = self.check_headers_and_fix([city_name_col, state_name_col, sales_amt_col], data)
+        data = data.apply(self.upper_all_str)
+        data = data.dropna(subset=data.columns[0])
+        data['customer'] = customer_name
+        data[sales_amt_col] *= 100
+        data['comm_amt'] = data[sales_amt_col]*comm_rate
+        data['id_string'] = data[['customer',city_name_col,state_name_col]].apply('_'.join, axis=1)
+        result = data[['id_string', sales_amt_col, 'comm_amt']]
+        result.columns = ['id_string', 'inv_amt', 'comm_amt']
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:

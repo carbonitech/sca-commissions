@@ -32,9 +32,8 @@ class Processor:
     Alternatively, this class is used to attempt to integrate data that was previously kicked out due to no
     existing mapping.
 
-    Output: Submission ID or None
-            Either commission data, failed matches, or both, are written to a database
-
+    This class is extended by inheritance, once for a new report flow, and another for integration attempts on
+    the values that were filtered out into errors from prior submissions
     """
     skip: bool
     inter_warehouse_transfer: bool

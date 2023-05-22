@@ -25,7 +25,7 @@ class PreProcessor(AbstractPreProcessor):
         inv_col_comm: int = -3
 
         sales_report: pd.DataFrame = pd.read_excel(kwargs.get("additional_file_1"))\
-                    .rename(columns=lambda col: col.lower().replace(" ",""))
+                    .rename(columns=lambda col: str(col).lower().replace(" ",""))
         customer_name_col: int = 4
         city_name_col: str = "city"
         state_name_col: str = "state"

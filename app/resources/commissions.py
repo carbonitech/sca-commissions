@@ -74,7 +74,9 @@ async def commission_data_file_link(
         user: User=Depends(get_user)
     ):
     """
-    Generates a download link for the commission data
+    Generates a temporary download link for the commission data
+    The record contains instructions for the download to be used if the download
+    link is hit.
     """
     user_id = user.id(db=db)
     duration = float(getenv('FILE_LINK_DURATION'))
@@ -114,7 +116,6 @@ async def process_data_from_a_file(
         user: User=Depends(get_user),
     ):
 
-    # TODO: should I do this check?
     existing_submissions = api.get_all_submissions(db=db, user=user)
     existing_submission = existing_submissions.loc[
         (existing_submissions["reporting_month"] == reporting_month)
@@ -190,32 +191,25 @@ async def process_commissions_file(
     bg_tasks.add_task(mfg_report_processor.process_and_commit)
     return submission_id
 
-# TODO MAKE THIS A JSONAPI RESPONSE
 @router.post("/{submission_id}", tags=['commissions'])
 async def add_custom_entry_to_commission_data(
         submission_id: int,
-        map_rep_customer_id: int,
-        data: CustomCommissionData = Depends(CustomCommissionData.as_form)
     ):
-    if not api.submission_exists(submission_id):
-        raise HTTPException(400, detail="report submission does not exist")
-    payload = {"map_rep_customer_id": map_rep_customer_id} | data.dict(exclude={"description"})
-    row_id = api.set_new_commission_data_entry(submission_id=submission_id, **payload)
-    return {"Success": f"line written to row {row_id}"} 
+    ...
 
-# TODO MAKE THIS A JSONAPI RESPONSE
 @router.put("/{row_id}", tags=['commissions'])
 async def modify_an_entry_in_commission_data(
-        row_id: int, data:
-        CustomCommissionData = Depends(CustomCommissionData.as_form)
+        row_id: int,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_user)
     ):
-    row_exists = api.get_commission_data_by_row(row_id)
-    if not row_exists:
-        raise HTTPException(400, detail="row does not exist")
-    api.modify_commission_data_row(row_id, **data.dict(exclude={"description"}))
-
+    ...
 
 @router.delete("/{row_id}", tags=['commissions'])
-async def remove_a_line_in_commission_data(row_id: int) -> None:
+async def remove_a_line_in_commission_data(
+        row_id: int,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_user)
+    ) -> None:
     # hard delete
-    api.delete_commission_data_line(row_id)
+    api.delete_commission_data_line(db=db, row_id=row_id, user=user)

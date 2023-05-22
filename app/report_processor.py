@@ -37,7 +37,6 @@ class Processor:
 
     """
     skip: bool
-    reintegration: bool
     inter_warehouse_transfer: bool
     session: Session
     api: api_adapter.ApiAdapter
@@ -48,7 +47,6 @@ class Processor:
     report_id: int
     standard_commission_rate: float|None
     split: float
-    reintegration = True
     target_err: ErrorType
     error_table: pd.DataFrame
     branches: pd.DataFrame
@@ -350,13 +348,15 @@ class NewReportStrategy(Processor):
 
     def process_and_commit(self) -> int:
         try:
-            self.set_submission_status("PROCESSING")\
-                .preprocess()\
-                .insert_submission_id()\
-                .insert_user_id()\
-                .insert_report_id()\
-                .assign_value_by_transfer_direction()\
+            (
+            self.set_submission_status("PROCESSING")
+                .preprocess()
+                .insert_submission_id()
+                .insert_user_id()
+                .insert_report_id()
+                .assign_value_by_transfer_direction()
                 .add_branch_id()
+            )
         except EmptyTableException:
             self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
@@ -368,11 +368,13 @@ class NewReportStrategy(Processor):
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
         else:
-            self.drop_extra_columns()\
-                .insert_recorded_at_column()\
-                .register_commission_data()\
-                .set_submission_status("NEEDS_ATTENTION")\
+            (
+            self.drop_extra_columns()
+                .insert_recorded_at_column()
+                .register_commission_data()
+                .set_submission_status("NEEDS_ATTENTION")
                 .set_submission_status("COMPLETE")
+            )
         return self.submission_id
     
 class ErrorReintegrationStrategy(Processor):
@@ -424,9 +426,11 @@ class ErrorReintegrationStrategy(Processor):
 
     def process_and_commit(self) -> None:
         try:
-            self._filter_for_existing_records_with_target_error_type()\
-                .insert_report_id()\
+            (
+            self._filter_for_existing_records_with_target_error_type()
+                .insert_report_id()
                 .add_branch_id()
+            )
         except EmptyTableException:
             pass
         except Exception as err:
@@ -438,9 +442,11 @@ class ErrorReintegrationStrategy(Processor):
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=None)
         else:
-            self.remove_error_db_entries()\
-                .drop_extra_columns()\
-                .insert_recorded_at_column()\
-                .register_commission_data()\
+            (
+            self.remove_error_db_entries()
+                .drop_extra_columns()
+                .insert_recorded_at_column()
+                .register_commission_data()
                 .set_submission_status("COMPLETE")
+            )
         return

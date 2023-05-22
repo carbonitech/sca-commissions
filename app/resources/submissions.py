@@ -28,7 +28,6 @@ async def get_submission_by_id(
     jsonapi_query = convert_to_jsonapi(query)
     raw_result = api.get_submissions(db,jsonapi_query,user,submission_id)
     
-    ## converting row-data from a string of a dict to an actual dict before sending back in the included object
     def convert_row_data_to_dict(json_obj: dict):
         if json_obj.get("type") != "errors":
             return json_obj
@@ -60,6 +59,5 @@ async def delete_submission_by_id(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    # hard delete
     # hard deletes commission data and errors along with it
     api.delete_submission(submission_id, session=db, user=user)

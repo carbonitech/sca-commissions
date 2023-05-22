@@ -19,18 +19,13 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "amount"
         comm_col: str = "commissionpayable"
 
-        active_state_col = state_name_col # switch will flip to the alternate if there's an error
         data = self.check_headers_and_fix([customer_name_col, city_name_col,inv_col], data)
         data = data.dropna(subset=data.columns[0])
-        try: 
-            result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
-        except KeyError:
-            active_state_col = state_name_col_alt0
-            try:
-                result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
-            except KeyError:
-                active_state_col = state_name_col_alt1
-                result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
+        possible_state_cols = {state_name_col, state_name_col_alt0, state_name_col_alt1}
+        # using set intersection on the col names to assign a name to the state column
+        # next -> iter will pick just one name if the intersection has more than one element
+        active_state_col = next(iter(set(data.columns) & possible_state_cols))
+        result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
                 
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100

@@ -7,6 +7,18 @@ from io import BytesIO
 @dataclass
 class CommissionFile:
     file_data: bytes|BytesIO
+    file_password: str = None
+
+    def decrypt_file(self) -> None:
+        if self.file_password:
+            import msoffcrypto
+            from io import BytesIO
+            file_decrypted = BytesIO()
+            decrypter = msoffcrypto.OfficeFile(BytesIO(self.file_data))
+            decrypter.load_key(password=str(self.file_password))
+            decrypter.decrypt(file_decrypted)
+            self.file_data = file_decrypted
+            
 
     def to_df(
             self,
@@ -44,7 +56,7 @@ class CommissionFile:
                     return combined[~combined.loc[:,0].str.startswith('Unnamed')]
                 else:
                     return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
-
+        self.decrypt_file() # only does something if a password was passed into the CommissionFile constructor
         try:
             excel_data = self.excel_extract('openpyxl', combine_sheets, skip, split_sheets)
         except:

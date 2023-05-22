@@ -165,16 +165,7 @@ async def process_commissions_file(
         bg_tasks: BackgroundTasks       # passed directly from the calling route
     ) -> int:
 
-    if file_password:
-        import msoffcrypto
-        from io import BytesIO
-        file_decrypted = BytesIO()
-        decrypter = msoffcrypto.OfficeFile(BytesIO(file))
-        decrypter.load_key(password=str(file_password))
-        decrypter.decrypt(file_decrypted)
-        file = file_decrypted
-
-    file_obj = CommissionFile(file)
+    file_obj = CommissionFile(file_data=file, file_password=file_password)
     new_sub = submission.NewSubmission(
             file_obj,
             reporting_month,

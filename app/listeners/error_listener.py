@@ -21,12 +21,6 @@ def error_factory(error_data: DataFrame, type_: int, submission_id: int, user_id
 def no_customer_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
     return error_handler(data_affected, submission_id, *args, error_type=1, **kwargs)
 
-def no_city_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    return error_handler(data_affected, submission_id, *args, error_type=2, **kwargs)
-
-def no_state_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
-    return error_handler(data_affected, submission_id, *args, error_type=3, **kwargs)
-
 def no_branch_error(data_affected: DataFrame, submission_id: int, *args, **kwargs) -> None:
     return error_handler(data_affected, submission_id, *args, error_type=4, **kwargs)
 
@@ -49,7 +43,5 @@ def error_handler(data_affected: DataFrame, submission_id: int, *args, **kwargs)
 
 def setup_error_event_handlers():
     event.subscribe(error.ErrorType(1), no_customer_error)
-    event.subscribe(error.ErrorType(2), no_city_error)
-    event.subscribe(error.ErrorType(3), no_state_error)
     event.subscribe(error.ErrorType(4), no_branch_error)
     event.subscribe(error.ErrorType(5), no_rep_assigned_error)

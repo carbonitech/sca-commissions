@@ -19,6 +19,9 @@ import traceback
 FILE_DIRECTORY = './tests/manufacturers'
 
 def _build_file_listing_by_report(reports: list[str], entity: str) -> dict[str,list[str]]:
+    """Builds a dictionary with the report names as the keys and a list of file paths as the values
+        This will be used to iterate through each file in the directory and test it against its report-specific
+        preprocessor"""
     folder_dir = os.path.join(FILE_DIRECTORY, entity)
     report_dirs = {report: os.path.join(folder_dir, report) for report in reports}
     files = {report_name: [
@@ -101,7 +104,8 @@ def test_atco_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, atco.PreProcessor)
 
 def test_berry_preprocessors():
-    report_names = ['standard', 'baker_pos', 'johnstone_pos', 're_michel_pos', 'united_refrigeration_pos', 'winsupply_pos']
+    report_names = ['standard', 'baker_pos', 'johnstone_pos', 're_michel_pos',
+                     'united_refrigeration_pos', 'winsupply_pos']
     entity = 'berry'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, berry.PreProcessor)
@@ -110,6 +114,10 @@ def test_c_d_valve_preprocessors():
     # python doesn't allow the '&' symbol directly in a name,
     # but we can import a module with the character in it anyway like this
     preprocessor_module = import_module('entities.manufacturers.c&d_valve')
+    report_names = ['standard', 'baker', 'johnstone']
+    entity = 'c&d_valve'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    
 
 def test_cerro_preprocessors():
     report_names = ['standard']
@@ -180,13 +188,13 @@ def test_nelco_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, nelco.PreProcessor, standard_commission_rate=comm_rate)
 
 def test_superior_hvacr_preprocessors():
-    report_names = []
-    entity = ''
-    files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
+    report_names = ['standard', 'uri_report']
+    entity = 'superior_hvacr'
+    # files_by_report = _build_file_listing_by_report(report_names, entity)
+    # assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
 
 def test_tjernlund_preprocessors():
-    report_names = []
-    entity = ''
+    report_names = ['standard']
+    entity = 'tjernlund'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, tjernlund.PreProcessor)

@@ -271,12 +271,6 @@ class ApiAdapter:
             conn.execute(sql)
         return
 
-    def delete_commission_data_line(self, row_id: int) -> None:
-        sql = sqlalchemy.delete(COMMISSION_DATA_TABLE)\
-            .where(COMMISSION_DATA_TABLE.row_id == row_id)
-        with self.engine.begin() as conn:
-            conn.execute(sql)
-        return
 
 
     def delete_submission(self, submission_id: int, session: Session, user: User) -> None:
@@ -441,7 +435,6 @@ class ApiAdapter:
             raise UserMisMatch()
         return models.serializer.get_relationship(db,{},primary,id_,secondary)
     
-    @jsonapi_error_handling
     def __get_X(self, db: Session, query: dict, user: User, model: models.Base, _id: int=0) -> JSONAPIResponse:
         if not _id:
             user_id: int = user.id(db=db)
@@ -585,19 +578,29 @@ class ApiAdapter:
         return
 
     @jsonapi_error_handling
-    def delete_manufacturer(self, db: Session, manuf_id: int) -> None:
-        current_time = datetime.utcnow()
-        sql = """UPDATE manufacturers SET deleted = :current_time WHERE id = :manuf_id;"""
-        db.execute(sql, {"current_time": current_time, "manuf_id": manuf_id})
+    def delete_manufacturer(self, db: Session, manuf_id: int, user: User) -> None:
+        return self.__soft_delete(db=db, table=MANUFACTURERS, _id=manuf_id, user=user)
+
+    @jsonapi_error_handling
+    def delete_representative(self, db: Session, rep_id: int, user: User) -> None:
+        return self.__soft_delete(db=db, table=REPS, _id=rep_id, user=user)
+
+    @jsonapi_error_handling
+    def delete_commission_data_line(self, db: Session, row_id: int, user: User) -> None:
+        if not self.matched_user(user, COMMISSION_DATA_TABLE, row_id, db):
+            raise UserMisMatch()
+        sql = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.row_id == row_id)
+        db.execute(sql)
         db.commit()
         return
 
-    def delete_representative(self, db: Session, rep_id: int) -> None:
+    def __soft_delete(self, db: Session, table: models.Base, _id: int, user: User):
+        if not self.matched_user(user, table, _id, db):
+            raise UserMisMatch()
         current_time = datetime.utcnow()
-        sql = """UPDATE representatives SET deleted = :current_time WHERE id = :rep_id;"""
-        db.execute(sql, {"current_time": current_time, "rep_id": rep_id})
+        sql = f"""UPDATE {table.__tablename__} SET deleted = :current_time WHERE id = :_id;"""
+        db.execute(sql, {"current_time": current_time, "_id": _id})
         db.commit()
-        return
 
 
     def get_errors(self, db: Session, user: User, submission_id: int=0) -> pd.DataFrame:

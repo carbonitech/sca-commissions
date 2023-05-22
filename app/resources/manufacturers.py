@@ -41,4 +41,4 @@ async def delete_manufacturer_by_id(
         user: User=Depends(get_user)
     ):
     # soft delete
-    return api.delete_manufacturer(db=db, manuf_id=manuf_id)
+    return api.delete_manufacturer(db=db, manuf_id=manuf_id, user=user)

@@ -30,7 +30,8 @@ def _build_file_listing_by_report(reports: list[str], entity: str) -> dict[str,l
 def assert_tests_for_each_file(
         files_by_report: dict[str,list[str]],
         entity: str,
-        preprocessor: Type[AbstractPreProcessor]
+        preprocessor: Type[AbstractPreProcessor],
+        **kwargs
     ):
     """
     Performs the tests that will be run on all preprocessor report files contained
@@ -39,14 +40,15 @@ def assert_tests_for_each_file(
         - The preprocessor is returning the expected object type and not throwing an error
         - The data contains the required columns for processing in report_processor
     """
+    file_password = kwargs.get('file_password', None)
     for report, files in files_by_report.items():
         for file in files:
             with open(file, 'rb') as handler:
                 file_data = handler.read() 
-            file_obj = CommissionFile(file_data=file_data)
+            file_obj = CommissionFile(file_data=file_data, file_password=file_password)
             preprocessor_inst = preprocessor(report,99999,file_obj)
             try:
-                result = preprocessor_inst.preprocess()
+                result = preprocessor_inst.preprocess(**kwargs)
                 tb=''
             except Exception as e:
                 result = e
@@ -108,7 +110,6 @@ def test_c_d_valve_preprocessors():
     # python doesn't allow the '&' symbol directly in a name,
     # but we can import a module with the character in it anyway like this
     preprocessor_module = import_module('entities.manufacturers.c&d_valve')
-    preprocessor = preprocessor_module.PreProcessor()
 
 def test_cerro_preprocessors():
     report_names = ['standard']
@@ -134,48 +135,57 @@ def test_friedrich_preprocessors():
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, friedrich.PreProcessor)
 
-#def test_general_filters_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_genesis_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_glasfloss_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_hardcast_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_jb_ind_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_milwaukee_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_nelco_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_superior_hvacr_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
-#def test_tjernlund_preprocessors():
-#    report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
-#    entity = 'adp'
-#    files_by_report = _build_file_listing_by_report(report_names, entity)
-#    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
+def test_general_filters_preprocessors():
+    report_names = ['standard', 'unifilter']
+    entity = 'general_filters'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, general_filters.PreProcessor)
+
+def test_genesis_preprocessors():
+    report_names = ['sales_detail', 'baker_pos', 'lennox_pos', 'winsupply_pos', 'rebate_detail']
+    entity = 'genesis'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, genesis.PreProcessor)
+
+def test_glasfloss_preprocessors():
+    report_names = ['standard']
+    entity = 'glasfloss'
+    file_password = '013084'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, glasfloss.PreProcessor, file_password=file_password)
+
+def test_hardcast_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, hardcast.PreProcessor)
+
+def test_jb_ind_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, jb_ind.PreProcessor)
+
+def test_milwaukee_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, milwaukee.PreProcessor)
+
+def test_nelco_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, nelco.PreProcessor)
+
+def test_superior_hvacr_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
+
+def test_tjernlund_preprocessors():
+    report_names = []
+    entity = ''
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, tjernlund.PreProcessor)

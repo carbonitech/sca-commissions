@@ -6,7 +6,8 @@ from pandas import ExcelWriter
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
-from services.api_adapter import ApiAdapter, get_db
+from services.api_adapter import ApiAdapter
+from services.utils import get_db
 from sqlalchemy.orm import Session
 
 api = ApiAdapter()

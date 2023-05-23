@@ -2,8 +2,10 @@
     No modification of the table is allowed, so only GET methods are allowed"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute
+from services.utils import User, get_db, get_user
 
 
 api = ApiAdapter()
@@ -16,7 +18,7 @@ async def all_locations(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_location(db,jsonapi_query,user)
+    return get.location(db,jsonapi_query,user)
 
 @router.get("/{location_id}", tags=["locations"])
 async def all_locations(
@@ -26,4 +28,4 @@ async def all_locations(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_location(db,jsonapi_query,user,location_id)
+    return get.location(db,jsonapi_query,user,location_id)

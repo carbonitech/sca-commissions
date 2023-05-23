@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/manufacturers", route_class=JSONAPIRoute)
@@ -14,7 +16,7 @@ async def all_manufacturers(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_manufacturers(db,jsonapi_query,user)
+    return get.manufacturers(db,jsonapi_query,user)
 
 @router.get("/{manuf_id}", tags=["manufacturers"])
 async def manufacturer_by_id(
@@ -24,7 +26,7 @@ async def manufacturer_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_manufacturers(db,jsonapi_query,user,manuf_id)
+    return get.manufacturers(db,jsonapi_query,user,manuf_id)
     
 @router.post("", tags=["manufacturers"])
 async def add_a_manufacturer(

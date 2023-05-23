@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/reports", route_class=JSONAPIRoute)
@@ -13,7 +15,7 @@ async def fields(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_reports(db,jsonapi_query, user)
+    return get.reports(db,jsonapi_query, user)
 
 @router.get("/{report_id}", tags=["reports"])
 async def customer_by_id(
@@ -23,7 +25,7 @@ async def customer_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_reports(db, jsonapi_query, user, report_id)
+    return get.reports(db, jsonapi_query, user, report_id)
 
 @router.post("", tags=['reports'])
 async def new_report():

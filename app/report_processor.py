@@ -9,7 +9,7 @@ from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
-from services import api_adapter
+from services import api_adapter, get
 
 
 AUTO_MATCH_THRESHOLD = 0.75     # based on the eye-ball test
@@ -53,9 +53,9 @@ class Processor:
     id_string_matches: pd.DataFrame
 
     def __init__(self, session: Session, user_id: int):
-        self.branches = self.api.get_branches(session, user_id=user_id)
-        self.id_sting_match_supplement = self.api.generate_string_match_supplement(session, user_id=user_id)
-        self.id_string_matches = self.api.get_id_string_matches(session, user_id=user_id)
+        self.branches = get.branches(session, user_id=user_id)
+        self.id_sting_match_supplement = get.string_match_supplement(session, user_id=user_id)
+        self.id_string_matches = get.id_string_matches(session, user_id=user_id)
 
 
     def insert_report_id(self) -> 'Processor':
@@ -196,7 +196,7 @@ class Processor:
         return self
 
     def preprocess(self) -> 'Processor':
-        report_name = self.api.get_report_name_by_id(db=self.session, report_id=self.submission.report_id)
+        report_name = get.report_name_by_id(db=self.session, report_id=self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
@@ -317,8 +317,8 @@ class NewReportStrategy(Processor):
         self.submission = submission
         self.preprocessor = preprocessor
         self.report_id = submission.report_id
-        self.standard_commission_rate = self.api.get_commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
-        self.split = self.api.get_split(session, submission.report_id, user_id=self.user_id)
+        self.standard_commission_rate = get.commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
+        self.split = get.split(session, submission.report_id, user_id=self.user_id)
         super().__init__(session=session, user_id=self.user_id)
 
     def insert_report_id(self) -> 'Processor':

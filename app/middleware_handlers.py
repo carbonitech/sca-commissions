@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime
 from fastapi import Response, Request
 from starlette.responses import JSONResponse
-from services.api_adapter import get_db
+from services.utils import get_db
 
 async def read_response_body(iterator) -> dict:
     """

@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
 import json
 import math
+
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
@@ -16,7 +19,7 @@ async def get_all_submissions(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_submissions(db,jsonapi_query,user)
+    return get.submissions(db,jsonapi_query,user)
 
 @router.get("/{submission_id}", tags=["submissions"])
 async def get_submission_by_id(
@@ -26,7 +29,7 @@ async def get_submission_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    raw_result = api.get_submissions(db,jsonapi_query,user,submission_id)
+    raw_result = get.submissions(db,jsonapi_query,user,submission_id)
     
     def convert_row_data_to_dict(json_obj: dict):
         if json_obj.get("type") != "errors":

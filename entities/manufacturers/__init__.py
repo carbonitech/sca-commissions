@@ -1,12 +1,14 @@
 import os
 from importlib import import_module
-from services.api_adapter import ApiAdapter, get_db
+from services.api_adapter import ApiAdapter
+from services.utils import get_db
+from services import get
 from entities.manufacturers import *
 
 api = ApiAdapter()
 db = next(get_db())
 
-all_manufacturers_in_db = api.get_all_manufacturers(db)
+all_manufacturers_in_db = get.all_manufacturers(db)
 all_manufacturers_in_dir = [
         manuf.split('.')[0] 
         for manuf in os.listdir("./entities/manufacturers") 

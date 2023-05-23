@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute
 from jsonapi.request_models import RequestModels
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/mappings", route_class=JSONAPIRoute)
@@ -14,7 +16,7 @@ async def all_mappings(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_mappings(db, jsonapi_query, user)
+    return get.mappings(db, jsonapi_query, user)
 
 @router.get("/{mapping_id}", tags=["mappings"])
 async def mapping_by_id(
@@ -24,7 +26,7 @@ async def mapping_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_mappings(db, jsonapi_query, user, _id=mapping_id)
+    return get.mappings(db, jsonapi_query, user, _id=mapping_id)
 
 @router.post("", tags=['mappings'])
 async def new_mapping(

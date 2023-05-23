@@ -14,9 +14,11 @@ from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
 from app.resources.pydantic_form import as_form
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
+from services.utils import User, get_db, get_user
 
 load_dotenv()
 api = ApiAdapter()
@@ -55,7 +57,7 @@ async def commission_data(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_commission_data(db,jsonapi_query, user)
+    return get.commission_data(db,jsonapi_query, user)
 
 @router.get("/{row_id}", tags=['commissions'])
 async def get_commission_data_row(
@@ -65,7 +67,7 @@ async def get_commission_data_row(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_commission_data(db,row_id,jsonapi_query, user)
+    return get.commission_data(db,row_id,jsonapi_query, user)
 
 @router.post("/download", tags=['commissions'])
 async def commission_data_file_link(
@@ -116,7 +118,7 @@ async def process_data_from_a_file(
         user: User=Depends(get_user),
     ):
 
-    existing_submissions = api.get_all_submissions(db=db, user=user)
+    existing_submissions = get.all_submissions(db=db, user=user)
     existing_submission = existing_submissions.loc[
         (existing_submissions["reporting_month"] == reporting_month)
         & (existing_submissions["reporting_year"] == reporting_year)
@@ -149,7 +151,7 @@ async def process_data_from_a_file(
             user,
             bg_tasks
         )
-    return api.get_submissions(db=db, submission_id=new_submission_id,query={}, user=user)
+    return get.submissions(db=db, submission_id=new_submission_id,query={}, user=user)
 
 async def process_commissions_file(
         file: bytes,

@@ -4,7 +4,7 @@ import time
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from jose.jwt import get_unverified_header, decode, get_unverified_claims
-from services.api_adapter import get_db
+from services.utils import get_db
 
 token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')

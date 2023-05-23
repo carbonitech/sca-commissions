@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter()
@@ -13,7 +15,7 @@ def get_related_handler(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.get_related(db,primary,id_,secondary, user)
+    return get.related(db,primary,id_,secondary, user)
 
 @router.get("/{primary}/{id_}/relationships/{secondary}", tags=["relationships"])
 def get_self_relationship_handler(
@@ -23,4 +25,4 @@ def get_self_relationship_handler(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.get_relationship(db,primary,id_,secondary, user)
+    return get.relationship(db,primary,id_,secondary, user)

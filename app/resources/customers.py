@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services.api_adapter import ApiAdapter, get_db, get_user, User
+from services import get
+from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
@@ -10,7 +12,7 @@ router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
 @router.get("", tags=["customers"])
 async def all_customers(query: Query=Depends(), db: Session=Depends(get_db), user: User=Depends(get_user)):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_customers(db,jsonapi_query, user)
+    return get.customers(db,jsonapi_query, user)
 
 @router.get("/{customer_id}", tags=["customers"])
 async def customer_by_id(
@@ -20,7 +22,7 @@ async def customer_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_customers(db, jsonapi_query, user, customer_id)
+    return get.customers(db, jsonapi_query, user, customer_id)
    
 @router.patch("/{customer_id}", tags=["customers"])
 async def modify_customer(

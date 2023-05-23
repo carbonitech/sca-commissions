@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
-
-from services.api_adapter import ApiAdapter, get_db, User, get_user
+from services import get
+from services.api_adapter import ApiAdapter
+from services.utils import User, get_db, get_user
 
 api = ApiAdapter()
 router = APIRouter(prefix="/representatives", route_class=JSONAPIRoute)
@@ -15,7 +16,7 @@ async def all_reps(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_reps(db,jsonapi_query,user)
+    return get.reps(db,jsonapi_query,user)
 
 @router.get("/{rep_id}", tags=["reps"])
 async def rep_by_id(
@@ -25,7 +26,7 @@ async def rep_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return api.get_reps(db,jsonapi_query,user,rep_id)
+    return get.reps(db,jsonapi_query,user,rep_id)
 
 @router.post("", tags=["reps"])
 async def add_new_rep(

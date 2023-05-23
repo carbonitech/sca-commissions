@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services import get
-from services.api_adapter import ApiAdapter
+from services import get, post, patch, delete
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from services.utils import User, get_db, get_user
 
-api = ApiAdapter()
 router = APIRouter(prefix="/reports", route_class=JSONAPIRoute)
 
 @router.get("", tags=["form fields"])

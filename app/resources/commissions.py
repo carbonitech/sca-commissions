@@ -14,14 +14,12 @@ from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
-from services import get
-from services.api_adapter import ApiAdapter
+from services import get, post, patch, delete
 from app.resources.pydantic_form import as_form
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from services.utils import User, get_db, get_user
 
 load_dotenv()
-api = ApiAdapter()
 router = APIRouter(prefix="/commission-data", route_class=JSONAPIRoute)
 
 @as_form
@@ -97,7 +95,7 @@ async def commission_data_file_link(
         "expires_at": _now + timedelta(seconds=60*duration),
         "user_id": user_id
     }
-    api.generate_file_record(db, record)
+    post.file_record(db, record)
     return {"downloadLink": f"/download?file={hash_}"}
 
 
@@ -182,7 +180,7 @@ async def process_commissions_file(
         )
 
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
-    submission_id = api.record_submission(db=session, submission=new_sub)
+    submission_id = post.submission(db=session, submission=new_sub)
     mfg_report_processor = report_processor.NewReportStrategy(
         session=session,
         user=user,
@@ -214,4 +212,4 @@ async def remove_a_line_in_commission_data(
         user: User = Depends(get_user)
     ) -> None:
     # hard delete
-    api.delete_commission_data_line(db=db, row_id=row_id, user=user)
+    delete.commission_data_line(db=db, row_id=row_id, user=user)

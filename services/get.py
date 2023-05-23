@@ -246,3 +246,8 @@ def commission_data_with_all_names(self, db: Session, submission_id: int=0, **kw
     view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
     view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
     return view_table
+
+def submission_exists(db: Session, submission_id: int) -> bool:
+    sql = sqlalchemy.select(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
+    result = db.execute(sql).fetchone()
+    return True if result else False

@@ -6,11 +6,10 @@ from pandas import ExcelWriter
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
-from services.api_adapter import ApiAdapter
+from services import get, patch
 from services.utils import get_db
 from sqlalchemy.orm import Session
 
-api = ApiAdapter()
 router = APIRouter()
 
 class ExcelFileResponse(StreamingResponse):
@@ -35,7 +34,7 @@ async def download_file(file: str, db: Session=Depends(get_db)):
     if not file:
         raise HTTPException(404, "no file query parameter supplied")
 
-    file_lookup = api.download_file_lookup(db, file)
+    file_lookup = get.download_file_lookup(db, file)
     if not file_lookup:
         raise HTTPException(404, "file not found")
     else:
@@ -51,12 +50,12 @@ async def download_file(file: str, db: Session=Depends(get_db)):
     query_args: dict = json.loads(file_lookup.query_args)
 
     methods = {
-        "commission_data": api.commission_data_with_all_names
+        "commission_data": get.commission_data_with_all_names
     }
 
     bfile = BytesIO()
     with ExcelWriter(bfile) as excel_file:
         methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
     bfile.seek(0)
-    api.mark_file_downloaded(db, file)
+    patch.file_downloads(db, hash=file)
     return ExcelFileResponse(content=bfile, filename=query_args.get("filename"))

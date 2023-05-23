@@ -1,11 +1,9 @@
 import os
 from importlib import import_module
-from services.api_adapter import ApiAdapter
 from services.utils import get_db
-from services import get
+from services import get, post, patch, delete
 from entities.manufacturers import *
 
-api = ApiAdapter()
 db = next(get_db())
 
 all_manufacturers_in_db = get.all_manufacturers(db)
@@ -36,7 +34,6 @@ else:
 
 del os
 del import_module
-del api
 del db
 del all_manufacturers_in_db
 del all_manufacturers_in_dir

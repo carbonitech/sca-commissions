@@ -9,7 +9,8 @@ from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
-from services import api_adapter, get
+from entities.user import User
+from services import get, post, patch, delete
 
 
 AUTO_MATCH_THRESHOLD = 0.75     # based on the eye-ball test
@@ -38,7 +39,6 @@ class Processor:
     skip: bool
     inter_warehouse_transfer: bool
     session: Session
-    api: api_adapter.ApiAdapter
     user_id: int|None
     submission_id: int|None
     submission: NewSubmission
@@ -91,7 +91,7 @@ class Processor:
             ]
         if table_target_errors.empty:
             raise EmptyTableException
-        self.report_id_by_submission = self.api.report_id_by_submission(
+        self.report_id_by_submission = get.report_id_by_submission(
                 self.session,
                 user_id=self.user_id,
                 sub_ids=self.staged_data.loc[:,"submission_id"].unique().tolist()
@@ -99,7 +99,7 @@ class Processor:
         return self
 
     def remove_error_db_entries(self) -> 'Processor':
-        self.api.delete_errors(db=self.session, record_ids=self.error_ids)
+        delete.errors(db=self.session, record_ids=self.error_ids)
         return self
 
     def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['Processor',pd.DataFrame]:
@@ -184,7 +184,7 @@ class Processor:
             return self
         else:
             self.staged_data = self.staged_data.dropna() # just in case
-        self.api.record_final_data(db=self.session, data=self.staged_data)
+        post.final_data(db=self.session, data=self.staged_data)
         return self
 
     def set_switches(self) -> 'Processor':
@@ -283,7 +283,7 @@ class Processor:
         matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
         if not matched_rows.empty:
             # columns in this data: ["report_branch_ref"/id, "id_string"/"match_string", "report_id", "customer_branch_id"]
-            matches_w_ids = self.api.record_auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # returns unique rows with id nums
+            matches_w_ids = post.auto_matched_strings(db=self.session, user_id=self.user_id, data=matched_rows) # returns unique rows with id nums
             matched_rows = matched_rows\
                 .reset_index()\
                 .merge(matches_w_ids[["report_branch_ref","id_string","report_id"]],
@@ -302,7 +302,7 @@ class NewReportStrategy(Processor):
     def __init__(
         self,
         session: Session,
-        user: api_adapter.User,
+        user: User,
         preprocessor: Type[AbstractPreProcessor],
         submission: NewSubmission,
         submission_id: int
@@ -311,7 +311,6 @@ class NewReportStrategy(Processor):
         self.skip = False
         self.inter_warehouse_transfer = False
         self.session = session
-        self.api = api_adapter.ApiAdapter()
         self.user_id = user.id(self.session) if user.verified else None
         self.submission_id = submission_id
         self.submission = submission
@@ -338,10 +337,10 @@ class NewReportStrategy(Processor):
             if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id LIMIT 1;", {"sub_id": self.submission_id}).fetchone():
                 return self
             else:
-                self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+                patch.sub_status(db=self.session, submission_id=self.submission_id, status=status)
                 return self
         else:
-            self.api.alter_sub_status(db=self.session, submission_id=self.submission_id, status=status)
+            patch.sub_status(db=self.session, submission_id=self.submission_id, status=status)
             return self
 
 
@@ -381,14 +380,13 @@ class ErrorReintegrationStrategy(Processor):
     def __init__(
         self,
         session: Session,
-        user: api_adapter.User,
+        user: User,
         target_err: ErrorType = None,
         error_table: pd.DataFrame = pd.DataFrame(),
     ):
 
         self.skip = False
         self.session = session
-        self.api = api_adapter.ApiAdapter()
         self.user_id = user.id(self.session) if user.verified else None
         self.target_err = target_err
         # expand row_data into dataframe columns
@@ -419,7 +417,7 @@ class ErrorReintegrationStrategy(Processor):
         for sub_id in table["submission_id"].unique().tolist():
             if self.session.execute("SELECT * FROM errors WHERE submission_id = :sub_id LIMIT 1;", {"sub_id": sub_id}).fetchone():
                 continue
-            self.api.alter_sub_status(db=self.session, submission_id=sub_id, status=status)
+            patch.sub_status(db=self.session, submission_id=sub_id, status=status)
         return self
 
 

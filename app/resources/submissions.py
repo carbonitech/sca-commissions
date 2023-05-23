@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services import get
-from services.api_adapter import ApiAdapter
+from services import get, post, patch, delete
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
 import json
@@ -9,7 +8,6 @@ import math
 
 from services.utils import User, get_db, get_user
 
-api = ApiAdapter()
 router = APIRouter(prefix="/submissions", route_class=JSONAPIRoute)
 
 @router.get("", tags=["submissions"])
@@ -54,7 +52,7 @@ async def modify_submission_by_id(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.modify_submission(db, submission_id, submission.dict(), user)
+    return patch.submission(db, submission_id, submission.dict(), user)
 
 @router.delete("/{submission_id}", tags=["submissions"])
 async def delete_submission_by_id(
@@ -63,4 +61,4 @@ async def delete_submission_by_id(
         user: User=Depends(get_user)
     ):
     # hard deletes commission data and errors along with it
-    api.delete_submission(submission_id, session=db, user=user)
+    delete.submission(submission_id, session=db, user=user)

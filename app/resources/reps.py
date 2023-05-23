@@ -2,11 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
-from services import get
-from services.api_adapter import ApiAdapter
+from services import get, post, patch, delete
 from services.utils import User, get_db, get_user
 
-api = ApiAdapter()
 router = APIRouter(prefix="/representatives", route_class=JSONAPIRoute)
 
 @router.get("", tags=["reps"])
@@ -34,7 +32,7 @@ async def add_new_rep(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.create_representative(db,json_data=jsonapi_obj.dict(exclude_none=True), user=user)
+    return post.representative(db,json_data=jsonapi_obj.dict(exclude_none=True), user=user)
 
 @router.patch("/{rep_id}", tags=["reps"])
 async def modify_a_rep(
@@ -43,7 +41,7 @@ async def modify_a_rep(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.modify_rep(db, rep_id, rep_data.dict(), user)
+    return patch.representative(db, rep_id, rep_data.dict(), user)
 
 @router.delete("/{rep_id}", tags=["reps"])
 async def delete_rep(
@@ -52,4 +50,4 @@ async def delete_rep(
         user: User=Depends(get_user)
     ):
     # soft delete
-    return api.delete_representative(db=db, rep_id=rep_id, user=user)
+    return delete.representative(db=db, rep_id=rep_id, user=user)

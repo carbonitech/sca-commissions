@@ -26,34 +26,34 @@ def __create_X(db: Session, json_data: dict, user: User, model: models.Base) -> 
     return result
 
 @jsonapi_error_handling
-def create_customer(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+def customer(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
     new_name: str = json_data["data"]["attributes"]["name"]
     json_data["data"]["attributes"]["name"] = new_name.upper().strip()
     return __create_X(db, json_data, user, CUSTOMERS)
 
 @jsonapi_error_handling
-def create_branch(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+def branch(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
     return __create_X(db, json_data, user, BRANCHES)
 
 @jsonapi_error_handling
-def create_mapping(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+def mapping(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
     return __create_X(db, json_data, user, ID_STRINGS)
 
 @jsonapi_error_handling
-def create_manufacturer(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+def manufacturer(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
     return __create_X(db, json_data, user, MANUFACTURERS)
 
 @jsonapi_error_handling
-def create_representative(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
+def representative(db: Session, json_data: dict, user: User) -> JSONAPIResponse:
     return __create_X(db, json_data, user, REPS)
 
-def generate_file_record(db: Session, record: dict):
+def file_record(db: Session, record: dict):
     sql = sqlalchemy.insert(DOWNLOADS).values(**record)
     with db as session:
         session.execute(sql)
         session.commit()
 
-def record_auto_matched_strings(db: Session, user_id: int, data: pd.DataFrame) -> pd.DataFrame:
+def auto_matched_strings(db: Session, user_id: int, data: pd.DataFrame) -> pd.DataFrame:
     """
     record id string matches in the database from auto-matching
     Return a DataFrame of the inserted values with their id's
@@ -80,23 +80,30 @@ def record_auto_matched_strings(db: Session, user_id: int, data: pd.DataFrame) -
             "match_string": "id_string"
         })
 
-def record_final_data(db: Session, data: pd.DataFrame) -> None:
+def final_data(db: Session, data: pd.DataFrame) -> None:
     data_records = data.to_dict(orient="records")
     sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)
     db.execute(sql, data_records) # for bulk insert per SQLAlchemy docs
     db.commit()
     return
 
-def record_submission(db: Session, submission: NewSubmission) -> int:
+def submission(db: Session, submission: NewSubmission) -> int:
     sql = sqlalchemy.insert(SUBMISSIONS_TABLE).returning(SUBMISSIONS_TABLE.id)\
             .values(**submission)
     result = db.execute(sql).fetchone()[0]
     db.commit()
     return result
 
-def record_error(db: Session, error_obj: Error) -> None:
+def error(db: Session, error_obj: Error) -> None:
     """record errors into the current_errors table"""
     sql = sqlalchemy.insert(ERRORS_TABLE).values(**error_obj)
     db.execute(sql)
     db.commit()
     return
+
+def set_new_commission_data_entry(db: Session, **kwargs) -> int:
+    sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)\
+        .values(**kwargs).returning(COMMISSION_DATA_TABLE.row_id)
+    result = db.execute(sql).scalar_one()
+    db.commit()
+    return result

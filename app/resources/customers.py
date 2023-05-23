@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from services import get
-from services.api_adapter import ApiAdapter
+from services import get, post, patch, delete
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from jsonapi.request_models import RequestModels
 from services.utils import User, get_db, get_user
 
-api = ApiAdapter()
 router = APIRouter(prefix="/customers", route_class=JSONAPIRoute)
 
 @router.get("", tags=["customers"])
@@ -31,7 +29,7 @@ async def modify_customer(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.modify_customer_jsonapi(db, customer_id, customer.dict(), user)
+    return patch.customer(db, customer_id, customer.dict(), user)
 
 @router.post("", tags=["customers"])
 async def new_customer(
@@ -39,7 +37,7 @@ async def new_customer(
         db: Session=Depends(get_db),
         user: User=Depends(get_user)
     ):
-    return api.create_customer(db=db, json_data=jsonapi_obj.dict(), user=user)
+    return post.customer(db=db, json_data=jsonapi_obj.dict(), user=user)
 
 @router.delete("/{customer_id}", tags=["customers"])
 async def delete_customer(
@@ -48,4 +46,4 @@ async def delete_customer(
         user: User=Depends(get_user)
     ):
     # soft delete
-    return api.delete_customer(db=db,customer_id=customer_id)
+    return delete.customer(db=db,customer_id=customer_id)

@@ -3,12 +3,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services import get
-from services.api_adapter import ApiAdapter
 from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute
 from services.utils import User, get_db, get_user
 
 
-api = ApiAdapter()
 router = APIRouter(prefix="/locations", route_class=JSONAPIRoute)
 
 @router.get("", tags=["locations"])

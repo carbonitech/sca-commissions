@@ -3,12 +3,12 @@ import time
 import requests
 from dotenv import load_dotenv
 
-from sqlalchemy.orm import Session
+import sqlalchemy
+from sqlalchemy.orm import Session, sessionmaker
 from fastapi import Request, HTTPException
 from jose.jwt import get_unverified_claims
 
 from db import models
-from services.api_adapter import ApiAdapter
 from entities.user import User
 
 load_dotenv()
@@ -52,11 +52,11 @@ all_models = [
     USER_COMMISSIONS,
     COMMISSION_SPLITS,
     ID_STRINGS,
-    LOCATIONS]
+    LOCATIONS
+]
 
 # this table allows for a lookup of the model by it's JSONAPI resource name
 models_dict = {hyphenated_name(model): model for model in all_models} 
-
 
 class UserMisMatch(Exception):
     pass
@@ -112,7 +112,9 @@ def hyphenate_json_obj_keys(json_data: dict) -> dict:
     return json_data
 
 def get_db():
-    db = ApiAdapter().SessionLocal()
+    engine = sqlalchemy.create_engine(os.getenv("DATABASE_URL").replace("postgres://","postgresql://"))
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
     try:
         yield db
     finally:

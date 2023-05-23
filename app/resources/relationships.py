@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services import get
-from services.api_adapter import ApiAdapter
 from services.utils import User, get_db, get_user
 
-api = ApiAdapter()
 router = APIRouter()
 
 @router.get("/{primary}/{id_}/{secondary}", tags=["relationships"])

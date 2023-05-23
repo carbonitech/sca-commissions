@@ -160,7 +160,7 @@ def convert_cents_to_dollars(cent_amt: float) -> float:
 def convert_month_from_number_to_name(month_num: int) -> str:
     return calendar.month_name[month_num]
 
-def commission_data_with_all_names(self, db: Session, submission_id: int=0, **kwargs) -> pd.DataFrame:
+def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) -> pd.DataFrame:
     """runs sql query to produce the commission table format used by SCA
     and converts month number to name and cents to dollars before return
     
@@ -242,9 +242,9 @@ def commission_data_with_all_names(self, db: Session, submission_id: int=0, **kw
 
     view_table.columns = ["ID","Submission","Year","Month","Manufacturer","Salesman",
             "Customer Name","City","State","Inv Amt","Comm Amt"]
-    view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(self.convert_cents_to_dollars)
-    view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(self.convert_cents_to_dollars)
-    view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(self.convert_month_from_number_to_name).astype(str)
+    view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(convert_cents_to_dollars)
+    view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(convert_cents_to_dollars)
+    view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(convert_month_from_number_to_name).astype(str)
     return view_table
 
 def submission_exists(db: Session, submission_id: int) -> bool:

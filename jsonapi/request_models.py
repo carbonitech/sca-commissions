@@ -14,9 +14,10 @@ class JSONAPIRelationshipObject(BaseModel):
 
 ## branch ##
 class Branch(BaseModel):
-    deleted: datetime
+    deleted: datetime|None
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
+    locations: JSONAPIRelationshipObject
 class BranchRelatonshipFull(BaseModel):
     customers: JSONAPIRelationshipObject|None
     locations: JSONAPIRelationshipObject|None

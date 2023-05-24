@@ -4,10 +4,11 @@ from services import get, post, patch, delete
 from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute 
 from jsonapi.request_models import RequestModels
 from services.utils import User, get_db, get_user
+from jsonapi.branch_models import BranchResponse
 
 router = APIRouter(prefix="/branches", route_class=JSONAPIRoute)
 
-@router.get("", tags=["branches"])
+@router.get("", tags=["branches"], response_model=BranchResponse)
 async def all_branches(
         query: Query=Depends(),
         db: Session=Depends(get_db),
@@ -16,7 +17,7 @@ async def all_branches(
     jsonapi_query = convert_to_jsonapi(query)
     return get.branch(db,jsonapi_query, user)
 
-@router.get("/{branch_id}", tags=["branches"])
+@router.get("/{branch_id}", tags=["branches"], response_model=BranchResponse)
 async def branch_by_id(
         branch_id: int,
         query: Query=Depends(),

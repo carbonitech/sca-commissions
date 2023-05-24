@@ -113,7 +113,7 @@ def hyphenate_json_obj_keys(json_data: dict) -> dict:
         json_data["data"][hi_level] = {hyphenate_name(k):v for k,v in json_data["data"][hi_level].items()}
     return json_data
 
-def get_db():
+async def get_db():
     db = SESSIONLOCAL()
     try:
         yield db

@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime
 from fastapi import Response, Request
 from starlette.responses import JSONResponse
-from services.utils import get_db
+from services.utils import SESSIONLOCAL
 
 async def read_response_body(iterator) -> dict:
     """
@@ -29,7 +29,7 @@ async def handle_400_range(request: Request, response: Response) -> Response:
     jsonapi_err_response_content = {"errors":[]}
     failures_table_insert_sql = "INSERT INTO failures "\
                 "VALUES(:uuid,:now,:request,:response,:traceback);"
-    session = next(get_db())
+    session = SESSIONLOCAL()
     request_headers = [(key.decode(), value.decode()) for key,value in request.headers.raw]
     request_query = str(request.query_params)
 
@@ -54,7 +54,7 @@ async def handle_400_range(request: Request, response: Response) -> Response:
                 result.append(error)
                 session.execute(failures_table_insert_sql, params)
             session.commit()
-
+            session.close()
             # error object response
             jsonapi_err_response_content = resp_body["detail"]
             jsonapi_err_response_content["errors"] = result
@@ -85,7 +85,7 @@ async def handle_400_range(request: Request, response: Response) -> Response:
                 })
     else:
         jsonapi_err_response_content["errors"].append(resp_body)
-
+    session.close()
     return JSONResponse(
         content=jsonapi_err_response_content,
         status_code=response.status_code,

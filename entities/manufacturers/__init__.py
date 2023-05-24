@@ -1,10 +1,10 @@
 import os
 from importlib import import_module
-from services.utils import get_db
+from services.utils import get_db, SESSIONLOCAL
 from services import get, post, patch, delete
 from entities.manufacturers import *
 
-db = next(get_db())
+db = SESSIONLOCAL()
 
 all_manufacturers_in_db = get.all_manufacturers(db)
 all_manufacturers_in_dir = [
@@ -32,6 +32,7 @@ else:
     del manufacturer_in_db
     del imported_obj
 
+db.close()
 del os
 del import_module
 del db

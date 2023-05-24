@@ -4,14 +4,14 @@ import time
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from jose.jwt import get_unverified_header, decode, get_unverified_claims
-from services.utils import get_db
+from services.utils import SESSIONLOCAL
 
 token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
 ALGORITHMS = os.getenv('ALGORITHMS')
 AUDIENCE = os.getenv('AUDIENCE')
 
-def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
+async def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
     error = None
     token_cred = token.credentials
     if payload := preverified(token_cred):
@@ -51,8 +51,9 @@ def authenticate_auth0_token(token: str = Depends(token_auth_scheme)):
 
 
 def preverified(token_cred: str) -> dict|None:
-    session = next(get_db())
+    session = SESSIONLOCAL() 
     parameters = {"access_token": token_cred, "current_time": int(time.time())}
     sql = "SELECT access_token FROM user_tokens WHERE access_token = :access_token and expires_at > :current_time"
     if result := session.execute(sql, parameters).scalar_one_or_none():
         return get_unverified_claims(result)
+    session.close()

@@ -30,6 +30,8 @@ ID_STRINGS = models.IDStringMatch
 LOCATIONS = models.Location
 
 
+ENGINE = sqlalchemy.create_engine(os.getenv("DATABASE_URL").replace("postgres://","postgresql://"))
+SESSIONLOCAL = sessionmaker(autocommit=False, autoflush=False, bind=ENGINE)
 
 def hyphenate_name(table_name: str) -> str:
     return table_name.replace("_","-")
@@ -112,9 +114,7 @@ def hyphenate_json_obj_keys(json_data: dict) -> dict:
     return json_data
 
 def get_db():
-    engine = sqlalchemy.create_engine(os.getenv("DATABASE_URL").replace("postgres://","postgresql://"))
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    db = SessionLocal()
+    db = SESSIONLOCAL()
     try:
         yield db
     finally:

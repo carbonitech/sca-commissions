@@ -6,7 +6,6 @@ from typing import Optional
 class BranchAttributes(BaseModel):
     deleted: datetime|None
     user_id: int
-
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
     locations: JSONAPIRelationshipObject

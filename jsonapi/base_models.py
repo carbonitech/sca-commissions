@@ -4,6 +4,9 @@ from typing import Optional
 class JSONAPIBaseModification(BaseModel):
     type: str
 
+class JSONAPIVersion(BaseModel):
+    version: str
+
 class JSONAPIBaseRelationshipData(BaseModel):
     type: str
     id: int
@@ -17,10 +20,11 @@ class JSONAPIRelationshipObject(BaseModel):
     data: Optional[JSONAPIBaseRelationshipData]
 
 class PaginationMetadata(BaseModel):
-    totalPages: int
-    currentPage: int
+    sqlalchemy_jsonapi_version: Optional[str]
+    totalPages: Optional[int]
+    currentPage: Optional[int]
 
 class JSONAPIBaseObject(BaseModel):
-    jsonapi: str
+    jsonapi: JSONAPIVersion
     meta: PaginationMetadata
     # data: ... extended by endpoint-specific classes

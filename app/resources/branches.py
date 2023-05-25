@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services import get, post, patch, delete
-from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute 
+from jsonapi.jsonapi import convert_to_jsonapi, Query, JSONAPIRoute, UnvalidatedResponse
 from jsonapi.request_models import RequestModels
 from services.utils import User, get_db, get_user
 from jsonapi.branch_models import BranchResponse
@@ -15,7 +15,7 @@ async def all_branches(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return get.branch(db,jsonapi_query, user)
+    return UnvalidatedResponse(content=get.branch(db,jsonapi_query, user))
 
 @router.get("/{branch_id}", tags=["branches"], response_model=BranchResponse)
 async def branch_by_id(
@@ -25,7 +25,7 @@ async def branch_by_id(
         user: User=Depends(get_user)
     ):
     jsonapi_query = convert_to_jsonapi(query)
-    return get.branch(db, jsonapi_query, user, branch_id)
+    return UnvalidatedResponse(get.branch(db, jsonapi_query, user, branch_id))
 
 @router.patch("/{branch_id}", tags=["branches"])
 async def modify_branch(

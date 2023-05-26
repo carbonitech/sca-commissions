@@ -44,6 +44,12 @@ def assert_tests_for_each_file(
         - The data contains the required columns for processing in report_processor
     """
     file_password = kwargs.get('file_password', None)
+    additionals_dict = {}
+    if additonals := files_by_report.pop('additionals', None):
+        for file in additonals:
+            name = os.path.basename(file).split('.')[0]
+            with open(file,'rb') as handler:
+                additionals_dict[name] = handler.read()
     for report, files in files_by_report.items():
         for file in files:
             with open(file, 'rb') as handler:
@@ -51,6 +57,9 @@ def assert_tests_for_each_file(
             file_obj = CommissionFile(file_data=file_data, file_password=file_password)
             preprocessor_inst = preprocessor(report,99999,file_obj)
             try:
+                filename = os.path.basename(file).split('.')[0]
+                additional_file_data = additionals_dict.get(filename,None)
+                kwargs['additional_file_1'] = additional_file_data
                 result = preprocessor_inst.preprocess(**kwargs)
                 tb=''
             except Exception as e:
@@ -114,10 +123,10 @@ def test_c_d_valve_preprocessors():
     # python doesn't allow the '&' symbol directly in a name,
     # but we can import a module with the character in it anyway like this
     preprocessor_module = import_module('entities.manufacturers.c&d_valve')
-    report_names = ['standard', 'baker', 'johnstone']
+    report_names = ['standard', 'baker', 'johnstone', 'additionals']
     entity = 'c&d_valve'
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    
+    assert_tests_for_each_file(files_by_report, entity, preprocessor_module.PreProcessor)
 
 def test_cerro_preprocessors():
     report_names = ['standard']

@@ -33,6 +33,7 @@ class PreProcessor(AbstractPreProcessor):
         invoice_num_col: int = 1
         address_col: int = 9
 
+        data = self.check_headers_and_fix([invoice_number_col], data)
         # extract total commission dollars by invoice number
         if invoice_number_col not in data.columns.tolist():
             first_header_row = data.index[data.iloc[:,3] == invoice_number_col].item()
@@ -86,6 +87,7 @@ class PreProcessor(AbstractPreProcessor):
         city: str = "branchcity"
         state: str = "branchstate"
 
+        data = self.check_headers_and_fix([monthly_sales, commissions, store_number, city, state], data)
         data = data.dropna(subset=data.columns[0])
         data["inv_amt"] = data.loc[:,data.columns.str.startswith(monthly_sales)].fillna(0).sum(axis=1)*100
         data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
@@ -114,8 +116,8 @@ class PreProcessor(AbstractPreProcessor):
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": (self._standard_report_preprocessing,2),
-            "baker": (self._baker_report_preprocessing,1),
+            "standard": (self._standard_report_preprocessing,0),
+            "baker": (self._baker_report_preprocessing,0),
             "johnstone": (self._johnstone_report_preprocessing,0),
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)

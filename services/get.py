@@ -165,41 +165,42 @@ def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) 
     and converts month number to name and cents to dollars before return
     
     Returns: pd.DataFrame"""
-    commission_data_raw = COMMISSION_DATA_TABLE
-    submission_data = SUBMISSIONS_TABLE
-    reports = REPORTS
-    manufacturers = MANUFACTURERS
-    reps = REPS
-    branches = BRANCHES
-    customers = CUSTOMERS
-    locations = LOCATIONS
+
     sql = (sqlalchemy
-            .select(commission_data_raw.id, commission_data_raw.submission_id,
-                submission_data.reporting_year, submission_data.reporting_month,
-                manufacturers.name, reps.initials, customers.name,
-                locations.city, locations.state, commission_data_raw.inv_amt,
-                commission_data_raw.comm_amt
+            .select(
+                COMMISSION_DATA_TABLE.id,
+                COMMISSION_DATA_TABLE.submission_id,
+                REPORTS.report_label,
+                SUBMISSIONS_TABLE.reporting_year,
+                SUBMISSIONS_TABLE.reporting_month,
+                MANUFACTURERS.name,
+                REPS.initials,
+                CUSTOMERS.name,
+                LOCATIONS.city,
+                LOCATIONS.state,
+                COMMISSION_DATA_TABLE.inv_amt,
+                COMMISSION_DATA_TABLE.comm_amt
             )
-            .select_from(commission_data_raw)
-            .join(submission_data, commission_data_raw.submission_id == submission_data.id)
-            .join(reports)
-            .join(manufacturers, reports.manufacturer_id == manufacturers.id)
-            .join(branches, commission_data_raw.customer_branch_id == branches.id)
-            .join(reps)
-            .join(customers)
-            .join(locations)
-            .where(commission_data_raw.user_id == kwargs.get("user_id"))
+            .select_from(COMMISSION_DATA_TABLE)
+            .join(SUBMISSIONS_TABLE, COMMISSION_DATA_TABLE.submission_id == SUBMISSIONS_TABLE.id)
+            .join(REPORTS)
+            .join(MANUFACTURERS, REPORTS.manufacturer_id == MANUFACTURERS.id)
+            .join(BRANCHES, COMMISSION_DATA_TABLE.customer_branch_id == BRANCHES.id)
+            .join(REPS)
+            .join(CUSTOMERS)
+            .join(LOCATIONS)
+            .where(COMMISSION_DATA_TABLE.user_id == kwargs.get("user_id"))
             .order_by(
-                submission_data.reporting_year.desc(),
-                submission_data.reporting_month.desc(),
-                customers.name.asc(),
-                locations.city.asc(),
-                locations.state.asc()
+                SUBMISSIONS_TABLE.reporting_year.desc(),
+                SUBMISSIONS_TABLE.reporting_month.desc(),
+                CUSTOMERS.name.asc(),
+                LOCATIONS.city.asc(),
+                LOCATIONS.state.asc()
             )
         )
     
     if submission_id:
-        sql = sql.where(commission_data_raw.submission_id == submission_id)
+        sql = sql.where(COMMISSION_DATA_TABLE.submission_id == submission_id)
 
     if (start_date := kwargs.get("startDate")):
         try:
@@ -211,9 +212,9 @@ def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) 
         if isinstance(start_date, datetime):
             sql = sql.where(sqlalchemy.or_(
                 sqlalchemy.and_(
-                    submission_data.reporting_year == start_date.year,
-                    submission_data.reporting_month >= start_date.month),
-                submission_data.reporting_year > start_date.year))
+                    SUBMISSIONS_TABLE.reporting_year == start_date.year,
+                    SUBMISSIONS_TABLE.reporting_month >= start_date.month),
+                SUBMISSIONS_TABLE.reporting_year > start_date.year))
     if (end_date := kwargs.get("endDate")):
         try:
             end_date = datetime.fromisoformat(end_date)
@@ -224,24 +225,36 @@ def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) 
         if isinstance(end_date, datetime):
             sql = sql.where(sqlalchemy.or_(
                 sqlalchemy.and_(
-                    submission_data.reporting_year == end_date.year,
-                    submission_data.reporting_month <= end_date.month),
-                submission_data.reporting_year < end_date.year))
+                    SUBMISSIONS_TABLE.reporting_year == end_date.year,
+                    SUBMISSIONS_TABLE.reporting_month <= end_date.month),
+                SUBMISSIONS_TABLE.reporting_year < end_date.year))
     if(manufacturer := kwargs.get("manufacturer_id")):
-        sql = sql.where(manufacturers.id == manufacturer)
+        sql = sql.where(MANUFACTURERS.id == manufacturer)
     if(customer := kwargs.get("customer_id")):
-        sql = sql.where(customers.id == customer)
+        sql = sql.where(CUSTOMERS.id == customer)
     if(city := kwargs.get("city_id")):
-        sql = sql.where(locations.city == city)
+        sql = sql.where(LOCATIONS.city == city)
     if(state := kwargs.get("state_id")):
-        sql = sql.where(locations.state == state)
+        sql = sql.where(LOCATIONS.state == state)
     if(representative := kwargs.get("representative_id")):
-        sql = sql.where(reps.id == representative)
+        sql = sql.where(REPS.id == representative)
 
     view_table = pd.read_sql(sql, con=db.get_bind())
 
-    view_table.columns = ["ID","Submission","Year","Month","Manufacturer","Salesman",
-            "Customer Name","City","State","Inv Amt","Comm Amt"]
+    view_table.columns = [
+        "ID",
+        "Submission",
+        "Report",
+        "Year",
+        "Month",
+        "Manufacturer",
+        "Salesman",
+        "Customer Name",
+        "City",
+        "State",
+        "Inv Amt",
+        "Comm Amt"
+    ]
     view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(convert_cents_to_dollars)
     view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(convert_cents_to_dollars)
     view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(convert_month_from_number_to_name).astype(str)

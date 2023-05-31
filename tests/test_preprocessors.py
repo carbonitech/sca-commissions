@@ -197,10 +197,10 @@ def test_nelco_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, nelco.PreProcessor, standard_commission_rate=comm_rate)
 
 def test_superior_hvacr_preprocessors():
-    report_names = ['standard', 'uri_report']
+    report_names = ['standard', 'uri_report', 'johnstone', 'additionals']
     entity = 'superior_hvacr'
-    # files_by_report = _build_file_listing_by_report(report_names, entity)
-    # assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
 
 def test_tjernlund_preprocessors():
     report_names = ['standard']

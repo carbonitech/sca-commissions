@@ -28,8 +28,8 @@ class PreProcessor(AbstractPreProcessor):
                 .replace(r'\(([0-9]*)\)', '-\\1', regex=True)       # numbers surrounded by parens are negative
                 .replace(r'([0-9])\,([0-9])', '\\1\\2', regex=True) # remove comma notation within numbers, using this regex because customer and first col of values are still combined
         )
-       # the first column of numbers is separated only by 1 space from the customer name
-       # so we'll use a letter-space-number combo in the first col to separate and replace the first column
+        # the first column of numbers is separated only by 1 space from the customer name
+        # so we'll use a letter-space-number combo in the first col to separate and replace the first column
         df = pd.concat([df.pop(0).str.extract(r'([^0-9]*)\s([0-9]*)', expand=True), df], axis=1, ignore_index=True)
         df[df.columns[1:]] = df.iloc[:,1:].astype(int)
         # if the last column has a 0, pull the right-most value over to the totals column

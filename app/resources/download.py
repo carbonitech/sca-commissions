@@ -1,8 +1,8 @@
 from datetime import datetime
 import typing
 import json
-from io import BytesIO
-from pandas import ExcelWriter
+from io import BytesIO, StringIO
+from pandas import ExcelWriter, DataFrame
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
@@ -10,11 +10,11 @@ from services import get, patch
 from services.utils import get_db
 from sqlalchemy.orm import Session
 
-CHUNK_SIZE = 1024 * 1024 // 2
 router = APIRouter()
 
-class ExcelFileResponse(StreamingResponse):
-    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+class CSVFileResponse(StreamingResponse):
+    # media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    media_type = "text/csv"
     def __init__(self, 
             content: typing.Any, 
             status_code: int = 200, 
@@ -23,10 +23,10 @@ class ExcelFileResponse(StreamingResponse):
             background: typing.Optional[BackgroundTask] = None, 
             filename: str = "download") -> None:
         super().__init__(content, status_code, headers, media_type, background)
-        self.raw_headers.append((b"Content-Disposition",f"attachment; filename={filename}.xlsx".encode('latin-1')))
+        self.raw_headers.append((b"Content-Disposition",f"attachment; filename={filename}.csv".encode('latin-1')))
 
 
-@router.get("/download", response_class=ExcelFileResponse)
+@router.get("/download", response_class=CSVFileResponse)
 async def download_file(file: str, db: Session=Depends(get_db)):
     """
     Checks the file parameter, a random hash, against hashes registered in the database.
@@ -55,12 +55,11 @@ async def download_file(file: str, db: Session=Depends(get_db)):
     }
     def iter_file():
         """for streaming the file back in chunks instead of the whole file at one time"""
-        bfile = BytesIO()
-        with ExcelWriter(bfile) as excel_file:
-            methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
-        bfile.seek(0)
-        while chunk := bfile.read(CHUNK_SIZE):
-            yield chunk
+        for i, chunk in enumerate(methods[data_type](db,**query_args)):
+            chunk: DataFrame
+            result = StringIO(chunk.to_csv(index=False, header=True if not i else False)).getvalue()
+            yield result
+        # methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
 
     patch.file_downloads(db, hash=file)
-    return ExcelFileResponse(content=iter_file(), filename=query_args.get("filename"))
+    return CSVFileResponse(content=iter_file(), filename=query_args.get("filename"))

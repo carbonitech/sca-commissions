@@ -10,6 +10,9 @@ from jsonapi.jsonapi import jsonapi_error_handling, JSONAPIResponse
 import sqlalchemy
 from sqlalchemy.orm import Session
 
+
+CHUNK_SIZE = 10000
+
 def __get_X(db: Session, query: dict, user: User, model: models.Base, _id: int=0) -> JSONAPIResponse:
     if not _id:
         user_id: int = user.id(db=db)
@@ -239,26 +242,26 @@ def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) 
     if(representative := kwargs.get("representative_id")):
         sql = sql.where(REPS.id == representative)
 
-    view_table = pd.read_sql(sql, con=db.get_bind())
+    for chunk in pd.read_sql(sql, con=db.get_bind().execution_options(stream_results=True), chunksize=CHUNK_SIZE):
 
-    view_table.columns = [
-        "ID",
-        "Submission",
-        "Report",
-        "Year",
-        "Month",
-        "Manufacturer",
-        "Salesman",
-        "Customer Name",
-        "City",
-        "State",
-        "Inv Amt",
-        "Comm Amt"
-    ]
-    view_table.loc[:,"Inv Amt"] = view_table.loc[:,"Inv Amt"].apply(convert_cents_to_dollars)
-    view_table.loc[:,"Comm Amt"] = view_table.loc[:,"Comm Amt"].apply(convert_cents_to_dollars)
-    view_table.loc[:,"Month"] = view_table.loc[:,"Month"].apply(convert_month_from_number_to_name).astype(str)
-    return view_table
+        chunk.columns = [
+            "ID",
+            "Submission",
+            "Report",
+            "Year",
+            "Month",
+            "Manufacturer",
+            "Salesman",
+            "Customer Name",
+            "City",
+            "State",
+            "Inv Amt",
+            "Comm Amt"
+        ]
+        chunk.loc[:,"Inv Amt"] = chunk.loc[:,"Inv Amt"].apply(convert_cents_to_dollars)
+        chunk.loc[:,"Comm Amt"] = chunk.loc[:,"Comm Amt"].apply(convert_cents_to_dollars)
+        chunk.loc[:,"Month"] = chunk.loc[:,"Month"].apply(convert_month_from_number_to_name).astype(str)
+        yield chunk
 
 def submission_exists(db: Session, submission_id: int) -> bool:
     sql = sqlalchemy.select(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)

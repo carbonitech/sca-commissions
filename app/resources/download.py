@@ -10,6 +10,7 @@ from services import get, patch
 from services.utils import get_db
 from sqlalchemy.orm import Session
 
+CHUNK_SIZE = 1024 * 1024 // 2
 router = APIRouter()
 
 class ExcelFileResponse(StreamingResponse):
@@ -52,10 +53,14 @@ async def download_file(file: str, db: Session=Depends(get_db)):
     methods = {
         "commission_data": get.commission_data_with_all_names
     }
+    def iter_file():
+        """for streaming the file back in chunks instead of the whole file at one time"""
+        bfile = BytesIO()
+        with ExcelWriter(bfile) as excel_file:
+            methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
+        bfile.seek(0)
+        while chunk := bfile.read(CHUNK_SIZE):
+            yield chunk
 
-    bfile = BytesIO()
-    with ExcelWriter(bfile) as excel_file:
-        methods[data_type](db,**query_args).to_excel(excel_file,sheet_name="data",index=False)
-    bfile.seek(0)
     patch.file_downloads(db, hash=file)
-    return ExcelFileResponse(content=bfile, filename=query_args.get("filename"))
+    return ExcelFileResponse(content=iter_file(), filename=query_args.get("filename"))

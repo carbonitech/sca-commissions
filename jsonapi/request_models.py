@@ -18,6 +18,7 @@ class Branch(BaseModel):
 class BranchRelationship(BaseModel):
     representative: JSONAPIRelationshipObject
     locations: JSONAPIRelationshipObject
+    customers: JSONAPIRelationshipObject
 class BranchRelatonshipFull(BaseModel):
     customers: JSONAPIRelationshipObject|None
     locations: JSONAPIRelationshipObject|None

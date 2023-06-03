@@ -49,6 +49,7 @@ class PreProcessor(AbstractPreProcessor):
                 if val.startswith('$'):
                     sales_fig = val
                     fig_index = i
+                    break
             num_cent_figures = len(sales_fig.split('.')[-1])
             if num_cent_figures < 2:
                 sales_fig += str(compacted[fig_index+1])

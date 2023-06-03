@@ -3,60 +3,70 @@ Manufacturer report preprocessing definition
 for Cerro Flow
 """
 import pandas as pd
-import numpy as np
+import re
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
 
 class PreProcessor(AbstractPreProcessor):
 
     def _standard_report_preprocessing(self, data: pd.Series, **kwargs) -> PreProcessedData:
-        """processes the Cerro Flow commission report"""
+        """processes the Cerro Flow commission report
+
+            this data comes in an irregular pdf file with no obvious delimiter
+            that will predictably separate and align values.
+            So extraction is done by relative position to predictable row-wise 
+            cell contents proximity to the edge, or whether there are numbers
+            in the contents 
+        """
 
         comm_rate = kwargs.get("standard_commission_rate",0)
 
-        # using the unicode space and literal space characters present in the data, split into a df of arbitrary size
-        data: pd.DataFrame = data[1:].str.split(r"[(\xa0)+|\s]", regex=True, expand=True)
-        # excluding the bottom two summary rows, replace empty '' spaces with NaN
-        data = data.iloc[:-2,:].replace('',np.nan).dropna(axis=1,how="all")
-        data.columns = list(range(len(data.columns.tolist())))
-        # condense the table into it's tightest possible form
-        data = data.apply(lambda row: row.dropna().reset_index(drop=True),axis=1)
+        df = (
+            data[1:-2].replace(r"[\x00-\x1F\x7F]",' ', regex=True) # convert whitespace hex characters into literal white space
+                    .str.split(r'\s+', regex=True, expand=True) # this makes the most predictable result
+        )
+        def create_id_str(row: pd.Series) -> str:
+            """use rel position to last LIN and the first cell
+                afterward that doesn't have numbers is the beginning
+                the customer id cells"""
+            subseries = row[row["lin_position"]+1:-1].dropna()
+            id_start = subseries[~subseries.str.contains('[0-9]')].index.min()
+            id_end = id_start + 5
+            id_data = subseries.loc[id_start:id_end]
+            return '_'.join(id_data.values.tolist()).upper()
 
-        def fix_dollar_numbers(row: pd.Series, *args, **kwargs) -> pd.Series:
-            row_short = row.dropna()
-            row_short.iloc[-7:] = row_short.iloc[-7:].replace('[^-.0-9]','', regex=True)
-            return row_short
-        
-        def extract_id(row: pd.Series, *args, **kwargs) -> str:
-            row_short = row.dropna()
-            # picking an arbitrary column to match with for which the distance
-            # between it and the first customer info column is constant
-            pre_index = list(row_short[row_short.str.fullmatch("LIN")].index)[-1]
-            true_id_start = pre_index + 3
-            # there are always 7 number columns after the end of the customer info columns
-            id_data = row_short.iloc[true_id_start:-7]
-            id_data = '_'.join(id_data.values.tolist()).upper()
-            return id_data
-        
-        def right_justify_num_cols(row: pd.Series):
-            row_short = row.dropna()
-            num_nans = len(row) - len(row_short)
-            if num_nans:
-                # 7 is the num of num cols before id cols from the right side
-                # nan values are on the right-side, so we want to compensate
-                # in order to find the true left boundary of this shift
-                row.iloc[-(7+num_nans):] = row.iloc[-(7+num_nans):].shift(num_nans, fill_value=np.nan)
-            return row
+        def extract_sales_amount(row: pd.Series) -> float:
+            """sales is second to last, but the cents
+                might be cut off and placed in its own
+                cell, pushing the figure further left.
+                
+                find the first $ going right-to-left, and recombine
+                the cents figure from the next column if needed"""
+            compacted = row.dropna()
+            for i, val in enumerate(compacted[::-1]):
+                if not isinstance(val,str):
+                    continue
+                if val.startswith('$'):
+                    sales_fig = val
+                    fig_index = i
+            num_cent_figures = len(sales_fig.split('.')[-1])
+            if num_cent_figures < 2:
+                sales_fig += str(compacted[fig_index+1])
+            return float(re.sub(r'[^-.0-9]','',sales_fig))
 
-        data = data.apply(fix_dollar_numbers, axis=1)
-        data = data.apply(right_justify_num_cols, axis=1)
-        data["id_string"] = data.apply(extract_id, axis=1)
+        def find_rightmost_LIN(row: pd.Series) -> int:
+            """used to find and generate id_string contents"""
+            no_nan_row = row.dropna()
+            return no_nan_row[no_nan_row.str.fullmatch("LIN")].index.max()
 
-        result = data.loc[:,["id_string", 24]]
-        result.columns = ["id_string", "inv_amt"]
+        df["lin_position"] = df.apply(find_rightmost_LIN, axis=1)
+        df["id_string"] = df.apply(create_id_str, axis=1)
+        df["inv_amt"] = df.apply(extract_sales_amount, axis=1)
+
+        result = df.loc[:,["id_string", "inv_amt"]]
         
-        result.loc[:,"inv_amt"] = result.loc[:,"inv_amt"].astype(float)*100
-        result.loc[:,"comm_amt"] = result.loc[:,"inv_amt"]*comm_rate
+        result["inv_amt"] = result.loc[:,"inv_amt"].astype(float)*100
+        result["comm_amt"] = result.loc[:,"inv_amt"]*comm_rate
 
         return PreProcessedData(result)
 

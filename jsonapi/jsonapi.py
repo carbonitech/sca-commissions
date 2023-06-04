@@ -292,6 +292,14 @@ class JSONAPI_(JSONAPI):
 
         pos = -1
         start, end = self._parse_page(query)
+        if end:
+            # instead of letting the query pull the entire dataset, use
+            # query-level offset and limit if pagination is occuring
+            # and from here the start and end will be relative
+            # instead of the absolute row positions
+            collection = collection.offset(start).limit(end-start+1)
+            end = end - start
+            start = 0
 
         response = JSONAPIResponse()
         response.data['data'] = []

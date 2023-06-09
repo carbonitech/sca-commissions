@@ -17,6 +17,7 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "netsales"
         comm_col: str = "repcomission"
 
+        data = self.check_headers_and_fix([customer_name_col, city_name_col, state_name_col, inv_col, comm_col], data)
         data = data.dropna(subset=data.columns.to_list()[0])
         if customer_name_col not in data.columns.to_list():
             data = data.rename(columns=data.iloc[0]).drop(data.index[0])
@@ -44,6 +45,7 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "netsales"
         comm_col: str = "commission"
 
+        data = self.check_headers_and_fix([store_number_col, city_name_col, state_name_col, inv_col, comm_col], data)
         data = data.dropna(subset=data.columns[0])
         data = data.dropna(how="all",axis=1)
         data[store_number_col] = data[store_number_col].astype(str)
@@ -60,14 +62,35 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         return PreProcessedData(result)
 
+    def _ferguson_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+
+        default_customer_name = 'FERGUSON'
+        ship_to = 'shiptowhse-name'
+        state = 'productdeststate'
+        sales = 'grosssales'
+        comm = 'commission$'
+
+        data = self.check_headers_and_fix([ship_to, state, sales, comm], data)
+        data = data.dropna(subset=state)
+        data['customer'] = default_customer_name
+        result = data[['customer', ship_to, state, sales, comm]]
+        result.loc[:, sales] *= 100
+        result.loc[:, comm] *= 100
+        result['id_string'] = result[['customer', ship_to, state]].fillna('').apply('_'.join, axis=1)
+        result = result[['id_string', sales, comm]]
+        result = result.rename(columns={sales: "inv_amt", comm: 'comm_amt'})
+        result = result.apply(self.upper_all_str)
+        return PreProcessedData(result)
+
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "paid": (self._standard_report_preprocessing,1),
-            "johnstone_pos": (self._johnstone_report_preprocessing,1)
+            "paid": self._standard_report_preprocessing,
+            "johnstone_pos": self._johnstone_report_preprocessing,
+            "ferguson_pos": self._ferguson_report_preprocessing
         }
-        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
+        preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(skip=skip_param, treat_headers=True), **kwargs)
+            return preprocess_method(self.file.to_df(treat_headers=True), **kwargs)
         else:
             return

@@ -147,7 +147,7 @@ def test_famco_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, famco.PreProcessor)
 
 def test_friedrich_preprocessors():
-    report_names = ['paid', 'johnstone_pos']
+    report_names = ['paid', 'johnstone_pos', 'ferguson_pos']
     entity = 'friedrich'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, friedrich.PreProcessor)

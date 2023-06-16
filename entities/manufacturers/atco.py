@@ -24,7 +24,8 @@ class PreProcessor(AbstractPreProcessor):
         cr_city_name_col: str = "shiptocity"
         cr_state_name_col: str = "shiptostate"
         cr_inv_col: str = "netcash"
-        cr_comm_col: str = "commission"
+        cr_comm_col: int = -2
+        cr_comm_col_named: str = "commissionsunique"
 
         ## for Invoices Tab
         inv_tab_name_re: str = r"inv[oi]{2}ces?" # use -i flag for case insensitivity
@@ -42,12 +43,13 @@ class PreProcessor(AbstractPreProcessor):
         df_list = []
         for sheet, df in data_dict.items():
             if re.match(cr_tab_name_re, sheet, 2):
+                df.columns.values[cr_comm_col] = cr_comm_col_named
                 extracted_data = df.loc[:,
                     [cr_customer_name_col,
                     cr_city_name_col,
                     cr_state_name_col,
                     cr_inv_col,
-                    cr_comm_col]
+                    cr_comm_col_named]
                 ]
                 extracted_data.columns = result_columns
                 df_list.append(extracted_data)

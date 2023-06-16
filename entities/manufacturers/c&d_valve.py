@@ -83,7 +83,7 @@ class PreProcessor(AbstractPreProcessor):
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         monthly_sales: str = "monthlytotal"
         commissions: str = "comm"
-        store_number: str = "branch#"
+        store_number: str = "branch"
         city: str = "branchcity"
         state: str = "branchstate"
 

@@ -52,7 +52,7 @@ class PreProcessor(AbstractPreProcessor):
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         default_customer_name: str = "BAKER DISTRIBUTING"
-        store_number_col: str = "store#"
+        store_number_col: str = "store"
         city_name_col: str = "storename"
         state_name_col: str = "storestate"
         inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
@@ -79,7 +79,7 @@ class PreProcessor(AbstractPreProcessor):
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         default_customer_name: str = "JOHNSTONE SUPPLY"
-        store_number_col: str = "store#"
+        store_number_col: str = "store"
         city_name_col: str = "storename"
         state_name_col: str = "storestate"
         inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
@@ -110,7 +110,7 @@ class PreProcessor(AbstractPreProcessor):
         """"""
 
         default_customer_name: str = "RE MICHEL"
-        store_number_col: str = "store#"
+        store_number_col: str = "store"
         city_name_col: str = "storename"
         state_name_col: str = "storestate"
         inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
@@ -171,7 +171,7 @@ class PreProcessor(AbstractPreProcessor):
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         default_customer_name: str = "WINSUPPLY"
-        store_number_col: str = "store#"
+        store_number_col: str = "store"
         city_name_col: str = "storename"
         state_name_col: str = "storestate"
         inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it

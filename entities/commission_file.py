@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 import pandas as pd
 import tabula
 from PyPDF2 import PdfReader
@@ -26,7 +27,7 @@ class CommissionFile:
             split_sheets=False,
             pdf: str=None,
             skip: int=0,
-            treat_headers: bool=True,
+            treat_headers: bool=False,
             make_header_a_row: bool=False
         ) -> pd.DataFrame:
         """
@@ -58,33 +59,43 @@ class CommissionFile:
                     return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
         self.decrypt_file() # only does something if a password was passed into the CommissionFile constructor
         try:
-            excel_data = self.excel_extract('openpyxl', combine_sheets, skip, split_sheets)
+            excel_data = self.excel_extract('openpyxl', combine_sheets, skip, split_sheets, treat_headers)
         except:
-            excel_data = self.excel_extract('xlrd', combine_sheets, skip, split_sheets)
+            excel_data = self.excel_extract('xlrd', combine_sheets, skip, split_sheets, treat_headers)
 
         if make_header_a_row:
             if isinstance(excel_data, dict):
                 result = {sheet: data.T.reset_index().T.reset_index(drop=True) for sheet, data in excel_data.items()}
             else:
                 result = excel_data.T.reset_index().T.reset_index(drop=True)
-        elif treat_headers:
-            # if we made a header a row, the headers become integers and this isn't needed, so treatment is an alternative
-            if isinstance(excel_data, dict):
-                result = {sheet: data.rename(columns=lambda col: str(col).lower().replace(' ', '')) for sheet, data in excel_data.items()}
-            else:
-                result = excel_data.rename(columns=lambda col: str(col).lower().replace(' ', ''))
+        
         else:
             result = excel_data
         
         return result
 
+    @staticmethod
+    def clean_header(header: str) -> str:
+        header = str(header).lower()
+        header = re.sub(r'[^a-z0-9.,]','', header)
+        if header.isnumeric():
+            header = "replacednumber"
+        else:
+            try:
+                float(header)
+            except:
+                pass
+            else:
+                header = "replacednumber"
+        return header
 
     def excel_extract(
             self,
             engine: str,
             combine_sheets: bool=False,
             skip: int=0,
-            split_sheets: bool=False
+            split_sheets: bool=False,
+            treat_headers: bool=False
     ) -> pd.DataFrame|dict[str,pd.DataFrame]:
 
         with pd.ExcelFile(self.file_data, engine=engine) as excel_file:
@@ -98,11 +109,18 @@ class CommissionFile:
                 sheets = excel_file.sheet_names
 
             if combine_sheets:
-                data = [excel_file.parse(sheet, skiprows=skip) for sheet in sheets]
+                data: list[pd.DataFrame] = [excel_file.parse(sheet, skiprows=skip) for sheet in sheets]
+                if treat_headers:
+                    data = [sheet.rename(columns=lambda col: self.clean_header(col)) for sheet in data]
                 result = pd.concat(data, ignore_index=True)
             elif split_sheets:
                 data_sheets: dict[str,pd.DataFrame] = {sheet: excel_file.parse(sheet, skiprows=skip) for sheet in sheets}
-                result = data_sheets
+                if treat_headers:
+                    result = {sheet: data.rename(columns=lambda col: self.clean_header(col)) for sheet, data in data_sheets.items()}
+                else:
+                    result = data_sheets
             else: 
                 result = pd.read_excel(self.file_data, sheet_name=sheets[0], skiprows=skip)
+                if treat_headers:
+                    result = result.rename(columns=lambda col: self.clean_header(col))
         return result

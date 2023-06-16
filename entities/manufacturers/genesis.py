@@ -83,14 +83,16 @@ class PreProcessor(AbstractPreProcessor):
         
         customer_name_col: str = "billtoaddress1"
         city_name_col: str = "billtoaddress4"
+        city_name_alt: str = "billtoaddress3"
         state_name_col: str = "billtostate"
-        inv_col: str = "mtdsales$"
+        inv_col: str = "mtdsales"
         comm_col: str = "comm_amt" 
         comm_col_index: int = -1 # commission column has an unreliable name
-        
+
         data = data.dropna(axis=1, how='all')
         data = data.dropna(subset=data.columns.to_list()[0])
         data.loc[:,comm_col] = data.iloc[:,comm_col_index]
+        data[city_name_col].fillna(data[city_name_alt], inplace=True)
         result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100

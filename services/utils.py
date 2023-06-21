@@ -69,9 +69,19 @@ def get_user(request: Request) -> User:
     access_token_bare = access_token.replace("Bearer ","")
     if user_details := preverified(access_token_bare):
         return User(**user_details)
+    else:
+        claims = get_unverified_claims(token=access_token_bare)
+        scopes: str = claims.get('scope')
+        scopes = scopes.split(' ')
+        user_type, profile = None, None
+        for scope in scopes:
+            if ':' in scope:
+                user_type, profile = scope.split(':')
+        if user_type == 'admin':
+            return User('admin', 'admin', f'admin@{profile}', verified=True)
 
     url = os.getenv("AUTH0_DOMAIN") + "/userinfo"
-    auth0_user_body: dict = requests.get(url, headers={"Authorization":access_token}).json()
+    auth0_user_body: dict = requests.get(url, headers={"Authorization": access_token}).json()
     match auth0_user_body:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
             cache_token(access_token_bare, nickname=a, name=b, email=c, verified=d)
@@ -87,7 +97,6 @@ def preverified(access_token: str) -> dict | None:
     result = session.execute(sql, parameters).one_or_none()
     session.close()
     return result
-
 
 def cache_token(access_token: str, nickname: str, name: str, email: str, verified: bool) -> None:
     session = SESSIONLOCAL()

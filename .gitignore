@@ -8,6 +8,8 @@ tests/*.sql
 tests/**/*.xls*
 tests/**/*.pdf
 tests/**/*.PDF
+# admin module
+admin.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

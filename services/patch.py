@@ -71,3 +71,22 @@ def commission_data_row(db: Session, row_id: int, **kwargs):
     db.execute(sql)
     db.commit()
     return
+
+@jsonapi_error_handling
+def mapping(db: Session, mapping_id: int, json_data: dict, user: User) -> JSONAPIResponse:
+    if not matched_user(user, BRANCHES, mapping_id, db):
+        raise UserMisMatch()
+    model_name = hyphenated_name(ID_STRINGS)
+    hyphenate_json_obj_keys(json_data)
+    return models.serializer.patch_resource(db, json_data, model_name, mapping_id).data
+
+
+def change_commission_data_customer_branches(db: Session, report_branch_ref_id: int, customer_branch_id: int) -> None:
+    sql = (
+        sqlalchemy.update(COMMISSION_DATA_TABLE)
+        .values(customer_branch_id = customer_branch_id)
+        .where(COMMISSION_DATA_TABLE.report_branch_ref == report_branch_ref_id)
+    )
+    db.execute(sql)
+    db.commit()
+    return

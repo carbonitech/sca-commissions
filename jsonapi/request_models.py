@@ -35,12 +35,17 @@ class NewBranch(JSONAPIBaseModification):
 class Mapping(BaseModel):
     match_string: str
     created_at: datetime
+    auto_matched: bool
 class MappingRelationship(BaseModel):
     branches: JSONAPIRelationshipObject
     manufacturers_reports: JSONAPIRelationshipObject
 class NewMapping(JSONAPIBaseModification):
     attributes: Mapping
     relationships:MappingRelationship
+
+class MappingModification(JSONAPIBaseModification):
+    id: int
+    relationships: MappingRelationship
 
 ## customer ##
 class Customer(BaseModel):
@@ -123,6 +128,9 @@ class NewRepresentativeRequest(BaseModel):
 class RepresentativeModificationRequest(BaseModel):
     data: RepresentativeModification
 
+class MappingModificdationRequest(BaseModel):
+    data: MappingModification
+
 
 @dataclass
 class RequestModels:
@@ -135,3 +143,4 @@ class RequestModels:
     new_manufacturer = NewManufacturerRequest
     new_representative = NewRepresentativeRequest
     rep_modification = RepresentativeModificationRequest
+    mapping_modification = MappingModificdationRequest

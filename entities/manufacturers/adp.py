@@ -112,7 +112,7 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(subset=data.columns[0])
         data = data.dropna(axis=1, how='all')
-        data.loc[:,"store_number"] = data.pop("branch#").astype(str)
+        data.loc[:,"store_number"] = data.pop("branch").astype(str)
         data.loc[:,"inv_amt"] = data.pop("cost")*split*100
         data.loc[:,"comm_amt"] = data["inv_amt"]*comm_rate
         data.loc[:,"customer"] = "RE MICHEL"

@@ -9,7 +9,7 @@ from entities.preprocessor import AbstractPreProcessor
 
 class PreProcessor(AbstractPreProcessor):
 
-    def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+    def _standard_report_preprocessing_pdf(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """
         processes the standard Agas file
             Data arrives from the to_df method reindexed on both axes
@@ -59,14 +59,35 @@ class PreProcessor(AbstractPreProcessor):
         result = data.loc[:,["id_string", inv_col, comm_col]]
 
         return PreProcessedData(result)
+    
+    def _standard_report_preprocessing_xlsx(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        
+        customer = 'customer'
+        city = 'shipto'
+        inv_amt = 'salesamount'
+        comm_amt = 'commission'
+
+        data = self.check_headers_and_fix([customer, city, inv_amt, comm_amt], data)
+        data = data.dropna(subset=data.columns[1])
+        data[inv_amt] *= 100
+        data[comm_amt] *= 100
+        data['id_string'] = data[[customer, city]].apply('_'.join, axis=1)
+        result = data[["id_string", inv_amt, comm_amt]]
+        result = result.rename(columns={inv_amt: "inv_amt", comm_amt: "comm_amt"})
+        result = result.apply(self.upper_all_str)
+        return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": self._standard_report_preprocessing,
+            "standard": self._standard_report_preprocessing_pdf,
+            "standard_excel": self._standard_report_preprocessing_xlsx
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(pdf="table", combine_sheets=True), **kwargs)
+            if 'excel' in self.report_name:
+                return preprocess_method(self.file.to_df(), **kwargs)
+            else:
+                return preprocess_method(self.file.to_df(pdf="table", combine_sheets=True), **kwargs)
         else:
             return

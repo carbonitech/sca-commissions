@@ -83,7 +83,7 @@ def test_adp_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
 
 def test_a_gas_preprocessors():
-    report_names = ['standard']
+    report_names = ['standard', 'standard_excel']
     entity = 'a_gas'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, a_gas.PreProcessor)

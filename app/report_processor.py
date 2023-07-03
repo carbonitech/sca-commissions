@@ -148,20 +148,6 @@ class Processor:
         else:
             return operating_data
 
-    def assign_value_by_transfer_direction(self) -> 'Processor':
-        """
-        if receiver (+)
-        if sender (-)
-        """
-        if self.inter_warehouse_transfer:
-            for money_col in ["inv_amt", "comm_amt"]:
-                self.staged_data.loc[:,money_col] = self.staged_data.apply(
-                    lambda row: row[money_col] if row["direction"] == "RECEIVING" else -row[money_col],
-                    axis=1
-                )
-            return self
-        return self
-
 
     def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, error_type: ErrorType) -> pd.DataFrame:
         if data.empty:
@@ -352,7 +338,6 @@ class NewReportStrategy(Processor):
                 .insert_submission_id()
                 .insert_user_id()
                 .insert_report_id()
-                .assign_value_by_transfer_direction()
                 .add_branch_id()
             )
         except EmptyTableException:

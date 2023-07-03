@@ -123,7 +123,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
-        data = data.dropna(subset=data.columns.tolist()[0])
+        data = data.dropna(subset=data.columns[0])
         data = data.rename(columns={
             "plnt": "receiving",
             "city": "receiving_city",
@@ -152,17 +152,19 @@ class PreProcessor(AbstractPreProcessor):
             ["sending_city", "sending_state", "customer", "inv_amt", "comm_amt", "direction", "store_number"]
         ]
         sending_table = sending_table.rename(columns={"sending_city": "city", "sending_state": "state"})
+        sending_table["inv_amt"] *= -1
+        sending_table["comm_amt"] *= -1
         # receiving table only
         receiving_table = result.loc[
             result["direction"] == "receiving", 
             ["receiving_city", "receiving_state", "customer", "inv_amt", "comm_amt", "direction", "store_number"]
         ]
         receiving_table = receiving_table.rename(columns={"receiving_city": "city", "receiving_state": "state"})
-        # recombine (city, state, customer, inv_amt, comm_amt, direction, store_number)
+        # recombine 
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[["store_number", "customer", "city", "state"]].apply("_".join, axis=1)
-        result = result.drop(columns=["store_number", "customer", "city", "state"])
+        result = result[['id_string','inv_amt','comm_amt']]
         return PreProcessedData(result)
 
 

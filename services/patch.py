@@ -74,7 +74,7 @@ def commission_data_row(db: Session, row_id: int, **kwargs):
 
 @jsonapi_error_handling
 def mapping(db: Session, mapping_id: int, json_data: dict, user: User) -> JSONAPIResponse:
-    if not matched_user(user, BRANCHES, mapping_id, db):
+    if not matched_user(user, ID_STRINGS, mapping_id, db):
         raise UserMisMatch()
     model_name = hyphenated_name(ID_STRINGS)
     hyphenate_json_obj_keys(json_data)

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from dataclasses import dataclass
+from typing import Optional
 
 ### nested objects ###
 
@@ -38,7 +39,7 @@ class Mapping(BaseModel):
     auto_matched: bool
 class MappingRelationship(BaseModel):
     branches: JSONAPIRelationshipObject
-    manufacturers_reports: JSONAPIRelationshipObject
+    manufacturers_reports: Optional[JSONAPIRelationshipObject]
 class NewMapping(JSONAPIBaseModification):
     attributes: Mapping
     relationships:MappingRelationship

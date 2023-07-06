@@ -45,7 +45,7 @@ async def change_mapping(
         user: User=Depends(get_user)
     ):
     additions: dict = {"verified": True, "model_successful": False}
-    modified_obj = jsonapi_obj.dict()
+    modified_obj = jsonapi_obj.dict(exclude_unset=True)
     modified_obj["data"]["attributes"] = additions
     resp_obj = patch.mapping(db, mapping_id, modified_obj, user)
     branch_id_in_patch = jsonapi_obj.data.relationships.branches.data.id

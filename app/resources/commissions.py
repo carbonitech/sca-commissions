@@ -111,6 +111,7 @@ async def process_data_from_a_file(
         total_commission_amount: Optional[float] = Form(None),
         file_password: Optional[str] = Form(None),
         total_freight_amount: Optional[float] = Form(None),
+        total_rebate_credits: Optional[float] = Form(None),
         additional_file_1: Optional[bytes] = Form(None),
         db: Session=Depends(get_db),
         user: User=Depends(get_user),
@@ -144,6 +145,7 @@ async def process_data_from_a_file(
             total_commission_amount,
             file_password,
             total_freight_amount,
+            total_rebate_credits,
             additional_file_1,
             db,
             user,
@@ -160,6 +162,7 @@ async def process_commissions_file(
         total_commission_amount: float|None,
         file_password: str|None,
         total_freight_amount: float|None,
+        total_rebate_credits: float|None,
         additional_file_1: bytes|None,
         session: Session,
         user: User,
@@ -176,7 +179,8 @@ async def process_commissions_file(
             user.id(session),
             total_commission_amount,
             total_freight_amount,
-            additional_file_1
+            additional_file_1,
+            total_rebate_credits
         )
 
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)

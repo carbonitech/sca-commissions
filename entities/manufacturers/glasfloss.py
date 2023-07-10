@@ -17,11 +17,18 @@ class PreProcessor(AbstractPreProcessor):
         inv_col: str = "sumofsales"
         comm_col: str = "comm_amt"
         total_freight: float = kwargs.get("total_freight_amount", None)
+        total_rebate_credits: float = kwargs.get("total_rebate_credits",None)
         comm_rate = kwargs.get("standard_commission_rate",0)
 
         data = self.check_headers_and_fix([customer_name_col, city_name_col, state_name_col, inv_col], data)
         data = data.dropna(subset=data.columns.to_list()[1])
         data.loc[:,inv_col] *= 100
+
+        if total_rebate_credits:
+            total_sales = data[inv_col].sum()/100 # converted to dollars
+            discount_rate = total_rebate_credits/total_sales
+            data.loc[:,inv_col] = data[inv_col]*(1-discount_rate)
+
         if total_freight:
             total_sales = data[inv_col].sum()/100 # converted to dollars
             discount_rate = total_freight/total_sales

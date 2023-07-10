@@ -15,8 +15,8 @@ class NewSubmission:
     total_commission_amount: float|None
     total_freight_amount: float|None
     additional_file_1: bytes|None
-    #following is actually an enum in postgres
-    status: str = "QUEUED"
+    total_rebate_credits: float|None
+    status: str = "QUEUED" # enum in postgres
 
     def keys(self):
         unpackable_attrs = list(self.__dict__.keys())
@@ -24,6 +24,7 @@ class NewSubmission:
         unpackable_attrs.remove("manufacturer_id")
         unpackable_attrs.remove("total_freight_amount")
         unpackable_attrs.remove("additional_file_1")
+        unpackable_attrs.remove("total_rebate_credits")
         return unpackable_attrs
         
     def __getitem__(self,key):

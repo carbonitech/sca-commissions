@@ -188,6 +188,7 @@ class Processor:
         preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
         optional_params = {
             "total_freight_amount": self.submission.total_freight_amount,
+            "total_rebate_credits": self.submission.total_rebate_credits,
             "total_commission_amount": self.submission.total_commission_amount,
             "additional_file_1": self.submission.additional_file_1,
             "standard_commission_rate": self.standard_commission_rate,
@@ -295,7 +296,6 @@ class NewReportStrategy(Processor):
     ):
 
         self.skip = False
-        self.inter_warehouse_transfer = False
         self.session = session
         self.user_id = user.id(self.session) if user.verified else None
         self.submission_id = submission_id

@@ -18,7 +18,7 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "repcomission"
 
         data = self.check_headers_and_fix([customer_name_col, city_name_col, state_name_col, inv_col, comm_col], data)
-        data = data.dropna(subset=data.columns.to_list()[0])
+        data = data.dropna(subset=customer_name_col)
         if customer_name_col not in data.columns.to_list():
             data = data.rename(columns=data.iloc[0]).drop(data.index[0])
         data = data.dropna(how="all",axis=1)
@@ -30,6 +30,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
+        print(result)
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
 
         return PreProcessedData(result)

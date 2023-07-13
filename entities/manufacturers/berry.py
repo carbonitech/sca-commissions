@@ -74,6 +74,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
+        result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -102,6 +103,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
+        result = result [["id_string", inv_col_name, comm_col]]
 
         return PreProcessedData(result)
 
@@ -133,6 +135,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
+        result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
 
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -166,6 +169,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
+        result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -195,6 +199,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
+        result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
 
 

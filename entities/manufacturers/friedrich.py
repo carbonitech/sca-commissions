@@ -30,7 +30,6 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
-        print(result)
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
 
         return PreProcessedData(result)

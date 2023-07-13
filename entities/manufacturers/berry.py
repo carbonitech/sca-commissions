@@ -93,7 +93,6 @@ class PreProcessor(AbstractPreProcessor):
         data[store_number_col] = data[store_number_col].astype(str)
         data[store_number_col] = data[store_number_col].str.strip()
         
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda val: re.match(r"JS\s?(\w*\s?\S*)\s?-\s?\d{2,3}",val).group(1).strip())
         data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
         data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
         data.loc[:,"customer"] = default_customer_name

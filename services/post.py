@@ -61,9 +61,11 @@ def auto_matched_strings(db: Session, user_id: int, data: pd.DataFrame) -> pd.Da
     data_cp = data.copy().drop_duplicates()
     data_cp = data_cp.rename(columns={"id_string": "match_string"})
     data_cp.loc[:, "auto_matched"] = True
+    data_cp.loc[:, "verified"] = False
     data_cp.loc[:, "user_id"] = user_id
     data_cp.loc[:, "created_at"] = datetime.utcnow()
-    # table should have the match_string, report_id, customer_branch_id, auto_matched, user_id, created_at, and match_score
+    
+    # table should have the match_string, report_id, customer_branch_id, verified, auto_matched, user_id, created_at, and match_score
     data_records = data_cp.to_dict(orient="records")
     insert_stmt = sqlalchemy.insert(ID_STRINGS)\
         .values(data_records)\

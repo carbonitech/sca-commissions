@@ -18,11 +18,13 @@ def trigger_reprocessing_of_errors(table: model.Base, *args, **kwargs):
         if not session:
             session = kwargs.get("db") # hot fix
         user = kwargs.get("user")
+        new_obj_id = kwargs.get('id_')
         errors = get.errors(session, user)
         report_processor.ErrorReintegrationStrategy(
             session=session,
             target_err=error_type,
             error_table=errors,
+            new_mapping_id=new_obj_id,
             user=user).process_and_commit()
     return
 

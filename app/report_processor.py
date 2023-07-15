@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Hashable, Union, Type
+from typing import Hashable, Type
 import pandas as pd
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
@@ -87,7 +87,7 @@ class Processor:
         self.staged_data = self.error_table.copy()
         self.staged_data: pd.DataFrame = self.staged_data.loc[
                 :,
-                self.staged_data.columns.isin(["submission_id", "user_id", "id_string", "inv_amt", "comm_amt", "direction"])
+                self.staged_data.columns.isin(["submission_id", "user_id", "id_string", "inv_amt", "comm_amt"])
             ]
         if table_target_errors.empty:
             raise EmptyTableException
@@ -102,24 +102,16 @@ class Processor:
         delete.errors(db=self.session, record_ids=self.error_ids)
         return self
 
-    def add_branch_id(self, data=pd.DataFrame(), pipe=True) -> Union['Processor',pd.DataFrame]:
-        """
-        Adds the customer's branch id, if the assignment exists.
-        Un-matched rows are added to the customer_branches table
-
-        """
+    def add_branch_id(self, do_auto_match: bool=True) -> 'Processor':
         new_column_cb_id: str = "customer_branch_id"
         new_column_id_string_id: str = "report_branch_ref"
         combined_new_cols = [new_column_cb_id, new_column_id_string_id]
 
-        if not pipe:
-            operating_data = data
-        else:
-            operating_data = self.staged_data
+        operating_data = self.staged_data
 
         if operating_data.empty:
             operating_data["customer_branch_id"] = None
-            return self if pipe else operating_data
+            return self
 
         merged_with_branches = pd.merge(
                 operating_data, self.id_string_matches,
@@ -135,18 +127,15 @@ class Processor:
         operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
         # attempt to auto-match the unmatched values
         unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
-        if not unmatched_id_strings.empty:
+        if not unmatched_id_strings.empty and do_auto_match:
             auto_matched = self.attempt_auto_matching(unmatched_rows=unmatched_id_strings)
             if not auto_matched.empty:
                 auto_matched_index = auto_matched.index
                 # fill the data with auto_matched values
                 operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
-        if pipe:
-            operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
-            self.staged_data = operating_data
-            return self
-        else:
-            return operating_data
+        operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
+        self.staged_data = operating_data
+        return self
 
 
     def _filter_out_any_rows_unmapped(self, data: pd.DataFrame, error_type: ErrorType) -> pd.DataFrame:
@@ -361,11 +350,12 @@ class NewReportStrategy(Processor):
         return self.submission_id
     
 class ErrorReintegrationStrategy(Processor):
-        
+    """when mapping errors to new mappings, no attempt is made to auto-match other falues""" 
     def __init__(
         self,
         session: Session,
         user: User,
+        new_mapping_id: int,
         target_err: ErrorType = None,
         error_table: pd.DataFrame = pd.DataFrame(),
     ):
@@ -373,6 +363,7 @@ class ErrorReintegrationStrategy(Processor):
         self.skip = False
         self.session = session
         self.user_id = user.id(self.session) if user.verified else None
+        self.new_mapping_id = new_mapping_id
         self.target_err = target_err
         # expand row_data into dataframe columns
         self.error_table: pd.DataFrame = pd.concat(   
@@ -411,7 +402,7 @@ class ErrorReintegrationStrategy(Processor):
             (
             self._filter_for_existing_records_with_target_error_type()
                 .insert_report_id()
-                .add_branch_id()
+                .add_branch_id(do_auto_match=False)
             )
         except EmptyTableException:
             pass

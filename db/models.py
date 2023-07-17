@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric, ARRAY
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from jsonapi.jsonapi import JSONAPI_
@@ -16,6 +16,7 @@ class Customer(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     customer_branches = relationship("CustomerBranch", back_populates="customers")
+    manufacturers_reports = relationship("ManufacturersReport", back_populates="customers")
 
 class CustomerBranch(Base):
     __tablename__ = 'customer_branches'
@@ -61,11 +62,13 @@ class ManufacturersReport(Base):
     deleted = Column(DateTime)
     user_id = Column(Integer, ForeignKey("users.id"))
     report_label = Column(String)
+    customer_id = Column(Integer, ForeignKey("customers.id"))
     manufacturer = relationship("Manufacturer", back_populates="manufacturers_reports")
     submissions = relationship("Submission", back_populates="manufacturers_reports")
     report_form_fields = relationship("ReportFormFields", back_populates='manufacturers_report')
     commission_split = relationship("CommissionSplit")
     id_string_matches = relationship("IDStringMatch", back_populates="manufacturers_reports")
+    customers = relationship("Customer", back_populates="manufacturers_reports")
 
 class Submission(Base):
     __tablename__ = 'submissions'
@@ -207,6 +210,14 @@ class IDStringMatch(Base):
     branches = relationship("CustomerBranch", back_populates="id_strings")
     commission_data = relationship("CommissionData", back_populates="id_string_matches")
     manufacturers_reports = relationship("ManufacturersReport", back_populates="id_string_matches")
+
+class Territory(Base):
+    __tablename__ = "user_territories"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    territory = Column(ARRAY(String))
+    manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
+
 
 setattr(Base,"_decl_class_registry",Base.registry._class_registry) # because JSONAPI's constructor is broken for SQLAchelmy 1.4.x
 serializer = JSONAPI_(Base)

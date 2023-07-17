@@ -32,7 +32,7 @@ class PreProcessor(AbstractPreProcessor):
         """
         processes the 'Baker' genesis file
         Remarks:
-            - Entire amount is credited to one customer_branch
+            - Entire amount is divided between in-territory states based on branch count
             - split is applied to both sales and commission
         """
 
@@ -43,9 +43,9 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "comm.due"
 
         split: float = kwargs.get("split", 1.0)
+        branch_proportions: pd.DataFrame = kwargs.get("customer_proportions_by_state")
         comm_ref_col: str   # will set which column to use for the commission calculation
 
-        ## the following is a switch to flip in case we're dealing with a Lennox report
         if kwargs.get("lennox"):
             alt_split = 0.01
             comm_ref_col = inv_col
@@ -55,17 +55,22 @@ class PreProcessor(AbstractPreProcessor):
 
         data = data.dropna(axis=1, how='all')
         data = data.dropna(subset=data.columns.to_list()[0])
-        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] = result[inv_col]*100*split
-        result.loc[:,comm_col] = result[comm_ref_col]*alt_split
+        data = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
+        data.loc[:,inv_col] = data[inv_col]*100*split
+        data.loc[:,comm_col] = data[comm_ref_col]*alt_split
         
-        # a default is used to credit all sales data to agency. Locations in the data are not territory-specific,
-        # although they're used to calculate the values
-        total_inv = result[inv_col].sum()
-        total_comm = result[comm_col].sum()
-        col_names = ["inv_amt", "comm_amt"]
-        result = pd.DataFrame([[total_inv, total_comm]], columns=col_names)
-        result["id_string"] = ""
+        # Locations in the data are not territory-specific although they're used to calculate the values.
+        # Total sales and commissions are split between states in-territory based on total proportion of branch count
+        total_inv = data[inv_col].sum()
+        total_comm = data[comm_col].sum()
+        if branch_proportions:
+            branch_proportions["inv_amt"] = branch_proportions["total_share"]*total_inv
+            branch_proportions["comm_amt"] = branch_proportions["total_share"]*total_comm
+            branch_proportions['id_string'] = branch_proportions[['customer', 'state']].apply('_'.join, axis=1)
+            result = branch_proportions[['id_string', 'inv_amt', 'comm_amt']]
+        else:
+            specified_customer = kwargs.get('specified_customer')
+            result = pd.DataFrame([[specified_customer, total_inv, total_comm]], columns=['id_string', 'inv_amt', 'comm_amt'])
         return PreProcessedData(result)
 
 

@@ -28,6 +28,7 @@ USER_COMMISSIONS = models.UserCommissionRate
 COMMISSION_SPLITS = models.CommissionSplit
 ID_STRINGS = models.IDStringMatch
 LOCATIONS = models.Location
+TERRITORIES = models.Territory
 
 
 ENGINE = sqlalchemy.create_engine(os.getenv("DATABASE_URL").replace("postgres://","postgresql://"))
@@ -54,7 +55,8 @@ all_models = [
     USER_COMMISSIONS,
     COMMISSION_SPLITS,
     ID_STRINGS,
-    LOCATIONS
+    LOCATIONS,
+    TERRITORIES
 ]
 
 # this table allows for a lookup of the model by it's JSONAPI resource name

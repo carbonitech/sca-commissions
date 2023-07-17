@@ -135,6 +135,36 @@ def branches(db: Session, user_id: int) -> pd.DataFrame:
 def id_string_matches(db: Session, user_id: int) -> pd.DataFrame:
     return all_by_user_id(db, ID_STRINGS, user_id).loc[:,["match_string","report_id","customer_branch_id","id"]]
 
+def territory(db: Session, user_id: int, manf_id: int) -> list|None:
+    sql = (sqlalchemy
+           .select(TERRITORIES.territory)
+           .where(sqlalchemy.and_(TERRITORIES.manufacturer_id == manf_id, TERRITORIES.user_id == user_id))
+        )
+    return db.execute(sql).scalar_one_or_none()
+
+def customer_location_proportions_by_state(db: Session, user_id: int, customer_id: int, territory: list[str]) -> pd.DataFrame:
+    sql = """SELECT customer, state, count(city) AS num_branches
+            FROM branch_lookup
+            WHERE user_id = :user_id and customer_id = :customer_id
+            GROUP BY customer, state;""" # using a view instead of a sqlalchemy model
+    result = db.execute(sql,params={"user_id": user_id, "customer_id": customer_id}).fetchall()
+    table = pd.DataFrame(result, columns=["customer", "state", "num_branches"])
+    in_territory = table.loc[table['state'].isin(territory)]
+    total_branches = in_territory['num_branches'].sum()
+    in_territory['total_share'] = in_territory['num_branches']/total_branches
+    return in_territory
+
+def customer_id_and_name_from_report(db: Session, user_id: int, report_id: int) -> tuple[int,str]:
+    sql = (
+        sqlalchemy
+        .select(CUSTOMERS.id, CUSTOMERS.name)
+        .join(REPORTS)
+        .where(sqlalchemy.and_(REPORTS.id == report_id, REPORTS.user_id == user_id))
+    )
+    result = db.execute(sql).one_or_none()
+    return result if result else (None,None)
+    
+
 def string_match_supplement(db: Session, user_id: int) -> pd.DataFrame:
     branches_expanded_sql = sqlalchemy.select(CUSTOMERS.name, LOCATIONS.city, LOCATIONS.state, BRANCHES.id)\
         .select_from(BRANCHES).join(CUSTOMERS).join(LOCATIONS).where(BRANCHES.user_id == user_id)

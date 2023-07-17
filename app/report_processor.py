@@ -51,11 +51,20 @@ class Processor:
     branches: pd.DataFrame
     id_sting_match_supplement: pd.DataFrame
     id_string_matches: pd.DataFrame
+    territory: pd.DataFrame
+    customer_branch_proportions: pd.DataFrame
 
     def __init__(self, session: Session, user_id: int):
         self.branches = get.branches(session, user_id=user_id)
         self.id_sting_match_supplement = get.string_match_supplement(session, user_id=user_id)
         self.id_string_matches = get.id_string_matches(session, user_id=user_id)
+        self.territory = get.territory(session, user_id=user_id, manf_id=self.submission.manufacturer_id)
+        self.specified_customer = get.customer_id_and_name_from_report(session, user_id=user_id, report_id=self.report_id)
+        self.customer_branch_proportions = get.customer_location_proportions_by_state(
+            db=session, user_id=user_id,
+            customer_id=self.specified_customer[0],
+            territory=self.territory
+        ) if self.specified_customer else None
 
 
     def insert_report_id(self) -> 'Processor':
@@ -182,6 +191,9 @@ class Processor:
             "additional_file_1": self.submission.additional_file_1,
             "standard_commission_rate": self.standard_commission_rate,
             "split": self.split,
+            "territory": self.territory,
+            "specified_customer": self.specified_customer,
+            "customer_proportions_by_state": self.customer_branch_proportions,
         }
         try:
             ppdata: PreProcessedData = preprocessor.preprocess(**optional_params)

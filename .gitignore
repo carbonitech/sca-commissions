@@ -10,6 +10,8 @@ tests/**/*.pdf
 tests/**/*.PDF
 # admin module
 admin.py
+# MinIO Access Keys
+*_minio_access_key.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

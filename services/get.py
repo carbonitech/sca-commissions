@@ -162,7 +162,7 @@ def customer_id_and_name_from_report(db: Session, user_id: int, report_id: int) 
         .where(sqlalchemy.and_(REPORTS.id == report_id, REPORTS.user_id == user_id))
     )
     result = db.execute(sql).one_or_none()
-    return result if result else (None,None)
+    return result
     
 
 def string_match_supplement(db: Session, user_id: int) -> pd.DataFrame:

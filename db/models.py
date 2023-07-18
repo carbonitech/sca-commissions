@@ -80,6 +80,7 @@ class Submission(Base):
     total_commission_amount = Column(Float)
     user_id = Column(Integer, ForeignKey("users.id"))
     status = Column(Enum('QUEUED', 'PROCESSING', 'COMPLETE', 'NEEDS_ATTENTION', 'FAILED', name='status'))
+    s3_key = Column(String)
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
     errors = relationship("Error", back_populates="submission")

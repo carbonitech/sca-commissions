@@ -8,6 +8,8 @@ from io import BytesIO
 @dataclass
 class CommissionFile:
     file_data: bytes|BytesIO
+    file_mime: str
+    file_name: str
     file_password: str = None
 
     def decrypt_file(self) -> None:

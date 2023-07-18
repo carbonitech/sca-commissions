@@ -5,36 +5,21 @@ from os import getenv
 from typing import Optional
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv; load_dotenv()
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, validator
-from fastapi import APIRouter, HTTPException, File, Depends, Form, BackgroundTasks
+from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, Form, BackgroundTasks
 
 from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
 from entities.commission_file import CommissionFile
-from services import get, post, patch, delete
-from app.resources.pydantic_form import as_form
+from services import get, post, patch, delete, s3
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from services.utils import User, get_db, get_user
 
-load_dotenv()
+
 router = APIRouter(prefix="/commission-data", route_class=JSONAPIRoute)
-
-@as_form
-class CustomCommissionData(BaseModel):
-    inv_amt: float
-    comm_amt: float
-    description: str
-
-    @validator('inv_amt')
-    def scale_up_inv_amt(cls, value):
-        return value*100
-
-    @validator('comm_amt')
-    def scale_up_comm_amt(cls, value):
-        return value*100
 
 class CommissionDataDownloadParameters(BaseModel):
     filename: str|None = "commissions"
@@ -103,7 +88,7 @@ async def commission_data_file_link(
 @router.post("", tags=['commissions'])
 async def process_data_from_a_file(
         bg_tasks: BackgroundTasks,
-        file: bytes = File(),
+        file: UploadFile,
         report_id: int = Form(),
         reporting_month: int = Form(),
         reporting_year: int = Form(),
@@ -154,7 +139,7 @@ async def process_data_from_a_file(
     return get.submissions(db=db, submission_id=new_submission_id,query={}, user=user)
 
 async def process_commissions_file(
-        file: bytes,
+        file: UploadFile,
         report_id: int,
         reporting_month: int,
         reporting_year: int,
@@ -169,14 +154,29 @@ async def process_commissions_file(
         bg_tasks: BackgroundTasks       # passed directly from the calling route
     ) -> int:
 
-    file_obj = CommissionFile(file_data=file, file_password=file_password)
+    file_contents = await file.read()
+    file_obj = CommissionFile(
+        file_data=file_contents,
+        file_password=file_password,
+        file_mime=file.content_type,
+        file_name=file.filename
+    )
+    manf_name = get.manufacturers(
+        db=session,
+        query={},
+        user=user,
+        manuf_id=manufacturer_id)['data']['attributes']['name']
+
+
     new_sub = submission.NewSubmission(
             file_obj,
             reporting_month,
             reporting_year,
             report_id,
             manufacturer_id,
+            manf_name,
             user.id(session),
+            user.domain(name_only=True),
             total_commission_amount,
             total_freight_amount,
             additional_file_1,
@@ -192,6 +192,7 @@ async def process_commissions_file(
         submission=new_sub,
         submission_id=submission_id
     )
+    bg_tasks.add_task(s3.upload_file, file_obj, new_sub.s3_key)
     bg_tasks.add_task(mfg_report_processor.process_and_commit)
     return submission_id
 

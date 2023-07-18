@@ -45,6 +45,14 @@ async def get_submission_by_id(
     raw_result.update({"included": new_included})
     return raw_result
 
+@router.get("/{submission_id}/file", tags=['submissions'])
+async def get_submission_file(
+        submission_id: int,
+        db: Session=Depends(get_db),
+        user: User=Depends(get_user)
+    ):
+    ...
+
 @router.patch("/{submission_id}", tags=["submissions"])
 async def modify_submission_by_id(
         submission_id: int,

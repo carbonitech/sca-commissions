@@ -63,7 +63,7 @@ class PreProcessor(AbstractPreProcessor):
         # Total sales and commissions are split between states in-territory based on total proportion of branch count
         total_inv = data[inv_col].sum()
         total_comm = data[comm_col].sum()
-        if branch_proportions:
+        if not branch_proportions.empty:
             branch_proportions["inv_amt"] = branch_proportions["total_share"]*total_inv
             branch_proportions["comm_amt"] = branch_proportions["total_share"]*total_comm
             branch_proportions['id_string'] = branch_proportions[['customer', 'state']].apply('_'.join, axis=1)

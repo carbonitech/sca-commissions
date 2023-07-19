@@ -192,7 +192,7 @@ async def process_commissions_file(
         submission=new_sub,
         submission_id=submission_id
     )
-    bg_tasks.add_task(s3.upload_file, file_obj, new_sub.s3_key)
+    s3.upload_file(file_obj, new_sub.s3_key) # BUG only the first bg_task will run if more are added, otherwise this would be added. CONSIDER CELERY
     bg_tasks.add_task(mfg_report_processor.process_and_commit)
     return submission_id
 

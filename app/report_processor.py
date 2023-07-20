@@ -58,14 +58,6 @@ class Processor:
         self.branches = get.branches(session, user_id=user_id)
         self.id_sting_match_supplement = get.string_match_supplement(session, user_id=user_id)
         self.id_string_matches = get.id_string_matches(session, user_id=user_id)
-        self.territory = get.territory(session, user_id=user_id, manf_id=self.submission.manufacturer_id)
-        self.specified_customer = get.customer_id_and_name_from_report(session, user_id=user_id, report_id=self.report_id)
-        self.customer_branch_proportions = get.customer_location_proportions_by_state(
-            db=session, user_id=user_id,
-            customer_id=self.specified_customer[0],
-            territory=self.territory
-        ) if self.specified_customer else None
-
 
     def insert_report_id(self) -> 'Processor':
         pass
@@ -305,6 +297,13 @@ class NewReportStrategy(Processor):
         self.report_id = submission.report_id
         self.standard_commission_rate = get.commission_rate(session, submission.manufacturer_id, user_id=self.user_id)
         self.split = get.split(session, submission.report_id, user_id=self.user_id)
+        self.territory = get.territory(session, user_id=self.user_id, manf_id=self.submission.manufacturer_id)
+        self.specified_customer = get.customer_id_and_name_from_report(session, user_id=self.user_id, report_id=self.report_id)
+        self.customer_branch_proportions = get.customer_location_proportions_by_state(
+            db=session, user_id=self.user_id,
+            customer_id=self.specified_customer[0],
+            territory=self.territory
+        ) if self.specified_customer else None
         super().__init__(session=session, user_id=self.user_id)
 
     def insert_report_id(self) -> 'Processor':
@@ -362,7 +361,7 @@ class NewReportStrategy(Processor):
         return self.submission_id
     
 class ErrorReintegrationStrategy(Processor):
-    """when mapping errors to new mappings, no attempt is made to auto-match other falues""" 
+    """when mapping errors to new mappings, no attempt is made to auto-match other values""" 
     def __init__(
         self,
         session: Session,

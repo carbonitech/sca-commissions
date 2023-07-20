@@ -43,7 +43,7 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "comm.due"
 
         split: float = kwargs.get("split", 1.0)
-        branch_proportions: pd.DataFrame = kwargs.get("customer_proportions_by_state")
+        branch_proportions: pd.DataFrame = kwargs.get("customer_proportions_by_state", pd.DataFrame())
         comm_ref_col: str   # will set which column to use for the commission calculation
 
         if kwargs.get("lennox"):

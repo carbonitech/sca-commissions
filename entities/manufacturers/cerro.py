@@ -42,17 +42,25 @@ class PreProcessor(AbstractPreProcessor):
                 
                 find the first $ going right-to-left, and recombine
                 the cents figure from the next column if needed"""
+            sales_fig = None
+            fig_index = None
             compacted = row.dropna()
-            for i, val in enumerate(compacted[::-1]):
+            compacted_rev = compacted[::-1]
+            for i, val in enumerate(compacted_rev):
                 if not isinstance(val,str):
                     continue
                 if val.startswith('$'):
                     sales_fig = val
                     fig_index = i
                     break
-            num_cent_figures = len(sales_fig.split('.')[-1])
-            if num_cent_figures < 2:
-                sales_fig += str(compacted[fig_index+1])
+                if not sales_fig and i == 4:
+                    sales_fig = compacted_rev.iloc[i-1]
+                if sales_fig:
+                    break
+            if fig_index:
+                num_cent_figures = len(sales_fig.split('.')[-1])
+                if num_cent_figures < 2:
+                    sales_fig += str(compacted[fig_index+1])
             return float(re.sub(r'[^-.0-9]','',sales_fig))
 
         def find_rightmost_LIN(row: pd.Series) -> int:
@@ -68,7 +76,8 @@ class PreProcessor(AbstractPreProcessor):
         
         result["inv_amt"] = result.loc[:,"inv_amt"].astype(float)*100
         result["comm_amt"] = result.loc[:,"inv_amt"]*comm_rate
-
+        if kwargs.get('debugging'):
+            return df, result
         return PreProcessedData(result)
 
 

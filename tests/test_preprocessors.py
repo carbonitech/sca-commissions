@@ -54,7 +54,8 @@ def assert_tests_for_each_file(
         for file in files:
             with open(file, 'rb') as handler:
                 file_data = handler.read() 
-            file_obj = CommissionFile(file_data=file_data, file_password=file_password)
+            unused = {'file_mime': '', 'file_name': ''}
+            file_obj = CommissionFile(file_data=file_data, file_password=file_password, **unused)
             preprocessor_inst = preprocessor(report,99999,file_obj)
             try:
                 filename = os.path.basename(file).split('.')[0]
@@ -135,7 +136,7 @@ def test_cerro_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, cerro.PreProcessor)
 
 def test_clean_comfort_preprocessors():
-    report_names = ['standard'] # TODO add prostat
+    report_names = ['standard']
     entity = 'clean_comfort'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, clean_comfort.PreProcessor)

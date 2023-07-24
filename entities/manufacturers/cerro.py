@@ -30,9 +30,9 @@ class PreProcessor(AbstractPreProcessor):
                 afterward that doesn't have numbers is the beginning
                 the customer id cells"""
             subseries = row[row["lin_position"]+1:-1].dropna()
-            id_start = subseries[~subseries.str.contains('[0-9]')].index.min()
-            id_end = id_start + 5
-            id_data = subseries.loc[id_start:id_end]
+            id_start = subseries[~subseries.str.contains(r'[0-9]')].index.min()
+            id_end = subseries[subseries.str.contains(r'^(?!^\d$)\d+\.\d+$')].index.min() - 1 # match first dollar figure-like value excluding a single integer
+            id_data = subseries.loc[id_start:id_end].replace(r'[0-9]', '', regex=True)
             return '_'.join(id_data.values.tolist()).upper()
 
         def extract_sales_amount(row: pd.Series) -> float:
@@ -49,12 +49,14 @@ class PreProcessor(AbstractPreProcessor):
             for i, val in enumerate(compacted_rev):
                 if not isinstance(val,str):
                     continue
-                if val.startswith('$'):
-                    sales_fig = val
-                    fig_index = i
-                    break
-                if not sales_fig and i == 4:
-                    sales_fig = compacted_rev.iloc[i-1]
+                if val == '$':
+                    sales_fig = compacted_rev.iloc[i+1]
+                if not sales_fig:
+                    if val.startswith('$'):
+                        sales_fig = val
+                        fig_index = i
+                    elif i == 4:
+                        sales_fig = compacted_rev.iloc[i-1]
                 if sales_fig:
                     break
             if fig_index:

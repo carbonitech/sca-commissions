@@ -17,11 +17,13 @@ class PreProcessor(AbstractPreProcessor):
     Returns: PreProcessedData object with data and attributes set to enable further processing
     """
 
-    def _calculate_commission_amounts(self, 
+    def _calculate_commission_amounts(
+            self, 
             data: pd.DataFrame,
             inv_col: str,
             comm_col: str,
-            total_commission: float|None):
+            total_commission: float|None
+        ):
         if total_commission:
             total_sales = data[inv_col].sum()/100 # converted to dollars
             comm_rate = total_commission/total_sales
@@ -29,6 +31,7 @@ class PreProcessor(AbstractPreProcessor):
         else:
             data.loc[:,comm_col] = 0
         return data
+
 
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
@@ -49,15 +52,16 @@ class PreProcessor(AbstractPreProcessor):
         result = result.iloc[:,-3:]
         return PreProcessedData(result)
 
+
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         default_customer_name: str = "BAKER DISTRIBUTING"
         store_number_col: str = "store"
         city_name_col: str = "storename"
         state_name_col: str = "storestate"
-        inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
-        inv_col_name: str = "inv_amt" # name for the now col to replace the position-dependent one
-        comm_col: str = "comm_amt" # will be calculated
+        inv_col_pos: int = -1         # this col name is tied to the calendar
+        inv_col_name: str = "inv_amt" # name to replace the position-dependent col
+        comm_col: str = "comm_amt" 
         total_comm: float = kwargs.get("total_commission_amount", None)
 
         data = data.dropna(subset=store_number_col)
@@ -76,6 +80,7 @@ class PreProcessor(AbstractPreProcessor):
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
         result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
+
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
@@ -108,7 +113,6 @@ class PreProcessor(AbstractPreProcessor):
 
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
-        """"""
 
         default_customer_name: str = "RE MICHEL"
         store_number_col: str = "store"
@@ -137,13 +141,9 @@ class PreProcessor(AbstractPreProcessor):
         result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
 
+
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
-        """
-        the only differences between this method and the RE Michel method 
-            - the city name splits on comma instead of hyphen
-            - column headers use different names, but relative positioning wrt the table boundaries is the same
-            - column drop is by city instead of store number column due to where the summary titles have been placed
-        """
+
         default_customer_name: str = "UNITED REFRIGERATION"
         store_number_col: str = "branch"
         city_name_col: str = "branchname"
@@ -170,6 +170,7 @@ class PreProcessor(AbstractPreProcessor):
         result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
         result = result [["id_string", inv_col_name, comm_col]]
         return PreProcessedData(result)
+
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 

@@ -53,6 +53,7 @@ class Processor:
     id_string_matches: pd.DataFrame
     territory: pd.DataFrame
     customer_branch_proportions: pd.DataFrame
+    specified_customer: tuple[int,str]
 
     def __init__(self, session: Session, user_id: int):
         self.branches = get.branches(session, user_id=user_id)

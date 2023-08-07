@@ -31,189 +31,182 @@ class PreProcessor(AbstractPreProcessor):
         else:
             data.loc[:,comm_col] = 0
         return data
+    
+    def pos_result(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        customer = kwargs.get('customer')
+        city = kwargs.get('city')
+        state = kwargs.get('state')
+        sales = kwargs.get('sales')
+        commission = kwargs.get('commission')
+        sales_pos = kwargs.get('sales_pos')
+        total_comm = kwargs.get('total_comm')
+
+        header_alts: list[tuple] = kwargs.get('header_alts',[(None, None)])
+
+        headers = [city, state]
+        data = self.check_headers_and_fix(cols=headers, df=data)
+
+        if not all(header in data.columns for header in headers):
+            for alt in header_alts:
+                data = self.check_headers_and_fix(cols=list(alt), df=data)
+                if all(header in data.columns for header in alt):
+                    city, state = alt
+                    break
+        data = data.dropna(subset=state)
+        data = data.dropna(axis=1, how='all')
+        if sales_pos:
+            data.loc[:,sales] = data.iloc[:,sales_pos]*100
+        data = self._calculate_commission_amounts(data, sales, commission, total_comm)
+        data.loc[:,"customer"] = customer
+        result = data.loc[:,
+            ["customer", city, state, sales, commission]
+        ]
+        result = result.apply(self.upper_all_str)
+        result["id_string"] = result[['customer', city, state]].apply("_".join, axis=1)
+        return PreProcessedData(result[["id_string", sales, commission]])
+
 
 
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
-        customer_name_col: str = "billtoname"
-        city_name_col: str = "city"
-        state_name_col: str = "state"
-        inv_col: str = "commissionablesales"
-        comm_col: str = "commission"
+        customer: str = "billtoname"
+        city: str = "city"
+        state: str = "state"
+        sales: str = "commissionablesales"
+        commission: str = "commission"
 
         data = data.dropna(subset=data.columns.to_list()[0])
         data = data[data["status"] == "CLSD"]
-        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result.loc[:,inv_col] *= 100
-        result.loc[:,comm_col] *= 100
+        result = data.loc[:,[customer, city, state, sales, commission]]
+        result.loc[:,sales] *= 100
+        result.loc[:,commission] *= 100
         result = result.apply(self.upper_all_str)
-        result.columns = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result["id_string"] = result[result.columns[:3]].apply("_".join, axis=1)
-        result = result.iloc[:,-3:]
+        result = result[['id_string', sales, commission]].rename(columns={sales: "inv_amt", commission: "comm_amt"})
         return PreProcessedData(result)
 
 
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name: str = "BAKER DISTRIBUTING"
-        store_number_col: str = "store"
-        city_name_col: str = "storename"
-        state_name_col: str = "storestate"
-        inv_col_pos: int = -1         # this col name is tied to the calendar
-        inv_col_name: str = "inv_amt" # name to replace the position-dependent col
-        comm_col: str = "comm_amt" 
-        total_comm: float = kwargs.get("total_commission_amount", None)
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "storename"
+        state: str = "storestate"
+        sales_pos: int = -1         # this col name is tied to the calendar
+        sales: str = "inv_amt" 
+        commission: str = "comm_amt" 
+        total_comm: float = kwargs.get("total_commission_amount")
 
-        data = data.dropna(subset=store_number_col)
-        data = data.dropna(axis=1, how='all')
-        data[store_number_col] = data[store_number_col].astype(str)
-        data[store_number_col] = data[store_number_col].str.strip()
-
-        data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
-        data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
-        data.loc[:,"customer"] = default_customer_name
-        result = data.loc[:,
-            [store_number_col, "customer", city_name_col, state_name_col, inv_col_name, comm_col]
-        ]
-        result = result.apply(self.upper_all_str)
-        result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
-        result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-        result = result [["id_string", inv_col_name, comm_col]]
-        return PreProcessedData(result)
-
+        return self.pos_result(
+            data=data,
+            customer=customer,
+            city=city,
+            state=state,
+            sales=sales,
+            sales_pos=sales_pos,
+            commission=commission,
+            total_comm=total_comm
+        )
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name: str = "JOHNSTONE SUPPLY"
-        store_number_col: str = "store"
-        city_name_col: str = "storename"
-        state_name_col: str = "storestate"
-        inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
-        inv_col_name: str = "inv_amt" # name for the now col to replace the position-dependent one
-        comm_col: str = "comm_amt" # will be calculated
-        total_comm: float = kwargs.get("total_commission_amount", None)
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "storename"
+        state: str = "storestate"
+        sales_pos: int = -1
+        sales: str = "inv_amt" 
+        commission: str = "comm_amt"
+        total_comm: float = kwargs.get("total_commission_amount")
 
-        data = data.dropna(subset=store_number_col)
-        data = data.dropna(axis=1, how='all')
-        data[store_number_col] = data[store_number_col].astype(str)
-        data[store_number_col] = data[store_number_col].str.strip()
-        
-        data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
-        data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
-        data.loc[:,"customer"] = default_customer_name
-        result = data.loc[:,
-            [store_number_col, "customer", city_name_col, state_name_col, inv_col_name, comm_col]
-        ]
-        result = result.apply(self.upper_all_str)
-        result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
-        result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-        result = result [["id_string", inv_col_name, comm_col]]
-
-        return PreProcessedData(result)
-
+        return self.pos_result(
+            data=data,
+            customer=customer,
+            city=city,
+            state=state,
+            sales=sales,
+            sales_pos=sales_pos,
+            commission=commission,
+            total_comm=total_comm
+        )
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name: str = "RE MICHEL"
-        store_number_col: str = "store"
-        city_name_col: str = "storename"
-        state_name_col: str = "storestate"
-        inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
-        inv_col_name: str = "inv_amt" # name for the now col to replace the position-dependent one
-        comm_col: str = "comm_amt" # will be calculated
-        total_comm: float = kwargs.get("total_commission_amount", None)
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "storename"
+        state: str = "storestate"
+        sales_pos: int = -1         # this col name is tied to the calendar
+        sales: str = "inv_amt" # name for the now col to replace the position-dependent one
+        commission: str = "comm_amt"
+        total_comm: float = kwargs.get("total_commission_amount")
 
-        data = data.dropna(subset=store_number_col)
-        data = data.dropna(axis=1, how='all')
-        data[store_number_col] = data[store_number_col].astype(str)
-        data[store_number_col] = data[store_number_col].str.strip()
-        
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda value: value.split("-")[0].strip())
-        data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
-        data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
-        data.loc[:,"customer"] = default_customer_name
-        result = data.loc[:,
-            [store_number_col, "customer", city_name_col, state_name_col, inv_col_name, comm_col]
-        ]
-        result = result.apply(self.upper_all_str)
-        result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
-        result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-        result = result [["id_string", inv_col_name, comm_col]]
-        return PreProcessedData(result)
+        return self.pos_result(
+            data=data,
+            customer=customer,
+            city=city,
+            state=state,
+            sales=sales,
+            sales_pos=sales_pos,
+            commission=commission,
+            total_comm=total_comm
+        )
 
 
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name: str = "UNITED REFRIGERATION"
-        store_number_col: str = "branch"
-        city_name_col: str = "branchname"
-        state_name_col: str = "state"
-        inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
-        inv_col_name: str = "inv_amt" # name for the now col to replace the position-dependent one
-        comm_col: str = "comm_amt" # will be calculated
-        total_comm: float = kwargs.get("total_commission_amount", None)
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "branchname"
+        state: str = "state"
+        sales_pos: int = -1         # this col name is tied to the calendar
+        sales: str = "inv_amt"
+        commission: str = "comm_amt" 
+        total_comm: float = kwargs.get("total_commission_amount")
 
-        data = data.dropna(subset=city_name_col)
-        data = data.dropna(axis=1, how='all')
-        data[store_number_col] = data[store_number_col].astype(str)
-        data[store_number_col] = data[store_number_col].str.strip()
-        
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda value: value.split(",")[0].strip())
-        data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
-        data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
-        data.loc[:,"customer"] = default_customer_name
-        result = data.loc[:,
-            [store_number_col, "customer", city_name_col, state_name_col, inv_col_name, comm_col]
-        ]
-        result = result.apply(self.upper_all_str)
-        result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
-        result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-        result = result [["id_string", inv_col_name, comm_col]]
-        return PreProcessedData(result)
+        return self.pos_result(
+            data=data,
+            customer=customer,
+            city=city,
+            state=state,
+            sales=sales,
+            sales_pos=sales_pos,
+            commission=commission,
+            total_comm=total_comm
+        )
 
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name: str = "WINSUPPLY"
-        store_number_col: str = "store"
-        city_name_col: str = "storename"
-        state_name_col: str = "storestate"
-        inv_col_pos: int = -1         # this col name is tied to the calendar, use position to rename it
-        inv_col_name: str = "inv_amt" # name for the now col to replace the position-dependent one
-        comm_col: str = "comm_amt" # will be calculated
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "storename"
+        state: str = "storestate"
+        sales_pos: int = -1         # this col name is tied to the calendar
+        sales: str = "inv_amt"
+        commission: str = "comm_amt"
         total_comm: float = kwargs.get("total_commission_amount", None)
 
-        data = data.dropna(subset=store_number_col)
-        data = data.dropna(axis=1, how='all')
-        data[store_number_col] = data[store_number_col].astype(str)
-        data[store_number_col] = data[store_number_col].str.strip()
-        
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda value: value.split("-")[0].strip())
-        data.loc[:,city_name_col] = data[city_name_col].apply(lambda value: value.split(",")[0].strip())
-        data.loc[:,inv_col_name] = data.iloc[:,inv_col_pos]*100 # now we have a well-named column for sales dollars
-        data = self._calculate_commission_amounts(data,inv_col_name,comm_col,total_comm)
-        data.loc[:,"customer"] = default_customer_name
-        result = data.loc[:,
-            [store_number_col, "customer", city_name_col, state_name_col, inv_col_name, comm_col]
-        ]
-        result = result.apply(self.upper_all_str)
-        result.columns = ["store_number", "customer", "city", "state", inv_col_name, comm_col]
-        result["id_string"] = result[result.columns.tolist()[:4]].apply("_".join, axis=1)
-        result = result [["id_string", inv_col_name, comm_col]]
-        return PreProcessedData(result)
+        header_alts = [('billtoaddress1', 'billtostate')]
 
+        return self.pos_result(
+            data=data,
+            customer=customer,
+            city=city,
+            state=state,
+            sales=sales,
+            sales_pos=sales_pos,
+            commission=commission,
+            total_comm=total_comm,
+            header_alts=header_alts
+        )
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": (self._standard_report_preprocessing,0),
-            "baker_pos": (self._baker_report_preprocessing,1),
-            "johnstone_pos": (self._johnstone_report_preprocessing,1),
-            "re_michel_pos": (self._re_michel_report_preprocessing,1),
-            "winsupply_pos": (self._winsupply_report_preprocessing,1),
-            "united_refrigeration_pos": (self._united_refrigeration_report_preprocessing,0),
+            "standard": self._standard_report_preprocessing,
+            "baker_pos": self._baker_report_preprocessing,
+            "johnstone_pos": self._johnstone_report_preprocessing,
+            "re_michel_pos": self._re_michel_report_preprocessing,
+            "winsupply_pos": self._winsupply_report_preprocessing,
+            "united_refrigeration_pos": self._united_refrigeration_report_preprocessing
         }
-        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
+        preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(skip=skip_param, treat_headers=True), **kwargs)
+            return preprocess_method(self.file.to_df(treat_headers=True), **kwargs)
         else:
             return

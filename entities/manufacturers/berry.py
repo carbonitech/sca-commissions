@@ -2,7 +2,6 @@
 Manufacturer report preprocessing definition
 for Berry Global
 """
-import re
 import pandas as pd
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
@@ -88,7 +87,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "storename"
         state: str = "storestate"
         sales_pos: int = -1         # this col name is tied to the calendar
@@ -109,7 +108,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "storename"
         state: str = "storestate"
         sales_pos: int = -1
@@ -130,7 +129,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "storename"
         state: str = "storestate"
         sales_pos: int = -1         # this col name is tied to the calendar
@@ -152,7 +151,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "branchname"
         state: str = "state"
         sales_pos: int = -1         # this col name is tied to the calendar
@@ -174,7 +173,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _winsupply_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "storename"
         state: str = "storestate"
         sales_pos: int = -1         # this col name is tied to the calendar

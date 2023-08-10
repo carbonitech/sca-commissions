@@ -19,8 +19,8 @@ class PreProcessor(AbstractPreProcessor):
         customer_boundary_re: str = r"\d{4} CUST: SHIP-TO"
         page_num_re: str = r"^(Page \d of \d)"
         offset: int = -1
-        customer_name_sales_comm_re: str = r"([0-9^.,-]+)\s+[0-9^.,-]+\sTOTAL SHIP-TO:\s(?:DEFAULT|[0-9]+)?\s?(.+?)\s+([0-9^.,-]+)"
-        # group 1 (comm_amt), 2(customer),    ^^^^^^^^^^                                                       ^^^     ^^^^^^^^^^
+        customer_name_sales_comm_re: str = r"([0-9^.,-]+)\s+[0-9^.,-]?\s?TOTAL SHIP-TO:\s(?:DEFAULT|[0-9]+)?\s?(.+?)\s+([0-9^.,-]+)"
+        # group 1 (comm_amt), 2(customer),    ^^^^^^^^^^                                                        ^^^     ^^^^^^^^^^
         #       3(inv_amt)
         city_state_re: str = r"^\d{4}\sCUST:\sSHIP-TO:\s(.+)"
         # city state combined without a space            ^^

@@ -6,7 +6,6 @@ from starlette.responses import StreamingResponse, RedirectResponse
 
 from app import resources, middleware_handlers, auth
 from app.listeners import api_adapter_listener, error_listener
-from db.models import Base
 
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')

@@ -131,6 +131,25 @@ class PreProcessor(AbstractPreProcessor):
 
         return PreProcessedData(result)
 
+    def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+
+        customer: str = kwargs.get('specified_customer','customer')
+        city: str = "storename"
+        state: str = "storestate"
+        sales: str = "lastmocogs"
+        commission: str = 'comm_amt'
+        comm_rate: float = kwargs.get('standard_commission_rate', 0)
+
+        data = self.check_headers_and_fix([city, state, sales], data)
+        data = data.dropna(subset=city)
+        data["customer"] = customer
+        data[sales] *= 100
+        data[commission] = data[sales] * comm_rate
+        data["id_string"] = data[["customer", city, state]].apply("_".join, axis=1)
+        result = data[["id_string", sales, commission]].rename(columns={sales: "inv_amt"})
+        return PreProcessedData(result)
+
+
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
@@ -139,6 +158,7 @@ class PreProcessor(AbstractPreProcessor):
             "lennox_pos": (self._lennox_report_preprocessing,45),
             "winsupply_pos": (self._winsupply_report_preprocessing,0),
             "rebate_detail": (self._rebate_detail_report_preprocessing,0),
+            "johnstone_pos": (self._johnstone_report_preprocessing,0)
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:

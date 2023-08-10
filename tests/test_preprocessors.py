@@ -160,7 +160,7 @@ def test_general_filters_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, general_filters.PreProcessor)
 
 def test_genesis_preprocessors():
-    report_names = ['sales_detail', 'baker_pos', 'lennox_pos', 'winsupply_pos', 'rebate_detail']
+    report_names = ['sales_detail', 'baker_pos', 'lennox_pos', 'winsupply_pos', 'rebate_detail', 'johnstone_pos']
     entity = 'genesis'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, genesis.PreProcessor)

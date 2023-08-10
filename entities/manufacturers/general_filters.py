@@ -71,6 +71,7 @@ class PreProcessor(AbstractPreProcessor):
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        result = result[["id_string", "inv_amt", "comm_amt"]]
 
         return PreProcessedData(result)
 

@@ -54,7 +54,7 @@ class PreProcessor(AbstractPreProcessor):
         Only the the sums of sales and commissions are used, 
             and they are reported as a single entry of negative amounts
         """
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         sales = "amount"
         store_id = "branch"
         location = "location"
@@ -86,7 +86,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer = kwargs.get('specified_customer', 'customer')
+        customer = kwargs.get('specified_customer', (1,'customer'))[1]
         sales = "inv_amt"
         commission = "comm_amt"
         split: float = kwargs.get("split", 1.0)
@@ -106,7 +106,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _lennox_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         
-        customer = kwargs.get('specified_customer', 'customer')
+        customer = kwargs.get('specified_customer', (1,'customer'))[1]
         sales = "inv_amt"
         commission = "comm_amt"
         rec_city = "receiving_city"

@@ -133,7 +133,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer','customer')
+        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
         city: str = "storename"
         state: str = "storestate"
         sales: str = "lastmocogs"

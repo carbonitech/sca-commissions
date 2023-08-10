@@ -142,7 +142,7 @@ class PreProcessor(AbstractPreProcessor):
 
         data = self.check_headers_and_fix([city, state, sales], data)
         data = data.dropna(subset=city)
-        data["customer"] = customer
+        data.loc[:, "customer"] = customer
         data[sales] *= 100
         data[commission] = data[sales] * comm_rate
         data["id_string"] = data[["customer", city, state]].apply("_".join, axis=1)

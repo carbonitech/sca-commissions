@@ -25,7 +25,7 @@ class PreProcessor(AbstractPreProcessor):
             pd.DataFrame(data.str.split(r'\s{2,}', regex=True).to_list())       # best col delimiter for now is 2+ spaces
                 .replace('-', 0)
                 .fillna(0)
-                .replace(r'\(([0-9]*)\)', '-\\1', regex=True)       # numbers surrounded by parens are negative
+                .replace(r'\(([0-9,]*)\)', '-\\1', regex=True)       # numbers surrounded by parens are negative
                 .replace(r'([0-9])\,([0-9])', '\\1\\2', regex=True) # remove comma notation within numbers, using this regex because customer and first col of values are still combined
         )
         # the first column of numbers is separated only by 1 space from the customer name

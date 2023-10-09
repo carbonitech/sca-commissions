@@ -32,6 +32,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[[customer_name_col, city_name_col, active_state_col]].apply("_".join, axis=1)
         result.columns = ["customer","city", "state", "inv_amt", "comm_amt", "id_string"]
+        result = result[["id_string", "inv_amt", "comm_amt"]]
         return PreProcessedData(result)
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:

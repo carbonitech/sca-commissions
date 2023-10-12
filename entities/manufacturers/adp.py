@@ -87,6 +87,7 @@ class PreProcessor(AbstractPreProcessor):
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
         customer = kwargs.get('specified_customer', (1,'customer'))[1]
+        location = "name"
         sales = "inv_amt"
         commission = "comm_amt"
         split: float = kwargs.get("split", 1.0)
@@ -94,13 +95,14 @@ class PreProcessor(AbstractPreProcessor):
 
         data = self.check_headers_and_fix(cols="cost", df=data)
 
-        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(subset=data.columns[1])
         data = data.dropna(axis=1, how='all')
         data.loc[:, sales] = data.pop("cost")*split*100
         data.loc[:, commission] = data[sales]*comm_rate
-        data.loc[:,"customer"] = customer
-        result = data.loc[:,["customer", sales, commission]]
-        result = result.rename(columns={"customer": "id_string"})
+        data.loc[:,"id_string"] = customer
+        data.loc[:,"id_string"] = data[["id_string", location]].apply("_".join, axis=1)
+        result = data.loc[:,["id_string", sales, commission]]
+        result = result.apply(self.upper_all_str)
         return PreProcessedData(result)
         
 

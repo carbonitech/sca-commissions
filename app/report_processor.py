@@ -51,7 +51,7 @@ class Processor:
     branches: pd.DataFrame
     id_sting_match_supplement: pd.DataFrame
     id_string_matches: pd.DataFrame
-    territory: pd.DataFrame
+    territory: list[str]
     customer_branch_proportions: pd.DataFrame
     specified_customer: tuple[int,str]
 

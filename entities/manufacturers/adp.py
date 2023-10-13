@@ -117,6 +117,7 @@ class PreProcessor(AbstractPreProcessor):
         send_city = "sending_city"
         send_state = "sending_state"
         sending = "sending"
+        territory = kwargs.get('territory')
         
         data = data.dropna(subset=data.columns[0])
         data = data.rename(columns={
@@ -166,6 +167,7 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.concat([sending_table,receiving_table], ignore_index=True)
         assert result[sales].sum() == 0, "sales values do not add up to zero"
         assert result[commission].sum() == 0, "commission values do not add up to zero"
+        result = result[result['state'].isin(territory)]
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[["customer", "city", "state"]].apply("_".join, axis=1)
         result = result[['id_string', sales, commission]]

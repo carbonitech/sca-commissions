@@ -80,8 +80,9 @@ def assert_tests_for_each_file(
 def test_adp_preprocessors():
     report_names = ['detail', 'lennox_pos', 're_michel_pos', 'coburn_pos']
     entity = 'adp'
+    territory = ['AL','FL','MS','TN','GA']
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor)
+    assert_tests_for_each_file(files_by_report, entity, adp.PreProcessor, territory=territory)
 
 def test_a_gas_preprocessors():
     report_names = ['standard', 'standard_excel']

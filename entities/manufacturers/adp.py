@@ -73,8 +73,8 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, commission] = data[commission].fillna(0) * 100
 
         # amounts are negative to represent deductions from Coburn DC shipments
-        total_sales = -data[sales].sum()
-        total_commission = -data[commission].sum()
+        total_sales = data[sales].sum()
+        total_commission = -data[commission].sum() # file negates the negative sales, so make commissions negative again
         if not data['date'].isna().all():
             total_sales /= 2
             total_commission /= 2

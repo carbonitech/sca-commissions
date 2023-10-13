@@ -66,8 +66,7 @@ class PreProcessor(AbstractPreProcessor):
         commission = "comm_amt"
         data = data.rename(columns={commission_i: commission}) # if commission rate changes, this column name would change
 
-        data = data[data["date"].isna()]
-        data = data[headers+[commission]]
+        data = data[data["state"].isna()]
         data = data.dropna(subset=sales)
 
         data.loc[:, sales] = data[sales].fillna(0) * 100
@@ -76,7 +75,9 @@ class PreProcessor(AbstractPreProcessor):
         # amounts are negative to represent deductions from Coburn DC shipments
         total_sales = -data[sales].sum()
         total_commission = -data[commission].sum()
-
+        if not data['date'].isna().all():
+            total_sales /= 2
+            total_commission /= 2
         cols = ["id_string", "inv_amt", commission]
         result = pd.DataFrame([[customer, total_sales, total_commission]], columns=cols)
         result = result.apply(self.upper_all_str)

@@ -76,6 +76,9 @@ class PreProcessor(AbstractPreProcessor):
         total_sales = data[sales].sum()
         total_commission = -data[commission].sum() # file negates the negative sales, so make commissions negative again
         if not data['date'].isna().all():
+            # in the file variant where there are values in this field
+            # the sum has captured the grand total as well as the data we want
+            # halving takes the grand total back out of the number
             total_sales /= 2
             total_commission /= 2
         cols = ["id_string", "inv_amt", commission]

@@ -35,6 +35,7 @@ class AbstractPreProcessor(ABC):
         if isinstance(cols, str):
             cols = [cols]
         # check that my columns contain the headers I expect
+        df = df.rename(columns=lambda col: str(col).lower().replace(' ','')) 
         if not set(cols) & set(df.columns):
             # iterate through the rows until we find the column header
             for index, row in df.iterrows():

@@ -40,15 +40,26 @@ class PreProcessor(AbstractPreProcessor):
         customer_name = 'RE MICHEL'
         city_name_col = 'city'
         state_name_col = 'state'
-        sales_amt_col = 'remcogs'
+        sales_amt_col_1 = 'remcogs'
+        sales_amt_col_2 = 'amount'
+        comm_col: str = "commissionpayable"
         comm_rate = kwargs.get('standard_commission_rate',0)
+
+        data = self.check_headers_and_fix([city_name_col, state_name_col], data)
+
+        if sales_amt_col_1 in data.columns:
+            sales_amt_col = sales_amt_col_1
+        else:
+            sales_amt_col = sales_amt_col_2
         
-        data = self.check_headers_and_fix([city_name_col, state_name_col, sales_amt_col], data)
         data = data.apply(self.upper_all_str)
         data = data.dropna(subset=data.columns[0])
         data['customer'] = customer_name
         data[sales_amt_col] *= 100
-        data['comm_amt'] = data[sales_amt_col]*comm_rate
+        if comm_col in data.columns:
+            data['comm_amt'] = data[comm_col]*100
+        else:
+            data['comm_amt'] = data[sales_amt_col]*comm_rate
         data['id_string'] = data[['customer',city_name_col,state_name_col]].apply('_'.join, axis=1)
         result = data[['id_string', sales_amt_col, 'comm_amt']]
         result.columns = ['id_string', 'inv_amt', 'comm_amt']

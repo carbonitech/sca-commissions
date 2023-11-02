@@ -20,6 +20,24 @@ class AbstractPreProcessor(ABC):
             except:
                 pass
         return col_cp
+
+    @staticmethod
+    def get_customer(**kwargs) -> str:
+        """Get the specified customer sent as specified_customer
+        
+            If found, the customer will 
+            be represented as a `tuple[int,str]`,
+            where `int` is the customer id
+            and `str` is the customer name.
+        
+            The customer name is returned.
+        """
+        if customer := kwargs.get('specified_customer', None):
+            return customer[1]
+        else:
+            return 'customer'
+
+
     
     @staticmethod
     def check_headers_and_fix(cols: str|list[str], df: DataFrame) -> DataFrame:

@@ -46,12 +46,9 @@ class PreProcessor(AbstractPreProcessor):
         comm_rate = kwargs.get('standard_commission_rate',0)
 
         data = self.check_headers_and_fix([city_name_col, state_name_col], data)
+        poss_sales_cols = {sales_amt_col_1, sales_amt_col_2}
+        sales_amt_col = next(iter(set(data.columns) & poss_sales_cols))
 
-        if sales_amt_col_1 in data.columns:
-            sales_amt_col = sales_amt_col_1
-        else:
-            sales_amt_col = sales_amt_col_2
-        
         data = data.apply(self.upper_all_str)
         data = data.dropna(subset=data.columns[0])
         data['customer'] = customer_name
@@ -65,11 +62,30 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = ['id_string', 'inv_amt', 'comm_amt']
         return PreProcessedData(result)
 
+    def _uri_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        customer: str = self.get_customer(**kwargs)
+        city: str = 'branchname'
+        state: str = 'state'
+        inv_amt: str = 'amount'
+        comm_amt: str = 'commissionpayable'
+
+        data = self.check_headers_and_fix([city,state,inv_amt,comm_amt], data)
+        data = data.dropna(subset=data.columns[0])
+        data['customer'] = customer
+        data[inv_amt] *= 100
+        data[comm_amt] *= 100
+        data['id_string'] = data[['customer', city, state]].apply('_'.join, axis=1)
+        result = data[['id_string', inv_amt, comm_amt]]
+        result = result.rename(columns={inv_amt: "inv_amt", comm_amt: "comm_amt"})
+        return PreProcessedData(result)
+
+
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
-            "re_michel_pos": self._re_michel_report_preprocessing
+            "re_michel_pos": self._re_michel_report_preprocessing,
+            'uri_pos': self._uri_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

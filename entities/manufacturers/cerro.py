@@ -31,7 +31,7 @@ class PreProcessor(AbstractPreProcessor):
                 the customer id cells"""
             subseries = row[row["lin_position"]+1:-1].dropna()
             id_start = subseries[~subseries.str.contains(r'[0-9]')].index.min()
-            id_end = subseries[subseries.str.contains(r'^(?!^\d$)\d+\.\d+$')].index.min() - 1 # match first dollar figure-like value excluding a single integer
+            id_end = subseries[subseries.str.contains(r'^(?!^\d$)\$?\d+\.\d+$')].index.min() - 1 # match first dollar figure-like value excluding a single integer
             id_data = subseries.loc[id_start:id_end].replace(r'[0-9]', '', regex=True)
             return '_'.join(id_data.values.tolist()).upper()
 

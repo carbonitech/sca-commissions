@@ -25,8 +25,9 @@ class PreProcessor(AbstractPreProcessor):
         # using set intersection on the col names to assign a name to the state column
         # next -> iter will pick just one name if the intersection has more than one element
         active_state_col = next(iter(set(data.columns) & possible_state_cols))
+
         result = data.loc[:,[customer_name_col, city_name_col, active_state_col, inv_col, comm_col]]
-                
+        result.loc[:,[city_name_col,active_state_col]] = result[[city_name_col, active_state_col]].fillna('')
         result.loc[:,inv_col] *= 100
         result.loc[:,comm_col] *= 100
         result = result.apply(self.upper_all_str)

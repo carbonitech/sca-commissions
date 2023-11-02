@@ -37,7 +37,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """process the RE Michel report"""
-        customer_name = 'RE MICHEL'
+        customer_name = self.get_customer(**kwargs)
         city_name_col = 'city'
         state_name_col = 'state'
         sales_amt_col_1 = 'remcogs'

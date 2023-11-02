@@ -88,7 +88,7 @@ class PreProcessor(AbstractPreProcessor):
             NOTE: RE MICHEL report comes with the first row of data on the first row, no headers.
             NOTE - 06/29/2023: going forward, headers might be included
         """
-        default_customer_name: str = "RE MICHEL"
+        default_customer_name: str = self.get_customer(**kwargs)
         commission_rate = kwargs.get("standard_commission_rate", 0)
 
         store_number_col: str = 'branch#'

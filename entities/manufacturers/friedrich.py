@@ -38,7 +38,7 @@ class PreProcessor(AbstractPreProcessor):
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Friedrich Johnstone tab"""
 
-        default_customer_name: str = "JOHNSTONE SUPPLY"
+        default_customer_name: str = self.get_customer(**kwargs)
         store_number_col: str = "storenumber"
         city_name_col: str = "custname"
         state_name_col: str = "state"
@@ -64,7 +64,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _ferguson_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        default_customer_name = 'FERGUSON'
+        default_customer_name = self.get_customer(**kwargs)
         ship_to = 'shiptowhse-name'
         state = 'productdeststate'
         sales = 'grosssales'

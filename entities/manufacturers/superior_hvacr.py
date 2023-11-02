@@ -59,7 +59,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _united_refrigeration_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        DEFAULT_NAME = "UNITED REFRIGERATION" # important for trying to auto-match
+        DEFAULT_NAME = self.get_customer(**kwargs)
         store_number: str = "branch"
         city: str = "branchname"
         state: str = "state"
@@ -90,7 +90,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        DEFAULT_NAME = "JOHNSTONE SUPPLY" # important for trying to auto-match
+        DEFAULT_NAME = self.get_customer(**kwargs)
         store_number: str = "storeno"
         city: str = "storename"
         state: str = "storestate"

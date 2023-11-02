@@ -69,7 +69,7 @@ class PreProcessor(AbstractPreProcessor):
             branch_proportions['id_string'] = branch_proportions[['customer', 'state']].apply('_'.join, axis=1)
             result = branch_proportions[['id_string', 'inv_amt', 'comm_amt']]
         else:
-            specified_customer = kwargs.get('specified_customer')
+            specified_customer = self.get_customer(**kwargs)
             result = pd.DataFrame([[specified_customer, total_inv, total_comm]], columns=['id_string', 'inv_amt', 'comm_amt'])
         return PreProcessedData(result)
 
@@ -133,7 +133,7 @@ class PreProcessor(AbstractPreProcessor):
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
 
-        customer: str = kwargs.get('specified_customer',(1,'customer'))[1]
+        customer: str = self.get_customer(**kwargs)
         city: str = "storename"
         state: str = "storestate"
         sales: str = "lastmocogs"

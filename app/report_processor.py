@@ -121,11 +121,8 @@ class Processor:
                 right_on=["match_string", "report_id"],
                 suffixes=(None,"_ref_table")
         ) 
-        print(merged_with_branches)
         new_column_cb_id_values = merged_with_branches.loc[:,"customer_branch_id"].fillna(0).astype(int).to_list()
-        print(new_column_cb_id_values)
         operating_data.loc[:, new_column_cb_id] = new_column_cb_id_values
-        print(operating_data)
 
         # 'id' is the id column of id_string_matches
         new_column_id_string_id_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
@@ -140,7 +137,6 @@ class Processor:
                 operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
         operating_data = self._filter_out_any_rows_unmapped(operating_data, error_type = ErrorType(4))
         self.staged_data = operating_data
-        print(self.staged_data)
         return self
 
 

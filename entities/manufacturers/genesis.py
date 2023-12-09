@@ -25,6 +25,7 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = col_names
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        result = result[['id_string', 'inv_amt', 'comm_amt']]
         return PreProcessedData(result)
 
 

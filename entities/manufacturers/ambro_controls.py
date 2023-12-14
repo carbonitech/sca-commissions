@@ -20,7 +20,7 @@ class PreProcessor(AbstractPreProcessor):
         comm_col: str = "commissionpayable"
 
         data = self.check_headers_and_fix([customer_name_col, city_name_col,inv_col], data)
-        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(subset=data.columns[0)
         possible_state_cols = {state_name_col, state_name_col_alt0, state_name_col_alt1}
         # using set intersection on the col names to assign a name to the state column
         # next -> iter will pick just one name if the intersection has more than one element
@@ -51,7 +51,7 @@ class PreProcessor(AbstractPreProcessor):
         sales_amt_col = next(iter(set(data.columns) & poss_sales_cols))
 
         data = data.apply(self.upper_all_str)
-        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(subset=["city_name_col"])
         data['customer'] = customer_name
         data[sales_amt_col] *= 100
         if comm_col in data.columns:

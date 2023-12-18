@@ -17,7 +17,9 @@ AUTO_MATCH_THRESHOLD = 0.75     # based on the eye-ball test
 PREFIX_WEIGHT = 0.3             # ditto
 
 class EmptyTableException(Exception):
-    pass
+    def __init__(self, set_complete: bool=False, *args, **kwargs):
+        super.__init__(*args, **kwargs)
+        self.set_complete = set_complete
 
 class FileProcessingError(Exception):
     def __init__(self, *args: object, **kwargs) -> None:
@@ -37,7 +39,6 @@ class Processor:
     the values that were filtered out into errors from prior submissions
     """
     skip: bool
-    inter_warehouse_transfer: bool
     session: Session
     user_id: int|None
     submission_id: int|None
@@ -112,8 +113,7 @@ class Processor:
         operating_data = self.staged_data.copy()
 
         if operating_data.empty:
-            operating_data["customer_branch_id"] = None
-            return self
+            raise EmptyTableException(set_complete=True)
 
         merged_with_branches = pd.merge(
                 operating_data, self.id_string_matches,
@@ -162,14 +162,6 @@ class Processor:
         else:
             self.staged_data = self.staged_data.dropna() # just in case
         post.final_data(db=self.session, data=self.staged_data)
-        return self
-
-    def set_switches(self) -> 'Processor':
-        col_list = self.ppdata.data.columns.to_list()
-
-        if "direction" in col_list:
-            self.inter_warehouse_transfer = True
-        
         return self
 
     def preprocess(self) -> 'Processor':
@@ -341,8 +333,11 @@ class NewReportStrategy(Processor):
                 .insert_report_id()
                 .add_branch_id()
             )
-        except EmptyTableException:
-            self.set_submission_status("NEEDS_ATTENTION")
+        except EmptyTableException as empty_table:
+            if empty_table.set_complete:
+                self.set_submission_status("COMPLETE")
+            else:
+                self.set_submission_status("NEEDS_ATTENTION")
         except Exception as err:
             self.set_submission_status("FAILED")
             import traceback
@@ -357,7 +352,7 @@ class NewReportStrategy(Processor):
                 .insert_recorded_at_column()
                 .register_commission_data()
                 .set_submission_status("NEEDS_ATTENTION")
-                .set_submission_status("COMPLETE")
+                .set_submission_status("COMPLETE") # If there aren't any errors found in the db
             )
         return self.submission_id
     
@@ -416,7 +411,7 @@ class ErrorReintegrationStrategy(Processor):
                 .insert_report_id()
                 .add_branch_id(do_auto_match=False)
             )
-        except EmptyTableException:
+        except EmptyTableException as empty_table:
             pass
         except Exception as err:
             self.set_submission_status("FAILED")

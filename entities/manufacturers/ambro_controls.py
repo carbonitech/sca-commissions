@@ -51,7 +51,7 @@ class PreProcessor(AbstractPreProcessor):
         sales_amt_col = next(iter(set(data.columns) & poss_sales_cols))
 
         data = data.apply(self.upper_all_str)
-        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(subset=[city_name_col])
         data['customer'] = customer_name
         data[sales_amt_col] *= 100
         if comm_col in data.columns:

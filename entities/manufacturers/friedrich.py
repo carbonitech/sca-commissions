@@ -72,6 +72,8 @@ class PreProcessor(AbstractPreProcessor):
 
         data = self.check_headers_and_fix([ship_to, state, sales, comm], data)
         data = data.dropna(subset=state)
+        if data.empty:
+            return PreProcessedData(pd.DataFrame(columns=['id_string','inv_amt','comm_amt']))
         data['customer'] = default_customer_name
         result = data[['customer', ship_to, state, sales, comm]]
         result.loc[:, sales] *= 100

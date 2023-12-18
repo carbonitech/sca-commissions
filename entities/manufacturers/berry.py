@@ -53,8 +53,14 @@ class PreProcessor(AbstractPreProcessor):
                     break
         data = data.dropna(subset=state)
         data = data.dropna(axis=1, how='all')
-        if sales_pos:
+        if '$' in data.columns:
+            # RE Michel report variant
+            sales_pos = data.columns.get_loc('$')
             data.loc[:,sales] = data.iloc[:,sales_pos]*100
+        elif sales_pos:
+            data.loc[:,sales] = data.iloc[:,sales_pos]*100
+        else:
+            data.loc[:,sales] = data.iloc[:,-3:].sum(axis=1)*100
         data = self._calculate_commission_amounts(data, sales, commission, total_comm)
         data.loc[:,"customer"] = customer
         result = data.loc[:,
@@ -90,10 +96,16 @@ class PreProcessor(AbstractPreProcessor):
         customer: str = self.get_customer(**kwargs)
         city: str = "storename"
         state: str = "storestate"
-        sales_pos: int = -1         # this col name is tied to the calendar
         sales: str = "inv_amt" 
         commission: str = "comm_amt" 
         total_comm: float = kwargs.get("total_commission_amount")
+
+        header_alts = [('city', 'state')] # only city and state are used as headers, in this order
+
+        if data.iloc[:-1,-1].isna().all():
+            sales_pos = None
+        else:
+            sales_pos: int = -1
 
         return self.pos_result(
             data=data,
@@ -103,7 +115,8 @@ class PreProcessor(AbstractPreProcessor):
             sales=sales,
             sales_pos=sales_pos,
             commission=commission,
-            total_comm=total_comm
+            total_comm=total_comm,
+            header_alts=header_alts
         )
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -137,6 +150,8 @@ class PreProcessor(AbstractPreProcessor):
         commission: str = "comm_amt"
         total_comm: float = kwargs.get("total_commission_amount")
 
+        header_alts = [('city', 'state')] # only city and state are used as headers, in this order
+
         return self.pos_result(
             data=data,
             customer=customer,
@@ -145,7 +160,8 @@ class PreProcessor(AbstractPreProcessor):
             sales=sales,
             sales_pos=sales_pos,
             commission=commission,
-            total_comm=total_comm
+            total_comm=total_comm,
+            header_alts=header_alts
         )
 
 

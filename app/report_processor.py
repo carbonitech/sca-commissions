@@ -18,7 +18,7 @@ PREFIX_WEIGHT = 0.3             # ditto
 
 class EmptyTableException(Exception):
     def __init__(self, set_complete: bool=False, *args, **kwargs):
-        super.__init__(*args, **kwargs)
+        super().__init__(*args)
         self.set_complete = set_complete
 
 class FileProcessingError(Exception):

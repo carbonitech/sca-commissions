@@ -92,19 +92,34 @@ class PreProcessor(AbstractPreProcessor):
 
         customer = self.get_customer(**kwargs)
         location = "name"
+        cost = "cost"
         sales = "inv_amt"
         commission = "comm_amt"
         split: float = kwargs.get("split", 1.0)
         comm_rate: float = kwargs.get("standard_commission_rate",0)
 
-        data = self.check_headers_and_fix(cols="cost", df=data)
+        ## alts
+        city = 'city'
+        state = 'state'
+        sales_alt = 'amt'
+        commission_alt = -2
 
-        data = data.dropna(subset=data.columns[1])
-        data = data.dropna(axis=1, how='all')
-        data.loc[:, sales] = data.pop("cost")*split*100
-        data.loc[:, commission] = data[sales]*comm_rate
-        data.loc[:,"id_string"] = customer
-        data.loc[:,"id_string"] = data[["id_string", location]].apply("_".join, axis=1)
+        data = self.check_headers_and_fix(cols=cost, df=data)
+        if cost not in data.columns:
+            data = self.check_headers_and_fix(cols=[city,state,sales],df=data)
+            data = data.dropna(subset=data.columns[1])
+            data = data.dropna(axis=1, how='all')
+            data.loc[:, sales] = data[sales_alt]*100
+            data.loc[:, commission] = data.iloc[:, commission_alt]*100
+            data.loc[:, "customer"] = customer
+            data.loc[:, "id_string"] = data[["customer", city, state]].apply("_".join, axis=1)
+        else:
+            data = data.dropna(subset=data.columns[1])
+            data = data.dropna(axis=1, how='all')
+            data.loc[:, sales] = data.pop("cost")*split*100
+            data.loc[:, commission] = data[sales]*comm_rate
+            data.loc[:,"id_string"] = customer
+            data.loc[:,"id_string"] = data[["id_string", location]].apply("_".join, axis=1)
         result = data.loc[:,["id_string", sales, commission]]
         result = result.apply(self.upper_all_str)
         return PreProcessedData(result)

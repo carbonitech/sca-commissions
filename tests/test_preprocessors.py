@@ -13,6 +13,7 @@ import os
 from entities.commission_file import CommissionFile
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
+from pandas.api.types import pandas_dtype
 from typing import Type
 import traceback
 
@@ -68,13 +69,23 @@ def assert_tests_for_each_file(
                 tb = traceback.format_exc()
                 tb = '\n\n'+tb
 
+            expected_columns = ['id_string','inv_amt','comm_amt']
             msg_prefix = f"""Report '{report}' for '{entity}' with file '{file}'"""
             msg_content = f"failed to return the PreProcessed object.\nInstead it returned or threw {type(result)} with message {str(result)}."
             msg = f'{msg_prefix} {msg_content}{tb}'
             assert isinstance(result, PreProcessedData), msg
 
             msg_content = f"does not contain required columns: id_string, inv_amt, comm_amt.\nActually contains {result.data.columns.tolist()}"
-            assert {'id_string','inv_amt','comm_amt'}.issubset(result.data.columns), msg
+            msg = f'{msg_prefix} {msg_content}{tb}'
+            assert set(expected_columns).issubset(result.data.columns), msg
+
+            expected_dtypes = {name: type_ for name, type_ in zip(expected_columns, [object,float,float])}
+            for col_name, expected_dtype in expected_dtypes.items():
+                expected_dtype = pandas_dtype(expected_dtype)
+                col_type = result.data[col_name].dtype
+                msg_content = f"unexpected data type in column {col_name}. Expected {expected_dtype}, got {col_type}. Table types are {result.data.dtypes}"
+                msg = f'{msg_prefix} {msg_content}{tb}'
+                assert col_type == expected_dtype, msg
 
 
 def test_adp_preprocessors():

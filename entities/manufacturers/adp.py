@@ -102,7 +102,7 @@ class PreProcessor(AbstractPreProcessor):
         city = 'city'
         state = 'state'
         sales_alt = 'amt'
-        commission_alt = -2
+        commission_alt = -3 # adding a sales column before making this extraction
 
         data = self.check_headers_and_fix(cols=cost, df=data)
         if cost not in data.columns:
@@ -122,6 +122,8 @@ class PreProcessor(AbstractPreProcessor):
             data.loc[:,"id_string"] = data[["id_string", location]].apply("_".join, axis=1)
         result = data.loc[:,["id_string", sales, commission]]
         result = result.apply(self.upper_all_str)
+        types = {"id_string": object, sales: float, commission: float}
+        result = result.astype(types)
         return PreProcessedData(result)
         
 

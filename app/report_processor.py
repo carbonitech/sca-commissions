@@ -332,6 +332,11 @@ class NewReportStrategy(Processor):
                 .insert_user_id()
                 .insert_report_id()
                 .add_branch_id()
+                .drop_extra_columns()
+                .insert_recorded_at_column()
+                .register_commission_data()
+                .set_submission_status("NEEDS_ATTENTION")
+                .set_submission_status("COMPLETE") # If there aren't any errors found in the db
             )
         except EmptyTableException as empty_table:
             if empty_table.set_complete:
@@ -346,14 +351,6 @@ class NewReportStrategy(Processor):
             # this print is so I can see it in heroku logs
             print(f"from print: {traceback.format_exc()}")
             raise FileProcessingError(err, submission_id=self.submission_id if self.submission_id else None)
-        else:
-            (
-            self.drop_extra_columns()
-                .insert_recorded_at_column()
-                .register_commission_data()
-                .set_submission_status("NEEDS_ATTENTION")
-                .set_submission_status("COMPLETE") # If there aren't any errors found in the db
-            )
         return self.submission_id
     
 class ErrorReintegrationStrategy(Processor):

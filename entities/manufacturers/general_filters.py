@@ -91,6 +91,8 @@ class PreProcessor(AbstractPreProcessor):
         data = self.check_headers_and_fix(cols=headers, df=data)
         data = data.dropna(subset=data.columns[0])
         data = data.dropna(how='all', axis=1)
+        data[inv_amt] *= 100
+        data[comm_amt] *= 100
         data = data.apply(self.upper_all_str)
         data['id_string'] = data[[customer, city, state]].apply("_".join, axis=1)
         result = data[['id_string', inv_amt, comm_amt]]

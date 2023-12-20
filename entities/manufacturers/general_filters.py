@@ -72,7 +72,7 @@ class PreProcessor(AbstractPreProcessor):
         result.columns = col_names
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
         result = result[["id_string", "inv_amt", "comm_amt"]]
-
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
 
@@ -80,12 +80,34 @@ class PreProcessor(AbstractPreProcessor):
         """report is same exact format as standard"""
         return self._standard_report_preprocessing(data,**kwargs)
 
+    def _splits_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        """This scheme is based off of manually converting received files into a basic template"""
+        customer = 'customer'
+        city = 'city'
+        state = 'state'
+        inv_amt = 'inv_amt'
+        comm_amt = 'comm_amt'
+        headers = [customer, city, state, inv_amt, comm_amt]
+        data = self.check_headers_and_fix(cols=headers, df=data)
+        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(how='all', axis=1)
+        data = data.apply(self.upper_all_str)
+        data['id_string'] = data[[customer, city, state]].apply("_".join, axis=1)
+        result = data[['id_string', inv_amt, comm_amt]]
+        result = result.astype(self.EXPECTED_TYPES)
+        return PreProcessedData(result)
+
+
+
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
             "unifilter": self._unifilter_report_preprocessing,
+            "splits": self._splits_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
-        if preprocess_method:
+        if self.report_name == 'splits':
+            return preprocess_method(self.file.to_df(), **kwargs)
+        elif preprocess_method:
             return preprocess_method(self.file.to_df(pdf="text"), **kwargs)

@@ -166,7 +166,7 @@ def test_friedrich_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, friedrich.PreProcessor)
 
 def test_general_filters_preprocessors():
-    report_names = ['standard', 'unifilter']
+    report_names = ['standard', 'unifilter', 'splits']
     entity = 'general_filters'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, general_filters.PreProcessor)

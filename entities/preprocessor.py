@@ -5,6 +5,12 @@ from entities.commission_data import PreProcessedData
 from entities.commission_file import CommissionFile
 
 class AbstractPreProcessor(ABC):
+
+    EXPECTED_TYPES = {
+        'id_string': object,
+        'inv_amt': float,
+        'comm_amt': float
+    }
     
     def __init__(self, report_name: str, submission_id: int, file: CommissionFile):
         self.report_name = report_name

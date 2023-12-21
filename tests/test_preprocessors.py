@@ -216,7 +216,7 @@ def test_superior_hvacr_preprocessors():
     assert_tests_for_each_file(files_by_report, entity, superior_hvacr.PreProcessor)
 
 def test_tjernlund_preprocessors():
-    report_names = ['standard']
+    report_names = ['standard', 're_michel_pos', 'johnstone_pos']
     entity = 'tjernlund'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, tjernlund.PreProcessor)

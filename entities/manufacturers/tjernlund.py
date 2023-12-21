@@ -31,12 +31,38 @@ class PreProcessor(AbstractPreProcessor):
         result[inv_col] *= 100
         result[comm_col] *= 100
         result = result.rename(columns={inv_col: "inv_amt"})
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
+    def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        """process a manually-filled template"""
+        customer = 'customer'
+        city = 'city'
+        sales = 'sales'
+        commission = 'commission'
+        
+        data = self.check_headers_and_fix(cols=[customer,city,sales,commission], df=data)
+        data = data.dropna(subset=data.columns[0])
+        data = data.dropna(axis=1, how='all')
+        data = data.apply(self.upper_all_str)
+        data.loc[:, sales] *= 100
+        data.loc[:, commission] *= 100
+        data['id_string'] = data[[customer,city]].apply("_".join, axis=1)
+        result = data[['id_string', sales, commission]]
+        result = result.rename(columns={sales: "inv_amt", commission: "comm_amt"})
+        result = result.astype(self.EXPECTED_TYPES)
+        return PreProcessedData(result)
+
+
+    def _re_michel_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        """process a manually-filled template"""
+        return self._johnstone_report_preprocessing(data, **kwargs)
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "standard": self._standard_report_preprocessing,
+            "johnstone_pos": self._johnstone_report_preprocessing,
+            "re_michel_pos": self._re_michel_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

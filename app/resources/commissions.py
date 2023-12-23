@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv; load_dotenv()
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, Depends, Form, BackgroundTasks
 
 from app import report_processor
 from entities import submission
@@ -185,7 +185,7 @@ async def process_commissions_file(
 
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     submission_id = post.submission(db=session, submission=new_sub)
-    mfg_report_processor = report_processor.NewReportStrategy(
+    mfg_report_processor = report_processor.Processor(
         session=session,
         user=user,
         preprocessor=mfg_preprocessor,

@@ -135,12 +135,25 @@ def branches(db: Session, user_id: int) -> pd.DataFrame:
 def id_string_matches(db: Session, user_id: int) -> pd.DataFrame:
     return all_by_user_id(db, ID_STRINGS, user_id).loc[:,["match_string","report_id","customer_branch_id","id"]]
 
+def entities_w_alias(db: Session, user_id: int) -> pd.DataFrame:
+    sql = """select * from branches_w_std_aliases where user_id = :user_id;"""
+    result = db.execute(sql,params={"user_id": user_id}).fetchall()
+    return pd.DataFrame(result, columns=["branch_id","entity_alias","user_id"]).drop(columns='user_id')
+
 def territory(db: Session, user_id: int, manf_id: int) -> list|None:
     sql = (sqlalchemy
            .select(TERRITORIES.territory)
            .where(sqlalchemy.and_(TERRITORIES.manufacturer_id == manf_id, TERRITORIES.user_id == user_id))
         )
     return db.execute(sql).scalar_one_or_none()
+
+def manuf_name_by_id(db: Session, user_id: int, manf_id: int) -> str:
+    sql = (
+        sqlalchemy
+        .select(MANUFACTURERS.name)
+        .where(sqlalchemy.and_(MANUFACTURERS.id == manf_id, MANUFACTURERS.user_id == user_id))
+    )
+    return db.execute(sql).scalar()
 
 def customer_location_proportions_by_state(db: Session, user_id: int, customer_id: int, territory: list[str]) -> pd.DataFrame:
     sql = """SELECT customer, state, count(city) AS num_branches

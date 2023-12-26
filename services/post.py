@@ -5,10 +5,8 @@ from services.utils import *
 from jsonapi.jsonapi import jsonapi_error_handling, JSONAPIResponse
 from sqlalchemy.orm import Session
 import sqlalchemy
-from app import event
 import pandas as pd
 from datetime import datetime
-from entities.error import Error
 from entities.submission import NewSubmission
 
 @jsonapi_error_handling
@@ -16,13 +14,6 @@ def __create_X(db: Session, json_data: dict, user: User, model: models.Base) -> 
     model_name = hyphenated_name(model)
     hyphenate_json_obj_keys(json_data)
     result = models.serializer.post_collection(db,json_data,model_name,user.id(db=db)).data
-    event.post_event(
-        "New Record",
-        model,
-        db=db,
-        user=user,
-        id_=result["data"]["id"]
-    )
     return result
 
 @jsonapi_error_handling
@@ -95,13 +86,6 @@ def submission(db: Session, submission: NewSubmission) -> int:
     result = db.execute(sql).fetchone()[0]
     db.commit()
     return result
-
-def error(db: Session, error_obj: Error) -> None:
-    """record errors into the current_errors table"""
-    sql = sqlalchemy.insert(ERRORS_TABLE).values(**error_obj)
-    db.execute(sql)
-    db.commit()
-    return
 
 def set_new_commission_data_entry(db: Session, **kwargs) -> int:
     sql = sqlalchemy.insert(COMMISSION_DATA_TABLE)\

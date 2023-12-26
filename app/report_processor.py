@@ -3,11 +3,12 @@ from typing import Type
 import pandas as pd
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
+import joblib
+from sklearn.ensemble import RandomForestClassifier
 
 from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
-from entities.error import ErrorType
 from entities.user import User
 from services import get, post, patch
 
@@ -40,7 +41,6 @@ class Processor:
     report_id: int
     standard_commission_rate: float|None
     split: float
-    target_err: ErrorType
     error_table: pd.DataFrame
     branches: pd.DataFrame
     id_sting_match_supplement: pd.DataFrame
@@ -77,6 +77,12 @@ class Processor:
         self.branches = get.branches(session, user_id=self.user_id)
         self.id_sting_match_supplement = get.string_match_supplement(session, user_id=self.user_id)
         self.id_string_matches = get.id_string_matches(session, user_id=self.user_id)
+        self.report_name = get.report_name_by_id(db=session, report_id=submission.report_id)
+        self.manufacturer_name = get.manuf_name_by_id(
+            db=session,
+            user_id=self.user_id,
+            manf_id=self.submission.manufacturer_id
+        )
 
     def insert_report_id(self) -> 'Processor':
         self.staged_data.insert(0,"report_id", self.report_id)
@@ -102,6 +108,14 @@ class Processor:
         return self
 
     def add_branch_id(self) -> 'Processor':
+        """
+            Start out seeing if the match string has been seen before.
+            If it hasn't try to match it using a trained Random Forest Classifier
+            model.
+            
+           Otherwise, fall back on the old method of a composite score of string edit
+           distance compared to all existing strings in id_string_matches
+        """
         new_column_cb_id: str = "customer_branch_id"
         new_column_id_string_id: str = "report_branch_ref"
         combined_new_cols = [new_column_cb_id, new_column_id_string_id]
@@ -111,6 +125,8 @@ class Processor:
         if operating_data.empty:
             raise EmptyTableException(set_complete=True)
 
+        ## first see if the string is already in the database or matches an entity alias exactly
+        # entity alias = name_city_state, in otherwords a branch location
         merged_with_branches = pd.merge(
                 operating_data, self.id_string_matches,
                 how="left", left_on=["id_string", "report_id"],
@@ -123,7 +139,14 @@ class Processor:
         # 'id' is the id column of id_string_matches
         new_column_id_string_id_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
         operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
-        # attempt to auto-match the unmatched values
+
+        ## if there are unmatched values, use the trained model
+        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string"]]
+        model_matched = self.model_match(unmatched_id_strings)
+
+
+
+
         unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
         if not unmatched_id_strings.empty:
             auto_matched = self.auto_match(unmatched_rows=unmatched_id_strings)
@@ -146,10 +169,9 @@ class Processor:
         return self
 
     def preprocess(self) -> 'Processor':
-        report_name = get.report_name_by_id(db=self.session, report_id=self.submission.report_id)
         sub_id = self.submission_id
         file = self.submission.file
-        preprocessor: AbstractPreProcessor = self.preprocessor(report_name, sub_id, file)
+        preprocessor: AbstractPreProcessor = self.preprocessor(self.report_name, sub_id, file)
         optional_params = {
             "total_freight_amount": self.submission.total_freight_amount,
             "total_rebate_credits": self.submission.total_rebate_credits,
@@ -187,9 +209,9 @@ class Processor:
         return self
 
 
-    def auto_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
+    def string_edit_score_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """automatically matches unmatched id_string values
-            using a combination of methods with equal weights
+            using a combination of string editing methods with equal weights
             
             - normalized indel similarity in the range [0, 1], as (1 - normalized_distance)
             - jaro-winkler
@@ -203,8 +225,8 @@ class Processor:
         # create reference table using a combination of existing match strings
         # and strings generated from the existing customer branches
         # both tables have matching columns for a union-like join
-        ref_table = pd.concat([self.id_string_matches, self.id_sting_match_supplement], ignore_index=True)
 
+        ref_table = pd.concat([self.id_string_matches, self.id_sting_match_supplement], ignore_index=True)
 
         def score_unmatched(unmatched_value: str, *args, **kwargs) -> pd.Series:
             """Used for the apply function to score each unmatched row value against
@@ -217,12 +239,11 @@ class Processor:
             ref_table["match_score"] = ref_table["indel"] * ref_table["jaro_winkler"] * ref_table["reverse_jaro_winkler"]
 
             # grab the customer_branch_id with the highest match_score and return the string
-            over_threshold = ref_table["match_score"] > AUTO_MATCH_THRESHOLD
             max_value = ref_table["match_score"] == ref_table["match_score"].max()
 
 
             top_scoring_branch = ref_table.loc[
-                    (over_threshold) & (max_value),
+                    max_value,
                     ["customer_branch_id", "match_score"],
                 ]
             # if more than one match (likely duplicated data), take the lowest customer_branch_id
@@ -248,8 +269,89 @@ class Processor:
             return result
         return pd.DataFrame()
 
-    def auto_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
-        ...
+    def model_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
+        """ 
+            As of 2023-12-24, this describes the model's parameters and performance
+
+            Best Parameters: {'max_depth': None, 'n_estimators': 500}
+            Best Score: 0.8837260834308471
+            Classification Report on Test Set:
+                        precision    recall  f1-score   support
+
+                    0       0.90      0.90      0.90       786
+                    1       0.90      0.90      0.90       776
+
+            accuracy                            0.90      1562
+            macro avg       0.90      0.90      0.90      1562
+            weighted avg    0.90      0.90      0.90      1562
+
+            This performance assumes a threshold probability of 0.5 to classify a potential
+            match as True or False (as an entity match).
+
+            Therefore, auto-matching to an entity will be executed if the max score in a comparison
+            is >= 0.5.
+        """
+        import numpy as np
+        rows = unmatched_rows.copy()
+        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
+        entities_w_alias['report_name'] = self.report_name
+        entities_w_alias['manufacturer'] = self.manufacturer_name
+        RandomForestModel: RandomForestClassifier = joblib.load('./app/rf_model_n_500_2023_12_24.joblib')
+        
+        def match_with_model(id_string: str) -> int:
+            """score each row's sting-edit distance against the entity list"""
+            nonlocal entities_w_alias
+            entities_w_alias['match_string'] = id_string
+
+            def score_against_entities(row: pd.Series) -> float:
+                nonlocal entities_w_alias
+                novel_value = row["match_string"]
+                entity_alias = row["entity_alias"]
+                indel = ratio(novel_value, entity_alias)
+                jaro = jaro_winkler(novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT)
+                reverse_jaro = jaro_winkler(
+                    novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
+                )
+                score = indel * jaro * reverse_jaro
+                return score
+
+            entities_w_alias['similarity_score'] = entities_w_alias[['match_string', 'entity_alias']].apply(score_against_entities, axis=1)
+            entities_w_alias['len_match'] = entities_w_alias['match_string'].apply(len)
+            entities_w_alias['len_entity'] = entities_w_alias['entity_alias'].apply(len)
+
+            # dummies get a little funny, because generating dummies from the data itself will leave out a lot of columns that were
+            # in the training data
+            dummies_manf = pd.get_dummies(entities_w_alias['manufacturer'], drop_first=True)
+            dummies_report = pd.get_dummies(entities_w_alias['report_name'], drop_first=True)
+            model_features = list(RandomForestModel.feature_names_in_)
+            model_manfs = set([e for e in model_features if "manufacturer_" in e])
+            model_reports = set([e for e in model_features if "report_name_" in e])
+            # fill missing
+            missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
+            missing_reports = model_reports - set(dummies_report.columns.to_list())
+            for missing in missing_manfs:
+                dummies_manf[missing] = False
+            for missing in missing_reports:
+                dummies_report[missing] = False
+            dummies = dummies_manf.join(dummies_report)
+            entities_w_alias = entities_w_alias.join(dummies)
+            # predict
+            predictions = RandomForestModel.predict_proba(X=entities_w_alias.loc[:,model_features])[:,1]
+            entities_w_alias['predictions'] = np.where(predictions>=0.5, predictions, 0)
+            max_score = entities_w_alias['predictions'].max()
+            if max_score == 0:
+                return 0
+            else:
+                max_score_rows: pd.Series = entities_w_alias.loc[entities_w_alias['predictions'] == max_score, "branch_id"]
+                cb_id: int = max_score_rows.iloc[0]
+                return cb_id
+        
+        ## match each unmatched row to an id number or 0 if no match
+        rows['cb_id'] = rows.apply(match_with_model, axis=1)
+        return rows
+
+
+
     
     def process_and_commit(self) -> int:
         try:

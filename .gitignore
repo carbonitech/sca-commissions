@@ -12,6 +12,8 @@ tests/**/*.PDF
 admin.py
 # MinIO Access Keys
 *_minio_access_key.json
+# ML model generation
+model_training/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,8 +1,7 @@
 from dotenv import load_dotenv; load_dotenv()
 from os import getenv
 import boto3
-import botocore
-from entities.commission_file import CommissionFile
+from entities.commission_file import File
 
 AWS_ACCESS_ID = getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = getenv('AWS_SECRET_ACCESS_KEY')
@@ -23,7 +22,7 @@ def get_file(obj_path: str) -> bytes:
         file_content_type: str = response.get('ContentType')
         return file_content_type, file_data
 
-def upload_file(file: CommissionFile, dest: str) -> None:
+def upload_file(file: File, dest: str) -> None:
     s3_client.put_object( 
         Body=file.file_data,
         Bucket=BUCKET_NAME,

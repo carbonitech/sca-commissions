@@ -6,11 +6,17 @@ from PyPDF2 import PdfReader
 from io import BytesIO
 
 @dataclass
-class CommissionFile:
+class File:
     file_data: bytes|BytesIO
     file_mime: str
     file_name: str
     file_password: str = None
+
+@dataclass
+class AdditionalFile(File): ...
+
+@dataclass
+class CommissionFile(File):
 
     def decrypt_file(self) -> None:
         if self.file_password:

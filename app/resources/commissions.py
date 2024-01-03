@@ -8,12 +8,12 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv; load_dotenv()
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, Depends, Form, BackgroundTasks
 
 from app import report_processor
 from entities import submission
 from entities.manufacturers import MFG_PREPROCESSORS
-from entities.commission_file import CommissionFile
+from entities.commission_file import CommissionFile, File
 from services import get, post, patch, delete, s3
 from jsonapi.jsonapi import Query, convert_to_jsonapi, JSONAPIRoute
 from services.utils import User, get_db, get_user
@@ -148,7 +148,7 @@ async def process_commissions_file(
         file_password: str|None,
         total_freight_amount: float|None,
         total_rebate_credits: float|None,
-        additional_file_1: bytes|None,
+        additional_file_1: UploadFile|None,
         session: Session,
         user: User,
         bg_tasks: BackgroundTasks       # passed directly from the calling route
@@ -161,6 +161,13 @@ async def process_commissions_file(
         file_mime=file.content_type,
         file_name=file.filename
     )
+    if additional_file_1:
+        adf1 = await additional_file_1.read()
+        adf1_obj = File(
+            file_data=adf1,
+            file_mime=additional_file_1.content_type,
+            file_name=additional_file_1.filename
+            )
     manf_name = get.manufacturers(
         db=session,
         query={},
@@ -179,7 +186,7 @@ async def process_commissions_file(
             user.domain(name_only=True),
             total_commission_amount,
             total_freight_amount,
-            additional_file_1,
+            adf1_obj,
             total_rebate_credits
         )
 
@@ -192,7 +199,12 @@ async def process_commissions_file(
         submission=new_sub,
         submission_id=submission_id
     )
-    s3.upload_file(file_obj, new_sub.s3_key) # BUG only the first bg_task will run if more are added, otherwise this would be added. CONSIDER CELERY
+
+    s3.upload_file(file_obj, new_sub.s3_key) # primary file
+    if additional_file_1:
+        s3.upload_file(adf1_obj, new_sub.s3_key_addl)
+
+    # BUG only the first bg_task will run if more are added, otherwise this would be added. CONSIDER CELERY
     bg_tasks.add_task(mfg_report_processor.process_and_commit)
     return submission_id
 

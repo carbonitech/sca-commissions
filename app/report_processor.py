@@ -173,7 +173,7 @@ class Processor:
             "total_freight_amount": self.submission.total_freight_amount,
             "total_rebate_credits": self.submission.total_rebate_credits,
             "total_commission_amount": self.submission.total_commission_amount,
-            "additional_file_1": self.submission.additional_file_1,
+            "additional_file_1": self.submission.additional_file_1.file_data,
             "standard_commission_rate": self.standard_commission_rate,
             "split": self.split,
             "territory": self.territory,

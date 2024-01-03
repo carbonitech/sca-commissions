@@ -20,6 +20,8 @@ class PreProcessor(AbstractPreProcessor):
         """
 
         comm_rate = kwargs.get("standard_commission_rate",0)
+        dollar_figure = r'^(?!^\d$)\$?(\d{1,3}(,\d{3})*|\d+)(\.\d+)?$'
+        digits_or_sales_order = r'([0-9]|^(Sales)$|^(order)$)'
 
         df = (
             data[1:-2].replace(r"[\x00-\x1F\x7F]",' ', regex=True) # convert whitespace hex characters into literal white space
@@ -30,8 +32,8 @@ class PreProcessor(AbstractPreProcessor):
                 afterward that doesn't have numbers is the beginning
                 the customer id cells"""
             subseries = row[row["lin_position"]+1:-1].dropna()
-            id_start = subseries[~subseries.str.contains(r'[0-9]')].index.min()
-            id_end = subseries[subseries.str.contains(r'^(?!^\d$)\$?\d+\.\d+$')].index.min() - 1 # match first dollar figure-like value excluding a single integer
+            id_start = subseries[~subseries.str.contains(digits_or_sales_order, regex=True)].index.min() # does NOT contain
+            id_end = subseries[subseries.str.contains(dollar_figure, regex=True)].index.min() - 1 
             id_data = subseries.loc[id_start:id_end].replace(r'[0-9]', '', regex=True)
             return '_'.join(id_data.values.tolist()).upper()
 

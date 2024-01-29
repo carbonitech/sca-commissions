@@ -11,62 +11,58 @@ class PreProcessor(AbstractPreProcessor):
     def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Famco standard report"""
 
-        # headers are lost once the df is condensed
-        customer_name_col: int = 2
-        city_name_col: int = 3
-        inv_col_1: int = 11 # before result df
-        inv_col_2: int = -2 # after result df
-        comm_col: int = -1
+        customer: str = 'shiptoname'
+        city: str = 'shiptocity'
+        inv_amt: str = 'sales'
+        comm_amt: str = 'commission'
 
-        data = data.dropna(how="all",axis=1)
-        # condense the table by removing all empty cells by column and then recombining them
-        data = pd.concat([data[col].dropna() for col in data.columns.to_list()], axis=1, ignore_index=True)
-        data = data.reset_index(drop=True)
-        data = data.dropna(subset=data.columns[0])
-        result = data.iloc[:,[customer_name_col, city_name_col, inv_col_1, comm_col]]
+        data = self.check_headers_and_fix([city, inv_amt, comm_amt], data)
 
-        result.iloc[:,inv_col_2] *= 100
-        result.iloc[:,comm_col] *= 100
-
+        data = data.dropna(how="all",axis=1).dropna(how='all').dropna(subset=data.columns[-1]) # commissions blank for "misc" invoices
+        result = data[[customer, city, inv_amt, comm_amt]]
+        result.loc[:,inv_amt] *= 100
+        result.loc[:,comm_amt] *= 100
         result = result.apply(self.upper_all_str)
-        
-        col_names = ["customer", "city", "inv_amt", "comm_amt"]
-        result.columns = col_names
-        result["id_string"] = result[col_names[:2]].apply("_".join, axis=1)
+        result["id_string"] = result[[customer,city]].apply("_".join, axis=1)
+        result = result[["id_string", inv_amt, comm_amt]]
+        result.columns = ['id_string', 'inv_amt', 'comm_amt']
         return PreProcessedData(result)
 
 
     def _johnstone_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
         """processes the Famco Johnstone report"""
 
-        store_number_col: str = "storeno"
-        city_name_col: str = "storename"
-        state_name_col: str = "storestate"
-        inv_col: str = "lastmocogs"
+        customer: str = self.get_customer(**kwargs)
+        city: str = "storename"
+        state: str = "storestate"
+        inv_amt: str = "lastmocogs"
         comm_rate = kwargs.get("standard_commission_rate",0)
 
-        data_cols = [store_number_col, city_name_col, state_name_col, inv_col]
-        data = data.loc[:,data_cols]
-
-        data.loc[:,inv_col] *= 100
-        data.loc[:,"comm_amt"] = data[inv_col]*comm_rate
-        
+        data = self.check_headers_and_fix(cols=[city,state,inv_amt], df=data)
+        # top line sales and sales detail are on the same tab and separated by a blank column
+        # let's use sales detail, since we want to start grabbing product detail anyway
+        data = data.iloc[:,15:]
+        data.loc[:,inv_amt] *= 100
+        data.loc[:,"comm_amt"] = data[inv_amt]*comm_rate
+        data["customer"] = customer
         data = data.apply(self.upper_all_str)
-        data["id_string"] = data[data_cols[:-1]].astype(str).apply("_".join, axis=1)
-        
-        result_cols = ["inv_amt", "comm_amt","id_string"]
-        result = data.iloc[:,-3:]
+        data["id_string"] = data[['customer',city,state]].apply("_".join, axis=1)
+        result_cols = ["id_string", "inv_amt", "comm_amt"]
+        result = data[['id_string', inv_amt, 'comm_amt']]
         result.columns = result_cols
+        # since for now we're not getting product detail, recreate the top line table by summing
+        result = result.groupby('id_string').sum().reset_index()
+        result = result[result['inv_amt'] !=0]
         return PreProcessedData(result)
 
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
-            "standard": (self._standard_report_preprocessing,2),
-            "johnstone_pos": (self._johnstone_report_preprocessing,0)
+            "standard": self._standard_report_preprocessing,
+            "johnstone_pos": self._johnstone_report_preprocessing
         }
-        preprocess_method, skip_param = method_by_name.get(self.report_name, None)
+        preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            return preprocess_method(self.file.to_df(skip=skip_param, treat_headers=True), **kwargs)
+            return preprocess_method(self.file.to_df(treat_headers=True), **kwargs)
         else:
             return

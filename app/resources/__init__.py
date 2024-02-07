@@ -1,6 +1,7 @@
 from app.resources.reps import router as reps
 from app.resources.reports import router as reports
 from app.resources.branches import router as branches
+from app.resources.calendar import router as calendar
 from app.resources.download import router as downloads
 from app.resources.locations import router as locations
 from app.resources.customers import router as customers

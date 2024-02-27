@@ -83,7 +83,6 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.DataFrame([[customer, total_sales, total_commission]], columns=cols)
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
-
         return PreProcessedData(result)
 
 
@@ -194,12 +193,31 @@ class PreProcessor(AbstractPreProcessor):
         return PreProcessedData(result)
 
 
+    def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+        customer = self.get_customer(**kwargs)
+        cost = 'ext.cost'
+        commission = 'split75%'
+        named_cols = [cost, commission]
+        data = self.check_headers_and_fix(named_cols, data)
+        data = data.dropna(subset=data.columns[0])
+        data.loc[:, cost] *= 100.
+        data.loc[:, commission] *= 100.
+        total_sales = -data[cost].sum()
+        total_comm = -data[commission].sum()
+        cols = ['id_string', 'inv_amt', 'comm_amt']
+        result = pd.DataFrame([[customer, total_sales, total_comm]], columns=cols)
+        result = result.apply(self.upper_all_str)
+        result = result.astype(self.EXPECTED_TYPES)
+        return PreProcessedData(result)
+
+
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "detail": self._standard_report_preprocessing,
             "coburn_pos": self._coburn_report_preprocessing,
             "lennox_pos": self._lennox_report_preprocessing,
-            "re_michel_pos": self._re_michel_report_preprocessing
+            "re_michel_pos": self._re_michel_report_preprocessing,
+            "baker_pos": self._baker_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

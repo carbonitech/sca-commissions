@@ -57,33 +57,32 @@ class PreProcessor(AbstractPreProcessor):
         customer: str = self.get_customer(**kwargs)
         sales = "amount"
         store_id = "branch"
-        location = "location"
 
-        headers = [sales, store_id, location]
+        headers = [sales, store_id]
         data = self.check_headers_and_fix(headers,data)
 
         commission_i = data.columns.values[-1]
         commission = "comm_amt"
         data = data.rename(columns={commission_i: commission}) # if commission rate changes, this column name would change
 
-        data = data[data["state"].isna()]
-        data = data.dropna(subset=sales)
+        data = data.dropna(subset=data.columns[0]).dropna(subset=sales)
 
-        data.loc[:, sales] = data[sales].fillna(0) * 100
-        data.loc[:, commission] = data[commission].fillna(0) * 100
+        data.loc[:, sales] = data[sales].fillna(0) * 100.
+        data.loc[:, commission] = data[commission].fillna(0) * 100.
 
         # amounts are negative to represent deductions from Coburn DC shipments
         total_sales = data[sales].sum()
         total_commission = -data[commission].sum() # file negates the negative sales, so make commissions negative again
-        if not data['date'].isna().all():
-            # in the file variant where there are values in this field
-            # the sum has captured the grand total as well as the data we want
-            # halving takes the grand total back out of the number
-            total_sales /= 2
-            total_commission /= 2
+        # if not data['date'].isna().all():
+        #     # in the file variant where there are values in this field
+        #     # the sum has captured the grand total as well as the data we want
+        #     # halving takes the grand total back out of the number
+        #     total_sales /= 2
+        #     total_commission /= 2
         cols = ["id_string", "inv_amt", commission]
         result = pd.DataFrame([[customer, total_sales, total_commission]], columns=cols)
         result = result.apply(self.upper_all_str)
+        result = result.astype(self.EXPECTED_TYPES)
 
         return PreProcessedData(result)
 

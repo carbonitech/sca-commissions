@@ -84,17 +84,30 @@ class PreProcessor(AbstractPreProcessor):
         customer: str = self.get_customer(**kwargs)
         monthly_sales: str = "monthlytotal"
         commissions: str = "comm"
-        store_number: str = "branch"
         city: str = "branchcity"
         state: str = "branchstate"
+        named_cols = [monthly_sales, commissions, city, state]
+        slicer = 'loc'
 
-        data = self.check_headers_and_fix([monthly_sales, commissions, store_number, city, state], data)
+        data = self.check_headers_and_fix(named_cols, data)
+        if not all([col in data.columns for col in named_cols]):
+            monthly_sales: list[int] = [5,8,11]
+            commissions: list[int] = [pos+1 for pos in monthly_sales]
+            city: int = 2
+            state: int = city + 1
+            slicer = 'iloc'
+        
         data = data.dropna(subset=data.columns[0])
-        data["inv_amt"] = data.loc[:,data.columns.str.startswith(monthly_sales)].fillna(0).sum(axis=1)*100
-        data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
-        data['customer'] = customer
-        data["id_string"] = data[['customer', city, state]].astype(str).apply("_".join, axis=1)
-
+        if slicer == 'loc':
+            data["inv_amt"] = data.loc[:,data.columns.str.startswith(monthly_sales)].fillna(0).sum(axis=1)*100
+            data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
+            data['customer'] = customer
+            data["id_string"] = data[['customer', city, state]].astype(str).apply("_".join, axis=1)
+        else:
+            data["inv_amt"] = data.iloc[:,monthly_sales].fillna(0).sum(axis=1)*100
+            data["comm_amt"] = data.iloc[:,commissions].fillna(0).sum(axis=1)*100
+            data['customer'] = customer
+            data["id_string"] = data.iloc[:,[-1,city,state]].astype(str).apply("_".join, axis=1)
         result = data.loc[:,["id_string", "inv_amt", "comm_amt"]].apply(self.upper_all_str)
         return PreProcessedData(result)
 
@@ -103,17 +116,31 @@ class PreProcessor(AbstractPreProcessor):
         customer: str = self.get_customer(**kwargs)
         monthly_sales: str = "cogs"
         commissions: str = "comm"
-        store_number: str = "storeno"
         city: str = "storename"
         state: str = "state"
+        named_cols = [monthly_sales, commissions, city, state]
+        slicer = 'loc'
+
+        data = self.check_headers_and_fix(named_cols, data)
+        if not all([col in data.columns for col in named_cols]):
+            monthly_sales: list[int] = [5,8,11]
+            commissions: list[int] = [pos+1 for pos in monthly_sales]
+            city: int = 2
+            state: int = city + 1
+            slicer = 'iloc'
 
         data = data.replace('^\s+$',nan, regex=True) # make sure cells that have only 0-n space characters are also flagged as NaN
         data = data.dropna(subset=data.columns[0])
-        data["inv_amt"] = data.loc[:,data.columns.str.endswith(monthly_sales)].fillna(0).sum(axis=1)*100
-        data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
-        data['customer'] = customer
-        data["id_string"] = data[['customer', city, state]].astype(str).apply("_".join, axis=1)
-
+        if slicer == 'loc':
+            data["inv_amt"] = data.loc[:,data.columns.str.endswith(monthly_sales)].fillna(0).sum(axis=1)*100
+            data["comm_amt"] = data.loc[:,data.columns.str.contains(commissions + r"(\.\d)?$", regex=True)].fillna(0).sum(axis=1)*100
+            data['customer'] = customer
+            data["id_string"] = data[['customer', city, state]].astype(str).apply("_".join, axis=1)
+        else:
+            data["inv_amt"] = data.iloc[:,monthly_sales].fillna(0).sum(axis=1)*100
+            data["comm_amt"] = data.iloc[:,commissions].fillna(0).sum(axis=1)*100
+            data['customer'] = customer
+            data["id_string"] = data.iloc[:,[-1,city,state]].astype(str).apply("_".join, axis=1)
         result = data.loc[:,["id_string", "inv_amt", "comm_amt"]].apply(self.upper_all_str)
         return PreProcessedData(result)
 

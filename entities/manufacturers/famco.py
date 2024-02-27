@@ -15,17 +15,21 @@ class PreProcessor(AbstractPreProcessor):
         city: str = 'shiptocity'
         inv_amt: str = 'sales'
         comm_amt: str = 'commission'
+        invoice_date: str = 'invoicedate'
 
         data = self.check_headers_and_fix([city, inv_amt, comm_amt], data)
-
-        data = data.dropna(how="all",axis=1).dropna(how='all').dropna(subset=data.columns[-1]) # commissions blank for "misc" invoices
+        data = data.dropna(how="all",axis=1).dropna(how='all').dropna(subset=comm_amt) # commissions blank for "misc" invoices
+        # all prior data is included as of 2024, so filtering needs to be done to get most recent data
+        data = data[data[invoice_date].dt.year == data[invoice_date].dt.year.max()]
+        data = data[data[invoice_date].dt.month == data[invoice_date].dt.month.max()]
         result = data[[customer, city, inv_amt, comm_amt]]
-        result.loc[:,inv_amt] *= 100
-        result.loc[:,comm_amt] *= 100
+        result.loc[:,inv_amt] *= 100.
+        result.loc[:,comm_amt] *= 100.
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[[customer,city]].apply("_".join, axis=1)
         result = result[["id_string", inv_amt, comm_amt]]
         result.columns = ['id_string', 'inv_amt', 'comm_amt']
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
 

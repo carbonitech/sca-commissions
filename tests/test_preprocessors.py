@@ -6,7 +6,8 @@ from entities.manufacturers import (
     friedrich, general_filters,
     genesis, glasfloss, hardcast,
     jb_ind, milwaukee, nelco,
-    superior_hvacr, tjernlund
+    superior_hvacr, tjernlund,
+    tpi
 ) 
 from importlib import import_module
 import os
@@ -220,3 +221,9 @@ def test_tjernlund_preprocessors():
     entity = 'tjernlund'
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(files_by_report, entity, tjernlund.PreProcessor)
+
+def test_tpi_preprocessors():
+    report_names = ['standard']
+    entity = 'tpi'
+    files_by_report = _build_file_listing_by_report(report_names, entity)
+    assert_tests_for_each_file(files_by_report, entity, tpi.PreProcessor)

@@ -24,14 +24,16 @@ class PreProcessor(AbstractPreProcessor):
         df = (
             pd.DataFrame(data.str.split(r'\s{2,}', regex=True).to_list())       # best col delimiter for now is 2+ spaces
                 .replace('-', 0)
-                .fillna(0)
                 .replace(r'\(([0-9,]*)\)', '-\\1', regex=True)       # numbers surrounded by parens are negative
                 .replace(r'([0-9])\,([0-9])', '\\1\\2', regex=True) # remove comma notation within numbers, using this regex because customer and first col of values are still combined
         )
+        df = df[df.iloc[:,0] != 0]
+        df = df.loc[df.iloc[:,1:].ne(0).any(axis=1)]
         # the first column of numbers is separated only by 1 space from the customer name
         # so we'll use a letter-space-number combo in the first col to separate and replace the first column
-        df = pd.concat([df.pop(0).str.extract(r'([^0-9]*)\s([0-9]*)', expand=True), df], axis=1, ignore_index=True)
-        df[df.columns[1:]] = df.iloc[:,1:].astype(int)
+        df = pd.concat([df.pop(0).str.extract(r'([^0-9]*)\s(-?[0-9]+|-)', expand=True), df], axis=1, ignore_index=True)
+        df = df.replace(r'^-$', 0, regex=True)
+        df[df.columns[1:]] = df.iloc[:,1:].astype(float)
         # if the last column has a 0, pull the right-most value over to the totals column
         # and remove it from it's prior position in the table
         replace_values: pd.Series = (
@@ -48,9 +50,8 @@ class PreProcessor(AbstractPreProcessor):
                 df.loc[index,df.columns[-1]] = dollar_amount
         # keep only lastest month
         df = df.iloc[:,[0,-2]]
-
         df.columns = [customer_name_col, inv_col]
-        df[inv_col] *= 100
+        df[inv_col] *= 100.00
         df["comm_amt"] = df[inv_col]*comm_rate
         df = df.apply(self.upper_all_str)
         # tag duplicated names with suffixes
@@ -58,7 +59,6 @@ class PreProcessor(AbstractPreProcessor):
         dup_names = dup_names.reset_index().reset_index().set_index("index")
         dup_names["customer"] += "-" + dup_names["level_0"].astype(str) # level_0 is the column name assigned to the column created by the second reset_index call
         df.loc[dup_names.index,"customer"] = dup_names["customer"]
-
         df["id_string"] = df[customer_name_col]
         result = df.iloc[:,-3:].dropna()
         return PreProcessedData(result)

@@ -10,7 +10,8 @@ from entities.preprocessor import AbstractPreProcessor
 class PreProcessor(AbstractPreProcessor):
     """
     Remarks:
-        - Atco's report comes in one file with 2 tabs: "Cash Receipt" and "Invoices"
+        - Atco's report comes in one file with one tab. RE Michel is broken out into it's own line item,
+            which gets thrown away in the standard report.
         - Column headings are different between them, so a "split" switch is used to get a dict of DataFrames
 
     Returns: PreProcessedData object with data and attributes set to enable further processing

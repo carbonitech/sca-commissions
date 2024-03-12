@@ -68,6 +68,7 @@ class PreProcessor(AbstractPreProcessor):
         ]
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[['customer', city, state]].apply("_".join, axis=1)
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result[["id_string", sales, commission]])
 
 
@@ -101,8 +102,13 @@ class PreProcessor(AbstractPreProcessor):
         total_comm: float = kwargs.get("total_commission_amount")
 
         header_alts = [('city', 'state')] # only city and state are used as headers, in this order
+        last_col_not_the_sum_of_prior_three = data.loc[
+            ~(data.iloc[:,-1] == data.iloc[:,-4:-1].sum(axis=1, numeric_only=True)),
+            data.columns[0]].any()
+        all_but_last_row_empty_in_rightmost_col = data.iloc[:-1,-1].isna().all() 
 
-        if data.iloc[:-1,-1].isna().all():
+        if (all_but_last_row_empty_in_rightmost_col
+            or last_col_not_the_sum_of_prior_three):
             sales_pos = None
         else:
             sales_pos: int = -1

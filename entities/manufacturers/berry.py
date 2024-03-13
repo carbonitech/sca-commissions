@@ -53,11 +53,7 @@ class PreProcessor(AbstractPreProcessor):
                     break
         data = data.dropna(subset=state)
         data = data.dropna(axis=1, how='all')
-        if '$' in data.columns:
-            # RE Michel report variant
-            sales_pos = data.columns.get_loc('$')
-            data.loc[:,sales] = data.iloc[:,sales_pos]*100
-        elif sales_pos:
+        if sales_pos:
             data.loc[:,sales] = data.iloc[:,sales_pos]*100
         else:
             data.loc[:,sales] = data.iloc[:,-3:].sum(axis=1)*100
@@ -151,7 +147,7 @@ class PreProcessor(AbstractPreProcessor):
         customer: str = self.get_customer(**kwargs)
         city: str = "storename"
         state: str = "storestate"
-        sales_pos: int = -1         # this col name is tied to the calendar
+        sales_pos: int = -2
         sales: str = "inv_amt" # name for the now col to replace the position-dependent one
         commission: str = "comm_amt"
         total_comm: float = kwargs.get("total_commission_amount")

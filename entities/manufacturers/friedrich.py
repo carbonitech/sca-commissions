@@ -31,7 +31,7 @@ class PreProcessor(AbstractPreProcessor):
         col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
         result.columns = col_names
         result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
-
+        result = result[['id_string', 'inv_amt', 'comm_amt']].astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
 
@@ -60,6 +60,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result.loc[:,['id_string', inv_col, comm_col]]
         result = result.rename(columns={inv_col: "inv_amt", comm_col: 'comm_amt'})
         result = result.apply(self.upper_all_str)
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _ferguson_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
@@ -82,6 +83,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result[['id_string', sales, comm]]
         result = result.rename(columns={sales: "inv_amt", comm: 'comm_amt'})
         result = result.apply(self.upper_all_str)
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
 

@@ -17,7 +17,10 @@ class PreProcessor(AbstractPreProcessor):
         comm_amt: str = 'commission'
         invoice_date: str = 'invoicedate'
 
-        data = self.check_headers_and_fix([city, inv_amt, comm_amt], data)
+        data = self.check_headers_and_fix([customer, city, invoice_date, inv_amt, comm_amt], data)
+        if not set([inv_amt,comm_amt]).intersection(set(data.columns.to_list())):
+            inv_amt = 'extsales'
+            comm_amt: str = 'extcomm'
         data = data.dropna(how="all",axis=1).dropna(how='all').dropna(subset=comm_amt) # commissions blank for "misc" invoices
         # all prior data is included as of 2024, so filtering needs to be done to get most recent data
         data = data[data[invoice_date].dt.year == data[invoice_date].dt.year.max()]

@@ -46,6 +46,8 @@ class PreProcessor(AbstractPreProcessor):
         comm_rate = kwargs.get("standard_commission_rate",0)
 
         data = self.check_headers_and_fix(cols=[city,state,inv_amt], df=data)
+        if inv_amt not in data.columns:
+            inv_amt: str = "lastmosales"
         # top line sales and sales detail are on the same tab and separated by a blank column
         # let's use sales detail, since we want to start grabbing product detail anyway
         data = data.iloc[:,15:]

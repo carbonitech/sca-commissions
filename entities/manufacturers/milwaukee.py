@@ -15,6 +15,7 @@ class PreProcessor(AbstractPreProcessor):
         city_name_col: str = "city"
         state_name_col: str = "state"
         inv_col: str = "proratedsalesamt"
+        inv_col_alt: str = "salesamount"
         comm_col: str = "commission"
 
         if missed_transfers := kwargs.get("additional_file_1", None):
@@ -22,10 +23,21 @@ class PreProcessor(AbstractPreProcessor):
             missed_transfers_df = missed_transfers_df.rename(columns=lambda col: col.lower().replace(" ",""))
             data = pd.concat([data, missed_transfers_df])
         
-        data = data.rename(columns=lambda col: col.strip().lower())
         target_cols = [customer_name_col, city_name_col, state_name_col, inv_col, comm_col]
         data = data.dropna(subset=data.columns.to_list()[0])
-        result = data.loc[:,target_cols]
+        try:
+            result = data.loc[:,target_cols]
+        except KeyError as e:
+            if inv_col in str(e):
+                try:
+                    target_cols[target_cols.index(inv_col)] = inv_col_alt
+                    inv_col = inv_col_alt
+                    result = data.loc[:,target_cols]
+                except Exception as e:
+                    print(e)
+                    raise e
+
+
         result[inv_col] = pd.to_numeric(result[inv_col], errors="coerce").fillna(0)
         result[comm_col] = pd.to_numeric(result[comm_col], errors="coerce").fillna(0)
 

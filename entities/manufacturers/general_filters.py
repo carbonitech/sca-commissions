@@ -14,16 +14,25 @@ class PreProcessor(AbstractPreProcessor):
         
             this report comes in as a PDF and looks more like a sales report
             heavy amount of parsing required to get to the data, which comes in as one long series
+
+            (?:DEFAULT|[0-9]+)?
+            \s?
         """
 
         customer_boundary_re: str = r"\d{4} CUST: SHIP-TO"
         page_num_re: str = r"^(Page \d of \d)"
         offset: int = -1
-        customer_name_sales_comm_re: str = r"([0-9^.,-]+)\s+[0-9^.,-]?\s?TOTAL SHIP-TO:\s(?:DEFAULT|[0-9]+)?\s?(.+?)\s+([0-9^.,-]+)"
-        # group 1 (comm_amt), 2(customer),    ^^^^^^^^^^                                                        ^^^     ^^^^^^^^^^
-        #       3(inv_amt)
-        city_state_re: str = r"^\d{4}\sCUST:\sSHIP-TO:\s(.+)"
-        # city state combined without a space            ^^
+        customer_name_sales_comm_re: str = r"""
+            (?P<comm_amt>-?[0-9,]+(?:\.[0-9]*)?)
+            \s+
+            (?:-?[0-9,]+(?:\.[0-9]*)?)?
+            \s*
+            TOTAL\ SHIP-TO:\s+(?:[A-Z]*[0-9]*\s)        # using re.VERBOSE means literal spaces used for capture in regex MUST be escaped, or they'll be removed
+            (?P<customer>[A-Z\s\t-.,'/]+)
+            \s*
+            (?P<inv_amt>-?[0-9,]+(?:\.[0-9]*)?)
+            .*"""
+        city_state_re: str = r"^\d{4}\sCUST:\sSHIP-TO:\s?([A-Z]+)"
 
         data = data[1:]
         data = data.loc[
@@ -37,8 +46,7 @@ class PreProcessor(AbstractPreProcessor):
         ]
         compiled_data = {
             "customer": [],
-            "city": [],
-            "state": [],
+            "location": [],
             "inv_amt": [],
             "comm_amt": []
         }
@@ -48,29 +56,28 @@ class PreProcessor(AbstractPreProcessor):
                 subseries = data.iloc[index:-1]
             else:
                 subseries = data.iloc[index:customer_boundaries[i+1]]
-
-            city_state = re.match(city_state_re, subseries.iloc[1]).group(1)
-            city, state = city_state[:-2], city_state[-2:] # split city from 2-letter state
-
-            customer_inv_comm: list[str] = subseries.str.extract(customer_name_sales_comm_re).dropna().values[0]
-            customer = customer_inv_comm[1]
-            inv_amt = float(customer_inv_comm[2].replace(",",""))
-            comm_amt = float(customer_inv_comm[0].replace(",",""))
+            
+            city_state = re.match(city_state_re, subseries.iloc[1:3].str.cat(sep='')).group(1)
+            # city, state = city_state[:-2], city_state[-2:] # split city from 2-letter state
+            # print(subseries[4])
+            # print(subseries.str.extract(customer_name_sales_comm_re, re.VERBOSE).dropna())
+            customer_inv_comm = subseries.str.extract(customer_name_sales_comm_re, re.VERBOSE).dropna()
+            customer: str = customer_inv_comm['customer'].item()
+            customer = customer.strip()
+            inv_amt = float(customer_inv_comm['inv_amt'].item().replace(",",""))
+            comm_amt = float(customer_inv_comm['comm_amt'].item().replace(",",""))
 
             compiled_data["customer"].append(customer)
-            compiled_data["city"].append(city)
-            compiled_data["state"].append(state) 
+            compiled_data["location"].append(city_state)
             compiled_data["inv_amt"].append(inv_amt)
             compiled_data["comm_amt"].append(comm_amt)
 
         result = pd.DataFrame(compiled_data)
-
         result["inv_amt"] *= 100
         result["comm_amt"] *= 100
         result = result.apply(self.upper_all_str)
-        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
-        result.columns = col_names
-        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        col_names = ["customer", "location", "inv_amt", "comm_amt"]
+        result["id_string"] = result[col_names[:2]].apply("_".join, axis=1)
         result = result[["id_string", "inv_amt", "comm_amt"]]
         result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)

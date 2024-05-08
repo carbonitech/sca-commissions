@@ -194,7 +194,7 @@ def convert_cents_to_dollars(cent_amt: float) -> float:
 def convert_month_from_number_to_name(month_num: int) -> str:
     return calendar.month_name[month_num]
 
-def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs) -> pd.DataFrame:
+def commission_data_with_all_names(db: Session, submission_id: int=0, **kwargs):
     """runs sql query to produce the commission table format used by SCA
     and converts month number to name and cents to dollars before return
     

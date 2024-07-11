@@ -86,12 +86,35 @@ class PreProcessor(AbstractPreProcessor):
         result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
+    def _baker_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+
+        default_customer_name = self.get_customer(**kwargs)
+        ship_to = 'shiptocity'
+        state = 'shiptostate'
+        sales = 'grosssales'
+        comm = 'commission$'
+
+        data = self.check_headers_and_fix([ship_to, state, sales, comm], data)
+        data = data.dropna(subset=state)
+        if data.empty:
+            return PreProcessedData(pd.DataFrame(columns=['id_string','inv_amt','comm_amt']))
+        data['customer'] = default_customer_name
+        result = data[['customer', ship_to, state, sales, comm]]
+        result.loc[:, sales] *= 100
+        result.loc[:, comm] *= 100
+        result['id_string'] = result[['customer', ship_to, state]].fillna('').apply('_'.join, axis=1)
+        result = result[['id_string', sales, comm]]
+        result = result.rename(columns={sales: "inv_amt", comm: 'comm_amt'})
+        result = result.apply(self.upper_all_str)
+        result = result.astype(self.EXPECTED_TYPES)
+        return PreProcessedData(result)
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "paid": self._standard_report_preprocessing,
             "johnstone_pos": self._johnstone_report_preprocessing,
-            "ferguson_pos": self._ferguson_report_preprocessing
+            "ferguson_pos": self._ferguson_report_preprocessing,
+            "baker_pos": self._baker_report_preprocessing
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

@@ -188,7 +188,6 @@ def report_column_names(db: Session, report_id: int) -> list[dict]:
         .mappings()
         .all()
     )
-    print(result)
     return result
 
 

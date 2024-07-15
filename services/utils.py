@@ -29,6 +29,7 @@ COMMISSION_SPLITS = models.CommissionSplit
 ID_STRINGS = models.IDStringMatch
 LOCATIONS = models.Location
 TERRITORIES = models.Territory
+REPORT_COL_NAMES = models.ReportColumnName
 
 
 ENGINE = sqlalchemy.create_engine(os.getenv("DATABASE_URL").replace("postgres://","postgresql://"))

@@ -60,6 +60,7 @@ class Processor:
         self.branches = get.branches(session, user_id=user_id)
         self.id_sting_match_supplement = get.string_match_supplement(session, user_id=user_id)
         self.id_string_matches = get.id_string_matches(session, user_id=user_id)
+        self.column_names = get.report_column_names(session, report_id=self.submission.report_id)
 
     def insert_report_id(self) -> 'Processor':
         pass
@@ -179,6 +180,7 @@ class Processor:
             "territory": self.territory,
             "specified_customer": self.specified_customer,
             "customer_proportions_by_state": self.customer_branch_proportions,
+            "column_names": self.column_names
         }
         try:
             ppdata: PreProcessedData = preprocessor.preprocess(**optional_params)

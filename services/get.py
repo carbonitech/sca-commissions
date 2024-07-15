@@ -125,6 +125,11 @@ def report_name_by_id(db: Session, report_id: int) -> str:
     if result:
         return result[0]
 
+def report_column_names(db: Session, report_id: int) -> list[dict]:
+    sql = sqlalchemy.select(REPORT_COL_NAMES).where(REPORT_COL_NAMES.report_id == report_id)
+    result = db.execute(sql).mappings().all()
+    return result
+
 def all_manufacturers(db: Session) -> dict:
     sql = sqlalchemy.select(MANUFACTURERS.id,MANUFACTURERS.name).where(MANUFACTURERS.deleted == None)
     query_result = db.execute(sql).fetchall()

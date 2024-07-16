@@ -66,6 +66,8 @@ class PreProcessor(AbstractPreProcessor):
         result = data.loc[:, ["customer", city, state, sales, commission]]
         result = result.apply(self.upper_all_str)
         result["id_string"] = result[["customer", city, state]].apply("_".join, axis=1)
+        if sales != "inv_amt":
+            result.rename(columns={sales: "inv_amt"}, inplace=True)
         result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result[["id_string", sales, commission]])
 

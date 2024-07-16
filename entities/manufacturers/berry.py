@@ -194,6 +194,8 @@ class PreProcessor(AbstractPreProcessor):
         commission: str = "comm_amt"
         total_comm: float = kwargs.get("total_commission_amount")
 
+        data.columns = data.columns[:-2].to_list() + ["cost", "perc"]
+
         return self.pos_result(
             data=data,
             customer=customer,

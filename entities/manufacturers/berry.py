@@ -92,6 +92,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result[["id_string", sales, commission]].rename(
             columns={sales: "inv_amt", commission: "comm_amt"}
         )
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _baker_report_preprocessing(

@@ -51,6 +51,7 @@ class PreProcessor(AbstractPreProcessor):
         result = result[["id_string", sales, commission]].rename(
             columns={sales: "inv_amt", commission: "comm_amt"}
         )
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _coburn_report_preprocessing(
@@ -136,8 +137,7 @@ class PreProcessor(AbstractPreProcessor):
             )
         result = data.loc[:, ["id_string", sales, commission]]
         result = result.apply(self.upper_all_str)
-        types = {"id_string": object, sales: float, commission: float}
-        result = result.astype(types)
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _lennox_report_preprocessing(
@@ -242,6 +242,7 @@ class PreProcessor(AbstractPreProcessor):
             "_".join, axis=1
         )
         result = result[["id_string", sales, commission]]
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _baker_report_preprocessing(

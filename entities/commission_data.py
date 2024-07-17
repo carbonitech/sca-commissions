@@ -15,7 +15,7 @@ class PreProcessedData:
 
     def get_abs_sum(self, col: DollarFigCol) -> SumWithSign:
         amount = self.data[col].sum()
-        return sign(amount), abs(amount)
+        return sign(amount), abs(amount) / 100
 
     def __post_init__(self) -> None:
         sales_sign, sales_amount = self.get_abs_sum("inv_amt")

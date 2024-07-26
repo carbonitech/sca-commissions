@@ -43,13 +43,7 @@ class Processor:
     report_id: int
     standard_commission_rate: float|None
     split: float
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
     error_table: pd.DataFrame
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
     branches: pd.DataFrame
     id_sting_match_supplement: pd.DataFrame
     id_string_matches: pd.DataFrame
@@ -120,18 +114,12 @@ class Processor:
             Start out seeing if the match string has been seen before.
             If it hasn't try to match it using a trained Random Forest Classifier
             model.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
             
            Otherwise, fall back on the old method of a composite score of string edit
            distance compared to all existing strings in id_string_matches
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-=======
             
            Otherwise, fall back on the old method of a composite score of string edit
            distance compared to all existing strings in id_string_matches
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
         """
         new_column_cb_id: str = "customer_branch_id"
         new_column_id_string_id: str = "report_branch_ref"
@@ -156,8 +144,6 @@ class Processor:
         # 'id' is the id column of id_string_matches
         new_column_id_string_id_values = merged_with_branches.loc[:,"id"].fillna(0).astype(int).to_list()
         operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
-<<<<<<< HEAD
-<<<<<<< HEAD
 
         ## if there are unmatched values, use the trained model
         unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
@@ -170,44 +156,7 @@ class Processor:
         self.staged_data = operating_data
         return self
 
-=======
 
-        ## if there are unmatched values, use the trained model
-        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string"]]
-        model_matched = self.model_match(unmatched_id_strings)
-
-
-=======
-
-        ## if there are unmatched values, use the trained model
-        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string"]]
-        model_matched = self.model_match(unmatched_id_strings)
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-
-
-        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
-        if not unmatched_id_strings.empty:
-            auto_matched = self.auto_match(unmatched_rows=unmatched_id_strings)
-            auto_matched_index = auto_matched.index
-            # fill the data with auto_matched values
-            operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
-        self.staged_data = operating_data
-        return self
-
-<<<<<<< HEAD
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-=======
-
-        unmatched_id_strings = operating_data.loc[operating_data["customer_branch_id"] == 0, ["id_string","customer_branch_id","report_id"]]
-        if not unmatched_id_strings.empty:
-            auto_matched = self.auto_match(unmatched_rows=unmatched_id_strings)
-            auto_matched_index = auto_matched.index
-            # fill the data with auto_matched values
-            operating_data.loc[auto_matched_index, combined_new_cols] = auto_matched.loc[auto_matched_index, combined_new_cols]
-        self.staged_data = operating_data
-        return self
-
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
     def drop_extra_columns(self) -> 'Processor':
         self.staged_data = self.staged_data.loc[:,["submission_id","customer_branch_id","inv_amt","comm_amt","user_id","report_branch_ref"]]
         return self
@@ -259,13 +208,6 @@ class Processor:
     def set_submission_status(self, status: str) -> 'Processor':
         patch.sub_status(db=self.session, submission_id=self.submission_id, status=status)
         return self
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
 
     def string_edit_score_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """automatically matches unmatched id_string values
@@ -328,8 +270,6 @@ class Processor:
         return pd.DataFrame()
 
     def model_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
-<<<<<<< HEAD
-<<<<<<< HEAD
         """Using a Random Forest Classifier, attempt to match entities.
         If no match is predicted, assign a special default UNKNOWN customer."""
         DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(db=self.session, user_id=self.user_id)
@@ -373,40 +313,10 @@ class Processor:
             novel_value = row["id_string"]
             entity_alias = row["entity_alias"]
             return trigram_similarity(novel_value, entity_alias)
-=======
-        """ 
-            As of 2023-12-24, this describes the model's parameters and performance
-
-            Best Parameters: {'max_depth': None, 'n_estimators': 500}
-            Best Score: 0.8837260834308471
-            Classification Report on Test Set:
-                        precision    recall  f1-score   support
-
-                    0       0.90      0.90      0.90       786
-                    1       0.90      0.90      0.90       776
-
-            accuracy                            0.90      1562
-            macro avg       0.90      0.90      0.90      1562
-            weighted avg    0.90      0.90      0.90      1562
-
-            This performance assumes a threshold probability of 0.5 to classify a potential
-            match as True or False (as an entity match).
-
-            Therefore, auto-matching to an entity will be executed if the max score in a comparison
-            is >= 0.5.
-        """
-        import numpy as np
-        rows = unmatched_rows.copy()
-        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
-        entities_w_alias['report_name'] = self.report_name
-        entities_w_alias['manufacturer'] = self.manufacturer_name
-        RandomForestModel: RandomForestClassifier = joblib.load('./app/rf_model_n_500_2023_12_24.joblib')
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
         
         def match_with_model(id_string: str) -> int:
             """score each row's sting-edit distance against the entity list"""
             nonlocal entities_w_alias
-<<<<<<< HEAD
             entities_w_alias['id_string'] = id_string
 
             entities_w_alias['indel_score'] = entities_w_alias[['id_string', 'entity_alias']].apply(indel_score, axis=1)
@@ -415,7 +325,6 @@ class Processor:
             entities_w_alias['trigram_score'] = entities_w_alias[['id_string', 'entity_alias']].apply(trigram_score, axis=1)
             entities_w_alias['len_match'] = entities_w_alias['id_string'].apply(len)
             entities_w_alias['len_entity'] = entities_w_alias['entity_alias'].apply(len)
-=======
             entities_w_alias['match_string'] = id_string
 
             def score_against_entities(row: pd.Series) -> float:
@@ -434,7 +343,6 @@ class Processor:
             entities_w_alias['len_match'] = entities_w_alias['match_string'].apply(len)
             entities_w_alias['len_entity'] = entities_w_alias['entity_alias'].apply(len)
 
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
             # dummies get a little funny, because generating dummies from the data itself will leave out a lot of columns that were
             # in the training data
             dummies_manf = pd.get_dummies(entities_w_alias['manufacturer'], drop_first=True)
@@ -451,7 +359,6 @@ class Processor:
                 dummies_report[missing] = False
             dummies = dummies_manf.join(dummies_report)
             entities_w_alias = entities_w_alias.join(dummies)
-<<<<<<< HEAD
 
             # predict
             predictions = RandomForestModel.predict_proba(X=entities_w_alias.loc[:,model_features])[:,1]
@@ -459,118 +366,15 @@ class Processor:
             max_score = entities_w_alias['predictions'].max()
             if max_score == 0:
                 return DEFAULT_UNMATCHED_ENTITY
-=======
-            # predict
-            predictions = RandomForestModel.predict_proba(X=entities_w_alias.loc[:,model_features])[:,1]
-            entities_w_alias['predictions'] = np.where(predictions>=0.5, predictions, 0)
-            max_score = entities_w_alias['predictions'].max()
-            if max_score == 0:
-                return 0
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
             else:
                 max_score_rows: pd.Series = entities_w_alias.loc[entities_w_alias['predictions'] == max_score, "branch_id"]
                 cb_id: int = max_score_rows.iloc[0]
                 return cb_id
         
         ## match each unmatched row to an id number or 0 if no match
-<<<<<<< HEAD
         rows.loc[:, 'customer_branch_id'] = rows.apply(match_with_model, axis=1)
         return rows
-=======
-        """ 
-            As of 2023-12-24, this describes the model's parameters and performance
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
 
-            Best Parameters: {'max_depth': None, 'n_estimators': 500}
-            Best Score: 0.8837260834308471
-            Classification Report on Test Set:
-                        precision    recall  f1-score   support
-
-<<<<<<< HEAD
-
-=======
-        rows['cb_id'] = rows.apply(match_with_model, axis=1)
-        return rows
-
-
-
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-=======
-                    0       0.90      0.90      0.90       786
-                    1       0.90      0.90      0.90       776
-
-            accuracy                            0.90      1562
-            macro avg       0.90      0.90      0.90      1562
-            weighted avg    0.90      0.90      0.90      1562
-
-            This performance assumes a threshold probability of 0.5 to classify a potential
-            match as True or False (as an entity match).
-
-            Therefore, auto-matching to an entity will be executed if the max score in a comparison
-            is >= 0.5.
-        """
-        import numpy as np
-        rows = unmatched_rows.copy()
-        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
-        entities_w_alias['report_name'] = self.report_name
-        entities_w_alias['manufacturer'] = self.manufacturer_name
-        RandomForestModel: RandomForestClassifier = joblib.load('./app/rf_model_n_500_2023_12_24.joblib')
-        
-        def match_with_model(id_string: str) -> int:
-            """score each row's sting-edit distance against the entity list"""
-            nonlocal entities_w_alias
-            entities_w_alias['match_string'] = id_string
-
-            def score_against_entities(row: pd.Series) -> float:
-                nonlocal entities_w_alias
-                novel_value = row["match_string"]
-                entity_alias = row["entity_alias"]
-                indel = ratio(novel_value, entity_alias)
-                jaro = jaro_winkler(novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT)
-                reverse_jaro = jaro_winkler(
-                    novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
-                )
-                score = indel * jaro * reverse_jaro
-                return score
-
-            entities_w_alias['similarity_score'] = entities_w_alias[['match_string', 'entity_alias']].apply(score_against_entities, axis=1)
-            entities_w_alias['len_match'] = entities_w_alias['match_string'].apply(len)
-            entities_w_alias['len_entity'] = entities_w_alias['entity_alias'].apply(len)
-
-            # dummies get a little funny, because generating dummies from the data itself will leave out a lot of columns that were
-            # in the training data
-            dummies_manf = pd.get_dummies(entities_w_alias['manufacturer'], drop_first=True)
-            dummies_report = pd.get_dummies(entities_w_alias['report_name'], drop_first=True)
-            model_features = list(RandomForestModel.feature_names_in_)
-            model_manfs = set([e for e in model_features if "manufacturer_" in e])
-            model_reports = set([e for e in model_features if "report_name_" in e])
-            # fill missing
-            missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
-            missing_reports = model_reports - set(dummies_report.columns.to_list())
-            for missing in missing_manfs:
-                dummies_manf[missing] = False
-            for missing in missing_reports:
-                dummies_report[missing] = False
-            dummies = dummies_manf.join(dummies_report)
-            entities_w_alias = entities_w_alias.join(dummies)
-            # predict
-            predictions = RandomForestModel.predict_proba(X=entities_w_alias.loc[:,model_features])[:,1]
-            entities_w_alias['predictions'] = np.where(predictions>=0.5, predictions, 0)
-            max_score = entities_w_alias['predictions'].max()
-            if max_score == 0:
-                return 0
-            else:
-                max_score_rows: pd.Series = entities_w_alias.loc[entities_w_alias['predictions'] == max_score, "branch_id"]
-                cb_id: int = max_score_rows.iloc[0]
-                return cb_id
-        
-        ## match each unmatched row to an id number or 0 if no match
-        rows['cb_id'] = rows.apply(match_with_model, axis=1)
-        return rows
-
-
-
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
     
     def process_and_commit(self) -> int:
         try:

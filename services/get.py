@@ -128,8 +128,6 @@ def entities_w_alias(db: Session, user_id: int) -> pd.DataFrame:
     result = db.execute(sql,params={"user_id": user_id}).fetchall()
     return pd.DataFrame(result, columns=["branch_id","entity_alias","user_id"]).drop(columns='user_id')
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 def default_unknown_customer(db: Session, user_id: int) -> int:
     sql = """
         SELECT id
@@ -142,10 +140,6 @@ def default_unknown_customer(db: Session, user_id: int) -> int:
         AND customer_branches.user_id = :user_id"""
     return db.scalar(sql, params=dict(user_id=user_id))
 
-=======
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
-=======
->>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
 def territory(db: Session, user_id: int, manf_id: int) -> list|None:
     sql = (sqlalchemy
            .select(TERRITORIES.territory)

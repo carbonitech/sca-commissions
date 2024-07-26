@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric, ARRAY
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, Numeric, ARRAY
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from jsonapi.jsonapi import JSONAPI_
@@ -83,7 +83,13 @@ class Submission(Base):
     s3_key = Column(String)
     manufacturers_reports = relationship("ManufacturersReport", back_populates="submissions")
     commission_data = relationship("CommissionData", back_populates="submission")
+<<<<<<< HEAD
+=======
     errors = relationship("Error", back_populates="submission")
+<<<<<<< HEAD
+>>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
+=======
+>>>>>>> 85ba42bd03337e168c9df33e69af177185a20c12
 
 class CommissionData(Base):
     __tablename__ = 'commission_data'
@@ -147,7 +153,6 @@ class User(Base):
     manufacturers = relationship("Manufacturer")
     manufacturers_reports = relationship("ManufacturersReport")
     submissions = relationship("Submission")
-    errors = relationship("Error")
     commission_data = relationship("CommissionData")
     file_downloads = relationship("FileDownloads")
     report_form_fields = relationship("ReportFormFields")

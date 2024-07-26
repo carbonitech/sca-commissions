@@ -1,11 +1,9 @@
 import os
-
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, RedirectResponse
 
 from app import resources, middleware_handlers, auth
-from app.listeners import api_adapter_listener, error_listener
 
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')
@@ -56,9 +54,6 @@ app.include_router(resources.submissions, dependencies=PROTECTED)
 app.include_router(resources.commissions, dependencies=PROTECTED)
 app.include_router(resources.relationships, dependencies=PROTECTED)
 app.include_router(resources.manufacturers, dependencies=PROTECTED)
-
-error_listener.setup_error_event_handlers()
-api_adapter_listener.setup_api_event_handlers()
 
 
 @app.get("/")

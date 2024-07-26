@@ -20,7 +20,6 @@ MANUFACTURERS = models.Manufacturer
 REPORTS = models.ManufacturersReport
 COMMISSION_DATA_TABLE = models.CommissionData
 SUBMISSIONS_TABLE = models.Submission
-ERRORS_TABLE = models.Error
 DOWNLOADS = models.FileDownloads
 FORM_FIELDS = models.ReportFormFields
 USERS = models.User
@@ -48,7 +47,6 @@ all_models = [
     REPORTS,
     COMMISSION_DATA_TABLE,
     SUBMISSIONS_TABLE,
-    ERRORS_TABLE,
     DOWNLOADS,
     FORM_FIELDS,
     USERS,

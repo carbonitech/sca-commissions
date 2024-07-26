@@ -1,7 +1,6 @@
 from dotenv import load_dotenv; load_dotenv()
 from os import getenv
 import boto3
-import botocore
 from entities.commission_file import CommissionFile
 
 AWS_ACCESS_ID = getenv('AWS_ACCESS_KEY_ID')

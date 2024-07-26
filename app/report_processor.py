@@ -1,3 +1,4 @@
+from io import BytesIO
 from datetime import datetime
 from typing import Type
 import pandas as pd
@@ -11,12 +12,12 @@ from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.user import User
-from services import get, post, patch
+from services import get, post, patch, s3
 
 
 PREFIX_WEIGHT = 0.3
 MODEL_PREDICTION_THRESHOLD = 0.5
-RFMODEL = './app/rf_model_n_1000_2024_07_26.joblib'
+
 
 class EmptyTableException(Exception):
     def __init__(self, set_complete: bool=False, *args, **kwargs):
@@ -63,6 +64,7 @@ class Processor:
         self.skip = False
         self.session = session
         self.user_id = user.id(self.session) if user.verified else None
+        self.user_name = user.domain(name_only=True)
         self.submission_id = submission_id
         self.submission = submission
         self.preprocessor = preprocessor
@@ -85,6 +87,12 @@ class Processor:
             user_id=self.user_id,
             manf_id=self.submission.manufacturer_id
         )
+
+    def get_RFMODEL(self):
+        s3_key = f'{self.user_name}/CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib'
+        _, model_bytes = s3.get_file(s3_key)
+        model_file = BytesIO(model_bytes)
+        return joblib.load(model_file)
 
     def insert_report_id(self) -> 'Processor':
         self.staged_data.insert(0,"report_id", self.report_id)
@@ -274,7 +282,7 @@ class Processor:
         If no match is predicted, assign a special default UNKNOWN customer."""
         DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(db=self.session, user_id=self.user_id)
         rows = unmatched_rows.copy()
-        RandomForestModel: RandomForestClassifier = joblib.load(RFMODEL)
+        RandomForestModel: RandomForestClassifier = self.get_RFMODEL()
 
         entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
         entities_w_alias['report_name'] = self.report_name

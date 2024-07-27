@@ -12,6 +12,7 @@ from sqlalchemy import (
     TEXT,
     ForeignKey,
     Enum,
+    UniqueConstraint,
     Numeric,
     ARRAY,
 )
@@ -262,6 +263,20 @@ class Territory(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     territory = Column(ARRAY(String))
     manufacturer_id = Column(Integer, ForeignKey("manufacturers.id"))
+
+
+class ReportColumnName(Base):
+    __tablename__ = "report_column_names"
+    id = Column(Integer, primary_key=True)
+    report_id = Column(Integer, ForeignKey("manufacturers_reports.id"))
+    customer = Column(String)
+    city = Column(String)
+    state = Column(String)
+    sales = Column(String)
+    commissions = Column(String)
+    manufacturers_reports = relationship(
+        "ManufacturersReport", back_populates=__tablename__
+    )
 
 
 setattr(

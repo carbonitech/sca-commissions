@@ -12,7 +12,6 @@ from sqlalchemy import (
     TEXT,
     ForeignKey,
     Enum,
-    UniqueConstraint,
     Numeric,
     ARRAY,
 )
@@ -96,7 +95,6 @@ class ManufacturersReport(Base):
     )
     customers = relationship("Customer", back_populates="manufacturers_reports")
     report_column_names = relationship("ReportColumnName", back_populates=__tablename__)
-
 
 
 class Submission(Base):

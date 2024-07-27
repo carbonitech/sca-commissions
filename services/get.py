@@ -2,7 +2,8 @@
 pull data from a database"""
 
 import calendar
-from pydantic import BaseModel, Field
+import json
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 import pandas as pd
 from services.utils import *
@@ -432,16 +433,13 @@ def submission_exists(db: Session, submission_id: int) -> bool:
 
 
 class ReportRecord(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     manufacturer: str
     report_label: str = Field(alias="report-label")
     reporting_month: str = Field(alias="reporting-month")
     reporting_year: str = Field(alias="reporting-year")
     total_commission_amount: float | None = Field(alias="total-commission-amount")
     date: str
-
-    class Config:
-        # allows an unpack of the python-dict in snake_case
-        allow_population_by_field_name = True
 
 
 class ReportCalendar(BaseModel):

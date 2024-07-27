@@ -14,8 +14,7 @@ admin.py
 *_minio_access_key.json
 # ML model generation
 model_training/
-# throwaway PreProcessor tinkering file
-t.py
+rf_model*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,15 +1,16 @@
 from io import BytesIO
 from datetime import datetime
-from typing import Hashable, Type
+from typing import Type
 import pandas as pd
+import numpy as np
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
+import joblib
+from sklearn.ensemble import RandomForestClassifier
 
-from app import event
 from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
-from entities.error import ErrorType
 from entities.user import User
 from services import get, post, patch, s3
 
@@ -159,6 +160,8 @@ class Processor:
         if operating_data.empty:
             raise EmptyTableException(set_complete=True)
 
+        ## first see if the string is already in the database or matches an entity alias exactly
+        # entity alias = name_city_state, in otherwords a branch location
         merged_with_branches = pd.merge(
             operating_data,
             self.id_string_matches,
@@ -217,9 +220,7 @@ class Processor:
 
     def register_commission_data(self) -> "Processor":
         if self.staged_data.empty:
-            # my method for removing rows checks for existing rows with falsy values.
-            # Avoid writing a blank row in the database from an empty dataframe
-            return self
+            raise EmptyTableException()
         else:
             self.staged_data = self.staged_data.dropna()  # just in case
         post.final_data(db=self.session, data=self.staged_data)
@@ -319,7 +320,6 @@ class Processor:
             )
 
             # grab the customer_branch_id with the highest match_score and return the string
-            over_threshold = ref_table["match_score"] > AUTO_MATCH_THRESHOLD
             max_value = ref_table["match_score"] == ref_table["match_score"].max()
 
             top_scoring_branch = ref_table.loc[

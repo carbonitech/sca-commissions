@@ -98,6 +98,7 @@ class ManufacturersReport(Base):
     report_column_names = relationship("ReportColumnName", back_populates=__tablename__)
 
 
+
 class Submission(Base):
     __tablename__ = "submissions"
     id = Column(Integer, primary_key=True)
@@ -192,7 +193,6 @@ class User(Base):
     manufacturers = relationship("Manufacturer")
     manufacturers_reports = relationship("ManufacturersReport")
     submissions = relationship("Submission")
-    errors = relationship("Error")
     commission_data = relationship("CommissionData")
     file_downloads = relationship("FileDownloads")
     report_form_fields = relationship("ReportFormFields")

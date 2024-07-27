@@ -9,6 +9,7 @@ SumWithSign = tuple[SumSign, SumAmount]
 DollarFigCol = Literal["inv_amt", "comm_amt"]
 
 
+
 @dataclass
 class PreProcessedData:
     data: DataFrame

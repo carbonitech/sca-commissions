@@ -4,7 +4,6 @@ modify data in a database"""
 from services.utils import *
 import sqlalchemy
 from jsonapi.jsonapi import jsonapi_error_handling, JSONAPIResponse
-from app import event
 
 
 @jsonapi_error_handling
@@ -28,14 +27,6 @@ def customer(db: Session, customer_id: int, json_data: dict, user: User) -> JSON
     model_name = hyphenated_name(CUSTOMERS)
     hyphenate_json_obj_keys(json_data)
     result = models.serializer.patch_resource(db, json_data, model_name, customer_id).data
-    event.post_event(
-        "Record Updated",
-        CUSTOMERS,
-        id_=customer_id,
-        db=db,
-        **json_data["data"]["attributes"],
-        session=db,
-        user=user)
     return result
 
 @jsonapi_error_handling

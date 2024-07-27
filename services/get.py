@@ -1,7 +1,6 @@
 """Contains all get/select methods for use by the higher level methods to
 pull data from a database"""
 
-import json
 import calendar
 from pydantic import BaseModel, Field
 from datetime import datetime

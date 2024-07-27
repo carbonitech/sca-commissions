@@ -192,7 +192,7 @@ async def process_commissions_file(
 
     mfg_preprocessor = MFG_PREPROCESSORS.get(manufacturer_id)
     submission_id = post.submission(db=session, submission=new_sub)
-    mfg_report_processor = report_processor.NewReportStrategy(
+    mfg_report_processor = report_processor.Processor(
         session=session,
         user=user,
         preprocessor=mfg_preprocessor,

@@ -222,6 +222,13 @@ def territory(db: Session, user_id: int, manf_id: int) -> list|None:
     )
     return db.execute(sql).scalar_one_or_none()
 
+def manuf_name_by_id(db: Session, user_id: int, manf_id: int) -> str:
+    sql = (
+        sqlalchemy
+        .select(MANUFACTURERS.name)
+        .where(sqlalchemy.and_(MANUFACTURERS.id == manf_id, MANUFACTURERS.user_id == user_id))
+    )
+    return db.execute(sql).scalar()
 
 def customer_location_proportions_by_state(
     db: Session, user_id: int, customer_id: int, territory: list[str]

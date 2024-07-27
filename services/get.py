@@ -216,7 +216,7 @@ def default_unknown_customer(db: Session, user_id: int) -> int:
             WHERE customers.id = customer_id 
             AND customers.name = 'UNMAPPED') 
         AND customer_branches.user_id = :user_id"""
-    return db.scalar(sql, params=dict(user_id=user_id))
+    return db.scalar(sqlalchemy.text(sql), params=dict(user_id=user_id))
 
 
 def territory(db: Session, user_id: int, manf_id: int) -> list | None:
@@ -242,6 +242,7 @@ def customer_location_proportions_by_state(
             FROM branch_lookup
             WHERE user_id = :user_id and customer_id = :customer_id
             GROUP BY customer, state;"""  # using a view instead of a sqlalchemy model
+    sql = sqlalchemy.text(sql)
     result = db.execute(
         sql, params={"user_id": user_id, "customer_id": customer_id}
     ).fetchall()
@@ -483,12 +484,14 @@ def report_calendar(db: Session, user: User) -> ReportCalendar:
     # all unique reports ported right into a dataframe (alt to read_sql)
     all_manfs_reports = pd.DataFrame(
         db.execute(
-            """SELECT DISTINCT m.name, mr.report_label 
+            sqlalchemy.text(
+                """SELECT DISTINCT m.name, mr.report_label 
                 FROM manufacturers AS m
                 JOIN manufacturers_reports AS mr
                 ON m.id = mr.manufacturer_id
                 WHERE m.deleted IS NULL
-                AND mr.user_id = :user_id;""",
+                AND mr.user_id = :user_id;"""
+            ),
             {"user_id": user_id},
         ).fetchall(),
         columns=["name", "report_label"],

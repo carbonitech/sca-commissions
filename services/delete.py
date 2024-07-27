@@ -6,23 +6,35 @@ from jsonapi.jsonapi import jsonapi_error_handling
 from datetime import datetime
 import sqlalchemy
 
+
 @jsonapi_error_handling
 def submission(submission_id: int, session: Session, user: User) -> None:
     if not matched_user(user, SUBMISSIONS_TABLE, submission_id, session):
         raise UserMisMatch()
-    sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.submission_id == submission_id)
-    sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(SUBMISSIONS_TABLE.id == submission_id)
+    sql_commission = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(
+        COMMISSION_DATA_TABLE.submission_id == submission_id
+    )
+    sql_submission = sqlalchemy.delete(SUBMISSIONS_TABLE).where(
+        SUBMISSIONS_TABLE.id == submission_id
+    )
     session.execute(sql_commission)
     session.execute(sql_submission)
     session.commit()
     return
 
+
 @jsonapi_error_handling
 def branch(db: Session, branch_id: int) -> None:
     _now = datetime.now()
-    db.execute("UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id", {"branch_id": branch_id, "current_time": _now})
+    db.execute(
+        sqlalchemy.text(
+            "UPDATE customer_branches SET deleted = :current_time WHERE id = :branch_id"
+        ),
+        {"branch_id": branch_id, "current_time": _now},
+    )
     db.commit()
     return
+
 
 @jsonapi_error_handling
 def mapping(db: Session, mapping_id: int) -> None:
@@ -32,35 +44,46 @@ def mapping(db: Session, mapping_id: int) -> None:
     db.commit()
     return
 
+
 @jsonapi_error_handling
 def customer(db: Session, customer_id: int) -> None:
     current_time = datetime.now()
     sql = """UPDATE customers SET deleted = :current_time WHERE id = :customer_id;"""
-    db.execute(sql, {"current_time": current_time, "customer_id": customer_id})
+    db.execute(
+        sqlalchemy.text(sql), {"current_time": current_time, "customer_id": customer_id}
+    )
     db.commit()
     return
+
 
 @jsonapi_error_handling
 def manufacturer(db: Session, manuf_id: int, user: User) -> None:
     return __soft_delete(db=db, table=MANUFACTURERS, _id=manuf_id, user=user)
 
+
 @jsonapi_error_handling
 def representative(db: Session, rep_id: int, user: User) -> None:
     return __soft_delete(db=db, table=REPS, _id=rep_id, user=user)
+
 
 @jsonapi_error_handling
 def commission_data_line(db: Session, row_id: int, user: User) -> None:
     if not matched_user(user, COMMISSION_DATA_TABLE, row_id, db):
         raise UserMisMatch()
-    sql = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(COMMISSION_DATA_TABLE.id == row_id)
+    sql = sqlalchemy.delete(COMMISSION_DATA_TABLE).where(
+        COMMISSION_DATA_TABLE.id == row_id
+    )
     db.execute(sql)
     db.commit()
     return
+
 
 def __soft_delete(db: Session, table: models.Base, _id: int, user: User):
     if not matched_user(user, table, _id, db):
         raise UserMisMatch()
     current_time = datetime.now()
-    sql = f"""UPDATE {table.__tablename__} SET deleted = :current_time WHERE id = :_id;"""
+    sql = sqlalchemy.text(
+        f"""UPDATE {table.__tablename__} SET deleted = :current_time WHERE id = :_id;"""
+    )
     db.execute(sql, {"current_time": current_time, "_id": _id})
     db.commit()

@@ -428,3 +428,102 @@ def submission_exists(db: Session, submission_id: int) -> bool:
     )
     result = db.execute(sql).fetchone()
     return True if result else False
+
+
+class ReportRecord(BaseModel):
+    manufacturer: str
+    report_label: str = Field(alias="report-label")
+    reporting_month: str = Field(alias="reporting-month")
+    reporting_year: str = Field(alias="reporting-year")
+    total_commission_amount: float | None = Field(alias="total-commission-amount")
+    date: str
+
+    class Config:
+        # allows an unpack of the python-dict in snake_case
+        allow_population_by_field_name = True
+
+
+class ReportCalendar(BaseModel):
+    data: list[ReportRecord]
+
+
+def report_calendar(db: Session, user: User) -> ReportCalendar:
+    """Return an object containing every month of the current year and
+    showing the total_commission_value (user input upon report submission)
+    for each manufacturer's report"""
+    today = datetime.today().date()
+    user_id: int = user.id(db)
+    # at the rollover of the new-year, we want to keep seeing December until February
+    if today.month == 1:
+        include_dec_py = True
+    else:
+        include_dec_py = False
+    submitted_list_q = """
+        SELECT name, report_label, reporting_year, reporting_month, total_commission_amount
+        FROM submitted_reports
+        WHERE user_id = %s
+        AND
+    """
+    if include_dec_py:
+        submitted_list_q += """ (reporting_year = %s OR (reporting_year = %s AND reporting_month = %s));"""
+        params = (user_id, today.year, today.year - 1, 12)
+    else:
+        submitted_list_q += """ reporting_year = %s;"""
+        params = (user_id, today.year)
+    # the list of submitted reports, which may have a lot of entities missing at first
+    submitted_list = pd.read_sql(submitted_list_q, con=db.get_bind(), params=params)
+    submitted_list = submitted_list[
+        [
+            "name",
+            "report_label",
+            "reporting_month",
+            "reporting_year",
+            "total_commission_amount",
+        ]
+    ]
+    # all unique reports ported right into a dataframe (alt to read_sql)
+    all_manfs_reports = pd.DataFrame(
+        db.execute(
+            """SELECT DISTINCT m.name, mr.report_label 
+                FROM manufacturers AS m
+                JOIN manufacturers_reports AS mr
+                ON m.id = mr.manufacturer_id
+                WHERE m.deleted IS NULL
+                AND mr.user_id = :user_id;""",
+            {"user_id": user_id},
+        ).fetchall(),
+        columns=["name", "report_label"],
+    )
+    # expand with all months-years, no other data
+    report_full_list = list()
+    for month in range(1, 13):
+        temp = all_manfs_reports.copy()
+        temp["reporting_month"] = month
+        temp["reporting_year"] = today.year
+        report_full_list.append(temp)
+    if include_dec_py:
+        temp = all_manfs_reports.copy()
+        temp["reporting_month"] = 12
+        temp["reporting_year"] = today.year - 1
+        report_full_list.append(temp)
+
+    report_full_list = pd.concat(report_full_list)
+    # add total_commission_amount column with amounts where received (including 0) and no amounts where not received
+    filled_list = report_full_list.merge(
+        submitted_list,
+        how="left",
+        on=["name", "report_label", "reporting_month", "reporting_year"],
+    )
+    # make a date column
+    filled_list["date"] = pd.to_datetime(
+        filled_list["reporting_year"].astype(str)
+        + "-"
+        + filled_list["reporting_month"].astype(str)
+        + "-01"
+    ).dt.date.astype(str)
+    filled_list = filled_list.rename(columns={"name": "manufacturer"})
+    response = [
+        ReportRecord(**record)
+        for record in json.loads(filled_list.to_json(orient="records"))
+    ]
+    return ReportCalendar(data=response)

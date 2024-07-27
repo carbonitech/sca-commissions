@@ -1,6 +1,8 @@
 import re
+from sqlalchemy import text
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
+
 
 @dataclass
 class User:
@@ -11,11 +13,12 @@ class User:
 
     def domain(self, name_only=False) -> str:
         if self.verified:
-            domain = re.search(r"(.*)@(.*)",self.email)[2]
+            domain = re.search(r"(.*)@(.*)", self.email)[2]
             if name_only:
-                return '.'.join(domain.split('.')[:-1])
+                return ".".join(domain.split(".")[:-1])
             else:
                 return domain
 
     def id(self, db: Session) -> int:
-        return db.execute("SELECT id FROM users WHERE company_domain = :domain", {"domain": self.domain()}).scalar_one_or_none()
+        sql = text("""SELECT id FROM users WHERE company_domain = :domain""")
+        return db.execute(sql, {"domain": self.domain()}).scalar_one_or_none()

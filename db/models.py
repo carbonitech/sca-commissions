@@ -122,17 +122,6 @@ class Submission(Base):
         "ManufacturersReport", back_populates="submissions"
     )
     commission_data = relationship("CommissionData", back_populates="submission")
-    errors = relationship("Error", back_populates="submission")
-
-
-class Error(Base):
-    __tablename__ = "errors"
-    id = Column(Integer, primary_key=True)
-    submission_id = Column(Integer, ForeignKey("submissions.id"))
-    reason = Column(Integer)
-    row_data = Column(TEXT)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    submission = relationship("Submission", back_populates="errors")
 
 
 class CommissionData(Base):

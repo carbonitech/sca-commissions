@@ -86,20 +86,6 @@ def location(
     return __get_X(db, query, user, LOCATIONS, location_id)
 
 
-def errors(db: Session, user: User, submission_id: int = 0) -> pd.DataFrame:
-    """get all report processing errors for all submissions by user, or a specific submission"""
-    sql = sqlalchemy.select(ERRORS_TABLE).where(ERRORS_TABLE.user_id == user.id(db=db))
-    if submission_id:
-        sql = sql.where(ERRORS_TABLE.submission_id == submission_id)
-    result = pd.read_sql(sql, con=db.get_bind())
-    if result.empty:
-        return result
-    result.loc[:, "row_data"] = result.loc[:, "row_data"].apply(
-        lambda json_str: json.loads(json_str)
-    )
-    return result
-
-
 def all_submissions(db: Session, user: User) -> pd.DataFrame:
     subs = SUBMISSIONS_TABLE
     reports = REPORTS
@@ -211,11 +197,27 @@ def id_string_matches(db: Session, user_id: int) -> pd.DataFrame:
         :, ["match_string", "report_id", "customer_branch_id", "id"]
     ]
 
+def entities_w_alias(db: Session, user_id: int) -> pd.DataFrame:
+    sql = """select * from branches_w_std_aliases where user_id = :user_id;"""
+    result = db.execute(sql,params={"user_id": user_id}).fetchall()
+    return pd.DataFrame(result, columns=["branch_id","entity_alias","user_id"]).drop(columns='user_id')
 
-def territory(db: Session, user_id: int, manf_id: int) -> list | None:
-    sql = sqlalchemy.select(TERRITORIES.territory).where(
-        sqlalchemy.and_(
-            TERRITORIES.manufacturer_id == manf_id, TERRITORIES.user_id == user_id
+def default_unknown_customer(db: Session, user_id: int) -> int:
+    sql = """
+        SELECT id
+        FROM customer_branches
+        WHERE EXISTS (
+            SELECT 1 
+            FROM customers
+            WHERE customers.id = customer_id 
+            AND customers.name = 'UNMAPPED') 
+        AND customer_branches.user_id = :user_id"""
+    return db.scalar(sql, params=dict(user_id=user_id))
+
+def territory(db: Session, user_id: int, manf_id: int) -> list|None:
+    sql = (sqlalchemy
+           .select(TERRITORIES.territory)
+           .where(sqlalchemy.and_(TERRITORIES.manufacturer_id == manf_id, TERRITORIES.user_id == user_id))
         )
     )
     return db.execute(sql).scalar_one_or_none()

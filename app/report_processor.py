@@ -199,9 +199,9 @@ class Processor:
                 model_matches_w_ids, on=["id_string", "report_id"]
             )
             model_matched_index = matched_id_strings.index
-            operating_data.loc[model_matched_index, combined_new_cols] = model_matched[
-                combined_new_cols
-            ]
+            operating_data.loc[model_matched_index, combined_new_cols] = (
+                model_matches_w_ids[combined_new_cols]
+            )
         self.staged_data = operating_data
         return self
 

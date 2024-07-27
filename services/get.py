@@ -199,7 +199,12 @@ def id_string_matches(db: Session, user_id: int) -> pd.DataFrame:
 
 
 def entities_w_alias(db: Session, user_id: int) -> pd.DataFrame:
-    sql = """select * from branches_w_std_aliases where user_id = :user_id;"""
+    sql = sqlalchemy.text(
+        """
+        SELECT *
+        FROM branches_w_std_aliases
+        WHERE user_id = :user_id;"""
+    )
     result = db.execute(sql, params={"user_id": user_id}).fetchall()
     return pd.DataFrame(result, columns=["branch_id", "entity_alias", "user_id"]).drop(
         columns="user_id"

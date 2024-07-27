@@ -287,6 +287,23 @@ class Processor:
         entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
         entities_w_alias["report_name"] = self.report_name
         entities_w_alias["manufacturer"] = self.manufacturer_name
+        entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
+        dummies_manf = pd.get_dummies(entities_w_alias["manufacturer"], drop_first=True)
+        dummies_report = pd.get_dummies(
+            entities_w_alias["report_name"], drop_first=True
+        )
+        model_features = list(RandomForestModel.feature_names_in_)
+        model_manfs = set([e for e in model_features if "manufacturer_" in e])
+        model_reports = set([e for e in model_features if "report_name_" in e])
+        # fill missing
+        missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
+        missing_reports = model_reports - set(dummies_report.columns.to_list())
+        for missing in missing_manfs:
+            dummies_manf[missing] = False
+        for missing in missing_reports:
+            dummies_report[missing] = False
+        dummies = dummies_manf.join(dummies_report)
+        entities_w_alias = entities_w_alias.join(dummies)
 
         def indel_score(row: pd.Series) -> float:
             novel_value = row["id_string"]
@@ -342,7 +359,6 @@ class Processor:
                 ["id_string", "entity_alias"]
             ].apply(trigram_score, axis=1)
             entities_w_alias["len_match"] = entities_w_alias["id_string"].apply(len)
-            entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
             entities_w_alias["match_string"] = id_string
 
             def score_against_entities(row: pd.Series) -> float:
@@ -363,28 +379,6 @@ class Processor:
                 ["match_string", "entity_alias"]
             ].apply(score_against_entities, axis=1)
             entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(len)
-            entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
-
-            # dummies get a little funny, because generating dummies from the data itself will leave out a lot of columns that were
-            # in the training data
-            dummies_manf = pd.get_dummies(
-                entities_w_alias["manufacturer"], drop_first=True
-            )
-            dummies_report = pd.get_dummies(
-                entities_w_alias["report_name"], drop_first=True
-            )
-            model_features = list(RandomForestModel.feature_names_in_)
-            model_manfs = set([e for e in model_features if "manufacturer_" in e])
-            model_reports = set([e for e in model_features if "report_name_" in e])
-            # fill missing
-            missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
-            missing_reports = model_reports - set(dummies_report.columns.to_list())
-            for missing in missing_manfs:
-                dummies_manf[missing] = False
-            for missing in missing_reports:
-                dummies_report[missing] = False
-            dummies = dummies_manf.join(dummies_report)
-            entities_w_alias = entities_w_alias.join(dummies)
 
             # predict
             predictions = RandomForestModel.predict_proba(

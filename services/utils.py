@@ -112,7 +112,7 @@ def preverified(access_token: str) -> dict | None:
         AND expires_at > :current_time ;
         """
     )
-    result = session.execute(sql, parameters).one_or_none()
+    result = session.execute(sql, parameters).mappings().one_or_none()
     session.close()
     return result
 

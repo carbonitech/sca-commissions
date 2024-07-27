@@ -275,88 +275,6 @@ class Processor:
         )
         return self
 
-    def string_edit_score_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
-        """automatically matches unmatched id_string values
-        using a combination of string editing methods with equal weights
-
-        - normalized indel similarity in the range [0, 1], as (1 - normalized_distance)
-        - jaro-winkler
-        - jaro-winkler (reversed)
-
-        Successfully matched values are registed in the database reference table
-        Customer_branch_id's are returned as a pd.Series"""
-
-        # columns in data: ["id_string","customer_branch_id","report_id"]
-
-        # create reference table using a combination of existing match strings
-        # and strings generated from the existing customer branches
-        # both tables have matching columns for a union-like join
-
-        ref_table = pd.concat(
-            [self.id_string_matches, self.id_sting_match_supplement], ignore_index=True
-        )
-
-        def score_unmatched(unmatched_value: str, *args, **kwargs) -> pd.Series:
-            """Used for the apply function to score each unmatched row value against
-            the reference table"""
-
-            ref_table.loc[:, "indel"] = ref_table["match_string"].apply(
-                lambda val: ratio(val, unmatched_value)
-            )
-            ref_table.loc[:, "jaro_winkler"] = ref_table["match_string"].apply(
-                lambda val: jaro_winkler(
-                    val, unmatched_value, prefix_weight=PREFIX_WEIGHT
-                )
-            )
-            ref_table.loc[:, "reverse_jaro_winkler"] = ref_table["match_string"].apply(
-                lambda val: jaro_winkler(
-                    val[::-1], unmatched_value[::-1], prefix_weight=PREFIX_WEIGHT
-                )
-            )
-            # multiply first_n and full_string scores to calculate composite score
-            ref_table["match_score"] = (
-                ref_table["indel"]
-                * ref_table["jaro_winkler"]
-                * ref_table["reverse_jaro_winkler"]
-            )
-
-            # grab the customer_branch_id with the highest match_score and return the string
-            max_value = ref_table["match_score"] == ref_table["match_score"].max()
-
-            top_scoring_branch = ref_table.loc[
-                max_value,
-                ["customer_branch_id", "match_score"],
-            ]
-            # if more than one match (likely duplicated data), take the lowest customer_branch_id
-            top_scoring_branch = top_scoring_branch.loc[
-                top_scoring_branch["customer_branch_id"]
-                == top_scoring_branch["customer_branch_id"].min(),
-                :,
-            ]
-            if top_scoring_branch.empty:
-                return pd.Series([0, 0])
-            else:
-                return pd.Series(top_scoring_branch.iloc[0].to_list())
-
-        unmatched_rows[["customer_branch_id", "match_score"]] = unmatched_rows[
-            "id_string"
-        ].apply(score_unmatched, result_type="expand")
-        # columns in data: ["id_string","customer_branch_id","report_id", "match_score"]  -- customer_branch_id has been updated
-        matched_rows = unmatched_rows[unmatched_rows["customer_branch_id"] > 0]
-        if not matched_rows.empty:
-            # columns in this data: ["report_branch_ref"/id, "id_string"/"match_string", "report_id", "customer_branch_id"]
-            matches_w_ids = post.auto_matched_strings(
-                db=self.session, user_id=self.user_id, data=matched_rows
-            )  # returns unique rows with id nums
-            matched_rows = matched_rows.reset_index().merge(
-                matches_w_ids[["report_branch_ref", "id_string", "report_id"]],
-                on=["id_string", "report_id"],
-            )
-            # recover index after merge
-            result = matched_rows.set_index("index")
-            return result
-        return pd.DataFrame()
-
     def model_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """Using a Random Forest Classifier, attempt to match entities.
         If no match is predicted, assign a special default UNKNOWN customer."""
@@ -485,8 +403,9 @@ class Processor:
                 cb_id: int = max_score_rows.iloc[0]
                 return cb_id
 
-        ## match each unmatched row to an id number or 0 if no match
-        rows.loc[:, "customer_branch_id"] = rows.apply(match_with_model, axis=1)
+        ## match each unmatched row using the model, or a special default
+        rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(match_with_model)
+        del RandomForestModel
         return rows
 
     def process_and_commit(self) -> int:

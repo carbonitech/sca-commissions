@@ -103,6 +103,7 @@ class Processor:
         self.manufacturer_name = get.manuf_name_by_id(
             db=session, user_id=self.user_id, manf_id=self.submission.manufacturer_id
         )
+        self.column_names = get.report_column_names(self.session, self.report_id)
 
     def get_RFMODEL(self):
         s3_key = (

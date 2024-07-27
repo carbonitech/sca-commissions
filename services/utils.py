@@ -104,7 +104,14 @@ def preverified(access_token: str) -> dict | None:
     session = SESSIONLOCAL()
     parameters = {"access_token": access_token, "current_time": int(time.time())}
     # without DISTINCT, may run into multiple of the same token cached
-    sql = "SELECT DISTINCT nickname, name, email, verified FROM user_tokens WHERE access_token = :access_token and expires_at > :current_time"
+    sql = sqlalchemy.text(
+        """
+        SELECT DISTINCT nickname, name, email, verified
+        FROM user_tokens
+        WHERE access_token = :access_token
+        AND expires_at > :current_time ;
+        """
+    )
     result = session.execute(sql, parameters).one_or_none()
     session.close()
     return result

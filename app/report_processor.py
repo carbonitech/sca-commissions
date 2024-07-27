@@ -1,5 +1,4 @@
 from io import BytesIO
-import joblib
 from datetime import datetime
 from typing import Hashable, Type
 import pandas as pd
@@ -12,12 +11,12 @@ from entities.commission_data import PreProcessedData
 from entities.submission import NewSubmission
 from entities.error import ErrorType
 from entities.user import User
-from services import get, post, patch, delete, s3
+from services import get, post, patch, s3
 from sklearn.ensemble import RandomForestClassifier
 
 
-PREFIX_WEIGHT = 0.3  # ditto
-MODEL_PREDICTION_THRESHOLD = 0.75  # based on the eye-ball test
+PREFIX_WEIGHT = 0.3
+MODEL_PREDICTION_THRESHOLD = 0.5
 
 
 class EmptyTableException(Exception):
@@ -38,6 +37,23 @@ class Processor:
     and does manufacturer-specific preprocessing steps. The preprocessor is expected to return the same format
     for all manufacturers.
     """
+
+    skip: bool
+    session: Session
+    user_id: int | None
+    submission_id: int | None
+    submission: NewSubmission
+    preprocessor = Type[AbstractPreProcessor]
+    report_id: int
+    standard_commission_rate: float | None
+    split: float
+    error_table: pd.DataFrame
+    branches: pd.DataFrame
+    id_sting_match_supplement: pd.DataFrame
+    id_string_matches: pd.DataFrame
+    territory: list[str]
+    customer_branch_proportions: pd.DataFrame
+    specified_customer: tuple[int, str]
 
     def __init__(
         self,
@@ -165,6 +181,7 @@ class Processor:
             merged_with_branches.loc[:, "id"].fillna(0).astype(int).to_list()
         )
         operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
+
         ## if there are unmatched values, use the trained model
         unmatched_id_strings = operating_data.loc[
             operating_data["customer_branch_id"] == 0,
@@ -273,6 +290,7 @@ class Processor:
         # create reference table using a combination of existing match strings
         # and strings generated from the existing customer branches
         # both tables have matching columns for a union-like join
+
         ref_table = pd.concat(
             [self.id_string_matches, self.id_sting_match_supplement], ignore_index=True
         )

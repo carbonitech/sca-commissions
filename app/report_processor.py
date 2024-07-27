@@ -12,7 +12,6 @@ from entities.submission import NewSubmission
 from entities.error import ErrorType
 from entities.user import User
 from services import get, post, patch, s3
-from sklearn.ensemble import RandomForestClassifier
 
 
 PREFIX_WEIGHT = 0.3

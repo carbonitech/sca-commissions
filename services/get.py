@@ -162,6 +162,19 @@ def report_name_by_id(db: Session, report_id: int) -> str:
         return result[0]
 
 
+def report_column_names(db: Session, report_id: int) -> list[dict]:
+    sql = """
+        SELECT * FROM report_column_names
+        WHERE report_id = :report_id;
+    """
+    result = (
+        db.execute(sqlalchemy.text(sql), params=dict(report_id=report_id))
+        .mappings()
+        .all()
+    )
+    return result
+
+
 def all_manufacturers(db: Session) -> dict:
     sql = sqlalchemy.select(MANUFACTURERS.id, MANUFACTURERS.name).where(
         MANUFACTURERS.deleted == None

@@ -10,15 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    File,
-    UploadFile,
-    Depends,
-    Form,
-    BackgroundTasks,
-)
+from fastapi import APIRouter, HTTPException, UploadFile, Depends, Form, BackgroundTasks
 
 from app import report_processor
 from entities import submission

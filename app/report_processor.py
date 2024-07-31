@@ -1,13 +1,10 @@
-import gc
-from io import BytesIO
+import json
 from datetime import datetime
 from typing import Type
 import pandas as pd
-import numpy as np
+import requests as r
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
-import joblib
-from sklearn.ensemble import RandomForestClassifier
 
 from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
@@ -15,16 +12,7 @@ from entities.submission import NewSubmission
 from entities.user import User
 from services import get, post, patch, s3
 
-
 PREFIX_WEIGHT = 0.3
-MODEL_PREDICTION_THRESHOLD = 0.5
-
-
-def get_RFMODEL() -> RandomForestClassifier:
-    s3_key = "CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib"
-    _, model_bytes = s3.get_file(s3_key)
-    model_file = BytesIO(model_bytes)
-    return joblib.load(model_file)
 
 
 class EmptyTableException(Exception):
@@ -62,7 +50,6 @@ class Processor:
     territory: list[str]
     customer_branch_proportions: pd.DataFrame
     specified_customer: tuple[int, str]
-    rf_model = get_RFMODEL()
 
     def __init__(
         self,
@@ -282,7 +269,11 @@ class Processor:
         DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(
             db=self.session, user_id=self.user_id
         )
-        RandomForestModel = self.rf_model
+        MODEL_SERVICE_URL = (
+            "https://data.carbonitech.com/prediction/string_matching/cmmssns"
+        )
+        model_features = r.get(MODEL_SERVICE_URL + "/model-features").json().get("data")
+
         rows = unmatched_rows.copy()
 
         entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
@@ -293,7 +284,6 @@ class Processor:
         dummies_report = pd.get_dummies(
             entities_w_alias["report_name"], drop_first=True
         )
-        model_features = list(RandomForestModel.feature_names_in_)
         model_manfs = set([e for e in model_features if "manufacturer_" in e])
         model_reports = set([e for e in model_features if "report_name_" in e])
         # fill missing
@@ -359,46 +349,19 @@ class Processor:
             entities_w_alias["trigram_score"] = entities_w_alias[
                 ["id_string", "entity_alias"]
             ].apply(trigram_score, axis=1)
-            entities_w_alias["len_match"] = entities_w_alias["id_string"].apply(len)
+            entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
             entities_w_alias["match_string"] = id_string
-
-            def score_against_entities(row: pd.Series) -> float:
-                nonlocal entities_w_alias
-                novel_value = row["match_string"]
-                entity_alias = row["entity_alias"]
-                indel = ratio(novel_value, entity_alias)
-                jaro = jaro_winkler(
-                    novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT
-                )
-                reverse_jaro = jaro_winkler(
-                    novel_value[::-1],
-                    entity_alias[::-1],
-                    prefix_weight=PREFIX_WEIGHT,
-                )
-                score = indel * jaro * reverse_jaro
-                return score
-
-            entities_w_alias["similarity_score"] = entities_w_alias[
-                ["match_string", "entity_alias"]
-            ].apply(score_against_entities, axis=1)
             entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(len)
 
             # predict
-            predictions = RandomForestModel.predict_proba(
-                X=entities_w_alias.loc[:, model_features]
-            )[:, 1]
-            entities_w_alias["predictions"] = np.where(
-                predictions >= MODEL_PREDICTION_THRESHOLD, predictions, 0
-            )
-            max_score = entities_w_alias["predictions"].max()
-            if max_score == 0:
-                return DEFAULT_UNMATCHED_ENTITY
-            else:
-                max_score_rows: pd.Series = entities_w_alias.loc[
-                    entities_w_alias["predictions"] == max_score, "branch_id"
-                ]
-                cb_id: int = max_score_rows.iloc[0]
-                return cb_id
+            df_as_json = json.loads(entities_w_alias.to_json(orient="split"))
+            prediction = r.post(MODEL_SERVICE_URL, json=df_as_json)
+            try:
+                result = prediction.json().get("result")
+            except Exception:
+                print(f"Error with making request to carbonitech.com: {id_string}")
+                result = None
+            return result if result else DEFAULT_UNMATCHED_ENTITY
 
         ## match each unmatched row using the model, or a special default
         rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(match_with_model)

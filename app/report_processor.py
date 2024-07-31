@@ -191,21 +191,17 @@ class Processor:
             ["id_string", customer_branch_id, "report_id"],
         ]
         if not unmatched_id_strings.empty:
+            original_index = unmatched_id_strings.index
             model_matched = self.model_match(unmatched_id_strings)
-            print(model_matched)
             ref_ids = post.auto_matched_strings(
                 self.session, self.user_id, model_matched
             )
-            print(ref_ids)
             matched_id_strings = model_matched.merge(
                 ref_ids, how="left", on="id_string"
             )
-            print(matched_id_strings)
-            model_matched_index = matched_id_strings.index
-            print(model_matched_index)
-            operating_data.loc[model_matched_index, combined_new_cols] = (
-                matched_id_strings[combined_new_cols]
-            )
+            operating_data.loc[original_index, combined_new_cols] = matched_id_strings[
+                combined_new_cols
+            ]
         self.staged_data = operating_data
         return self
 

@@ -3,17 +3,18 @@ pull data from a database"""
 
 import calendar
 import json
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
 from datetime import datetime
-import pandas as pd
-from services.utils import *
-from jsonapi.jsonapi import jsonapi_error_handling, JSONAPIResponse
-import sqlalchemy
-from sqlalchemy.orm import Session
 
+import sqlalchemy
+import pandas as pd
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, ConfigDict
+from jsonapi.jsonapi import jsonapi_error_handling, JSONAPIResponse
+
+from services.utils import *
 
 CHUNK_SIZE = 10000
-
 
 def __get_X(
     db: Session, query: dict, user: User, model: models.Base, _id: int = 0
@@ -442,9 +443,11 @@ class ReportRecord(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     manufacturer: str
     report_label: str = Field(alias="report-label")
-    reporting_month: str = Field(alias="reporting-month")
-    reporting_year: str = Field(alias="reporting-year")
-    total_commission_amount: float | None = Field(alias="total-commission-amount")
+    reporting_month: int = Field(alias="reporting-month")
+    reporting_year: int = Field(alias="reporting-year")
+    total_commission_amount: Optional[float] = Field(
+        default=None, alias="total-commission-amount"
+    )
     date: str
 
 

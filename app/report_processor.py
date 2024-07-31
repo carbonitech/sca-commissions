@@ -152,9 +152,9 @@ class Processor:
         Otherwise, fall back on the old method of a composite score of string edit
         distance compared to all existing strings in id_string_matches
         """
-        new_column_cb_id: str = "customer_branch_id"
-        new_column_id_string_id: str = "report_branch_ref"
-        combined_new_cols = [new_column_cb_id, new_column_id_string_id]
+        customer_branch_id: str = "customer_branch_id"
+        report_branch_ref: str = "report_branch_ref"
+        combined_new_cols = [customer_branch_id, report_branch_ref]
 
         operating_data = self.staged_data.copy()
 
@@ -172,24 +172,25 @@ class Processor:
             suffixes=(None, "_ref_table"),
         )
         new_column_cb_id_values = (
-            merged_with_branches.loc[:, "customer_branch_id"]
+            merged_with_branches.loc[:, customer_branch_id]
             .fillna(0)
             .astype(int)
             .to_list()
         )
-        operating_data.loc[:, new_column_cb_id] = new_column_cb_id_values
+        operating_data.loc[:, customer_branch_id] = new_column_cb_id_values
 
         # 'id' is the id column of id_string_matches
         new_column_id_string_id_values = (
             merged_with_branches.loc[:, "id"].fillna(0).astype(int).to_list()
         )
-        operating_data.loc[:, new_column_id_string_id] = new_column_id_string_id_values
+        operating_data.loc[:, report_branch_ref] = new_column_id_string_id_values
 
         ## if there are unmatched values, use the trained model
         unmatched_id_strings = operating_data.loc[
-            operating_data["customer_branch_id"] == 0,
-            ["id_string", "customer_branch_id", "report_id"],
+            operating_data[customer_branch_id] == 0,
+            ["id_string", customer_branch_id, "report_id"],
         ]
+        print("op data before", operating_data)
         if not unmatched_id_strings.empty:
             model_matched = self.model_match(unmatched_id_strings)
             model_matches_w_ids = post.auto_matched_strings(
@@ -202,6 +203,7 @@ class Processor:
             operating_data.loc[model_matched_index, combined_new_cols] = (
                 model_matches_w_ids[combined_new_cols]
             )
+            print("matched strings for filling", matched_id_strings)
         self.staged_data = operating_data
         return self
 
@@ -289,7 +291,9 @@ class Processor:
             entities_w_alias["report_name"] = self.report_name
             entities_w_alias["manufacturer"] = self.manufacturer_name
             entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
-            dummies_manf = pd.get_dummies(entities_w_alias["manufacturer"], drop_first=True)
+            dummies_manf = pd.get_dummies(
+                entities_w_alias["manufacturer"], drop_first=True
+            )
             dummies_report = pd.get_dummies(
                 entities_w_alias["report_name"], drop_first=True
             )
@@ -314,7 +318,9 @@ class Processor:
             def jaro_score(row: pd.Series) -> float:
                 novel_value = row["id_string"]
                 entity_alias = row["entity_alias"]
-                return jaro_winkler(novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT)
+                return jaro_winkler(
+                    novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT
+                )
 
             def reverse_jaro_score(row: pd.Series) -> float:
                 novel_value = row["id_string"]
@@ -371,7 +377,9 @@ class Processor:
                         novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT
                     )
                     reverse_jaro = jaro_winkler(
-                        novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
+                        novel_value[::-1],
+                        entity_alias[::-1],
+                        prefix_weight=PREFIX_WEIGHT,
                     )
                     score = indel * jaro * reverse_jaro
                     return score
@@ -379,7 +387,9 @@ class Processor:
                 entities_w_alias["similarity_score"] = entities_w_alias[
                     ["match_string", "entity_alias"]
                 ].apply(score_against_entities, axis=1)
-                entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(len)
+                entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(
+                    len
+                )
 
                 # predict
                 predictions = RandomForestModel.predict_proba(
@@ -399,7 +409,12 @@ class Processor:
                     return cb_id
 
             ## match each unmatched row using the model, or a special default
-            rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(match_with_model)
+            print("rows before", rows)
+            rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(
+                match_with_model
+            )
+            print("rows after", rows)
+            print("default id", DEFAULT_UNMATCHED_ENTITY)
         except Exception as e:
             raise e
         else:

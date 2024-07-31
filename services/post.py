@@ -61,31 +61,25 @@ def auto_matched_strings(db: Session, user_id: int, data: pd.DataFrame) -> pd.Da
     record id string matches in the database from auto-matching
     Return a DataFrame of the inserted values with their id's
     """
-    index = data.index.copy()
     data_cp = data.copy().drop_duplicates()
+    index = data_cp.index.copy()
     data_cp = data_cp.rename(columns={"id_string": "match_string"})
     data_cp.loc[:, "auto_matched"] = True
     data_cp.loc[:, "verified"] = False
     data_cp.loc[:, "user_id"] = user_id
     data_cp.loc[:, "created_at"] = datetime.now()
 
-    # table should have the match_string, report_id, customer_branch_id, verified, auto_matched, user_id, created_at, and match_score
+    # table should have the match_string, report_id, customer_branch_id,
+    # verified, auto_matched, user_id, created_at, and match_score
     data_records = data_cp.to_dict(orient="records")
     insert_stmt = (
-        sqlalchemy.insert(ID_STRINGS)
-        .values(data_records)
-        .returning(
-            ID_STRINGS.id,
-            ID_STRINGS.match_string,
-            ID_STRINGS.report_id,
-            ID_STRINGS.customer_branch_id,
-        )
+        sqlalchemy.insert(ID_STRINGS).values(data_records).returning(ID_STRINGS.id)
     )
     return_results = db.execute(insert_stmt).mappings().all()
     db.commit()
     return (
         pd.DataFrame(return_results)
-        .rename(columns={"id": "report_branch_ref", "match_string": "id_string"})
+        .rename(columns={"id": "report_branch_ref"})
         .set_index(index)
     )
 

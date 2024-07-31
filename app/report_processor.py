@@ -197,7 +197,7 @@ class Processor:
                 self.session, self.user_id, model_matched
             )
             print(ref_ids)
-            matched_id_strings = unmatched_id_strings.merge(
+            matched_id_strings = model_matched.merge(
                 ref_ids, how="left", on="id_string"
             )
             print(matched_id_strings)

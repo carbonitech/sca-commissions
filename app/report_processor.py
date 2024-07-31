@@ -105,6 +105,7 @@ class Processor:
             db=session, user_id=self.user_id, manf_id=self.submission.manufacturer_id
         )
         self.column_names = get.report_column_names(self.session, self.report_id)
+        self.rf_model: RandomForestClassifier = self.get_RFMODEL()
 
     def get_RFMODEL(self):
         s3_key = (
@@ -279,145 +280,130 @@ class Processor:
     def model_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """Using a Random Forest Classifier, attempt to match entities.
         If no match is predicted, assign a special default UNKNOWN customer."""
-        try:
-            DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(
-                db=self.session, user_id=self.user_id
-            )
-            rows = unmatched_rows.copy()
-            RandomForestModel: RandomForestClassifier = self.get_RFMODEL()
+        DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(
+            db=self.session, user_id=self.user_id
+        )
+        RandomForestModel = self.rf_model
+        rows = unmatched_rows.copy()
 
-            entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
-            entities_w_alias["report_name"] = self.report_name
-            entities_w_alias["manufacturer"] = self.manufacturer_name
-            entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
-            dummies_manf = pd.get_dummies(
-                entities_w_alias["manufacturer"], drop_first=True
-            )
-            dummies_report = pd.get_dummies(
-                entities_w_alias["report_name"], drop_first=True
-            )
-            model_features = list(RandomForestModel.feature_names_in_)
-            model_manfs = set([e for e in model_features if "manufacturer_" in e])
-            model_reports = set([e for e in model_features if "report_name_" in e])
-            # fill missing
-            missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
-            missing_reports = model_reports - set(dummies_report.columns.to_list())
-            for missing in missing_manfs:
-                dummies_manf[missing] = False
-            for missing in missing_reports:
-                dummies_report[missing] = False
-            dummies = dummies_manf.join(dummies_report)
-            entities_w_alias = entities_w_alias.join(dummies)
+        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
+        entities_w_alias["report_name"] = self.report_name
+        entities_w_alias["manufacturer"] = self.manufacturer_name
+        entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
+        dummies_manf = pd.get_dummies(entities_w_alias["manufacturer"], drop_first=True)
+        dummies_report = pd.get_dummies(
+            entities_w_alias["report_name"], drop_first=True
+        )
+        model_features = list(RandomForestModel.feature_names_in_)
+        model_manfs = set([e for e in model_features if "manufacturer_" in e])
+        model_reports = set([e for e in model_features if "report_name_" in e])
+        # fill missing
+        missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
+        missing_reports = model_reports - set(dummies_report.columns.to_list())
+        for missing in missing_manfs:
+            dummies_manf[missing] = False
+        for missing in missing_reports:
+            dummies_report[missing] = False
+        dummies = dummies_manf.join(dummies_report)
+        entities_w_alias = entities_w_alias.join(dummies)
 
-            def indel_score(row: pd.Series) -> float:
-                novel_value = row["id_string"]
+        def indel_score(row: pd.Series) -> float:
+            novel_value = row["id_string"]
+            entity_alias = row["entity_alias"]
+            return ratio(novel_value, entity_alias)
+
+        def jaro_score(row: pd.Series) -> float:
+            novel_value = row["id_string"]
+            entity_alias = row["entity_alias"]
+            return jaro_winkler(novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT)
+
+        def reverse_jaro_score(row: pd.Series) -> float:
+            novel_value = row["id_string"]
+            entity_alias = row["entity_alias"]
+            reverse_jaro = jaro_winkler(
+                novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
+            )
+            return reverse_jaro
+
+        def gen_trigrams(string: str) -> set:
+            return {string[i : i + 3].lower() for i in range(len(string) - 2)}
+
+        def trigram_similarity(left: str, right: str) -> float:
+            left_t_grams = gen_trigrams(left)
+            right_t_grams = gen_trigrams(right)
+            try:
+                return len(left_t_grams & right_t_grams) / len(
+                    left_t_grams | right_t_grams
+                )
+            except ZeroDivisionError:
+                return 0.0
+
+        def trigram_score(row: pd.Series) -> float:
+            novel_value = row["id_string"]
+            entity_alias = row["entity_alias"]
+            return trigram_similarity(novel_value, entity_alias)
+
+        def match_with_model(id_string: str) -> int:
+            """score each row's sting-edit distance against the entity list"""
+            nonlocal entities_w_alias
+            entities_w_alias["id_string"] = id_string
+
+            entities_w_alias["indel_score"] = entities_w_alias[
+                ["id_string", "entity_alias"]
+            ].apply(indel_score, axis=1)
+            entities_w_alias["jaro_score"] = entities_w_alias[
+                ["id_string", "entity_alias"]
+            ].apply(jaro_score, axis=1)
+            entities_w_alias["reverse_jaro_score"] = entities_w_alias[
+                ["id_string", "entity_alias"]
+            ].apply(reverse_jaro_score, axis=1)
+            entities_w_alias["trigram_score"] = entities_w_alias[
+                ["id_string", "entity_alias"]
+            ].apply(trigram_score, axis=1)
+            entities_w_alias["len_match"] = entities_w_alias["id_string"].apply(len)
+            entities_w_alias["match_string"] = id_string
+
+            def score_against_entities(row: pd.Series) -> float:
+                nonlocal entities_w_alias
+                novel_value = row["match_string"]
                 entity_alias = row["entity_alias"]
-                return ratio(novel_value, entity_alias)
-
-            def jaro_score(row: pd.Series) -> float:
-                novel_value = row["id_string"]
-                entity_alias = row["entity_alias"]
-                return jaro_winkler(
+                indel = ratio(novel_value, entity_alias)
+                jaro = jaro_winkler(
                     novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT
                 )
-
-            def reverse_jaro_score(row: pd.Series) -> float:
-                novel_value = row["id_string"]
-                entity_alias = row["entity_alias"]
                 reverse_jaro = jaro_winkler(
-                    novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
+                    novel_value[::-1],
+                    entity_alias[::-1],
+                    prefix_weight=PREFIX_WEIGHT,
                 )
-                return reverse_jaro
+                score = indel * jaro * reverse_jaro
+                return score
 
-            def gen_trigrams(string: str) -> set:
-                return {string[i : i + 3].lower() for i in range(len(string) - 2)}
+            entities_w_alias["similarity_score"] = entities_w_alias[
+                ["match_string", "entity_alias"]
+            ].apply(score_against_entities, axis=1)
+            entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(len)
 
-            def trigram_similarity(left: str, right: str) -> float:
-                left_t_grams = gen_trigrams(left)
-                right_t_grams = gen_trigrams(right)
-                try:
-                    return len(left_t_grams & right_t_grams) / len(
-                        left_t_grams | right_t_grams
-                    )
-                except ZeroDivisionError:
-                    return 0.0
-
-            def trigram_score(row: pd.Series) -> float:
-                novel_value = row["id_string"]
-                entity_alias = row["entity_alias"]
-                return trigram_similarity(novel_value, entity_alias)
-
-            def match_with_model(id_string: str) -> int:
-                """score each row's sting-edit distance against the entity list"""
-                nonlocal entities_w_alias
-                entities_w_alias["id_string"] = id_string
-
-                entities_w_alias["indel_score"] = entities_w_alias[
-                    ["id_string", "entity_alias"]
-                ].apply(indel_score, axis=1)
-                entities_w_alias["jaro_score"] = entities_w_alias[
-                    ["id_string", "entity_alias"]
-                ].apply(jaro_score, axis=1)
-                entities_w_alias["reverse_jaro_score"] = entities_w_alias[
-                    ["id_string", "entity_alias"]
-                ].apply(reverse_jaro_score, axis=1)
-                entities_w_alias["trigram_score"] = entities_w_alias[
-                    ["id_string", "entity_alias"]
-                ].apply(trigram_score, axis=1)
-                entities_w_alias["len_match"] = entities_w_alias["id_string"].apply(len)
-                entities_w_alias["match_string"] = id_string
-
-                def score_against_entities(row: pd.Series) -> float:
-                    nonlocal entities_w_alias
-                    novel_value = row["match_string"]
-                    entity_alias = row["entity_alias"]
-                    indel = ratio(novel_value, entity_alias)
-                    jaro = jaro_winkler(
-                        novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT
-                    )
-                    reverse_jaro = jaro_winkler(
-                        novel_value[::-1],
-                        entity_alias[::-1],
-                        prefix_weight=PREFIX_WEIGHT,
-                    )
-                    score = indel * jaro * reverse_jaro
-                    return score
-
-                entities_w_alias["similarity_score"] = entities_w_alias[
-                    ["match_string", "entity_alias"]
-                ].apply(score_against_entities, axis=1)
-                entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(
-                    len
-                )
-
-                # predict
-                predictions = RandomForestModel.predict_proba(
-                    X=entities_w_alias.loc[:, model_features]
-                )[:, 1]
-                entities_w_alias["predictions"] = np.where(
-                    predictions >= MODEL_PREDICTION_THRESHOLD, predictions, 0
-                )
-                max_score = entities_w_alias["predictions"].max()
-                if max_score == 0:
-                    return DEFAULT_UNMATCHED_ENTITY
-                else:
-                    max_score_rows: pd.Series = entities_w_alias.loc[
-                        entities_w_alias["predictions"] == max_score, "branch_id"
-                    ]
-                    cb_id: int = max_score_rows.iloc[0]
-                    return cb_id
-
-            ## match each unmatched row using the model, or a special default
-            rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(
-                match_with_model
+            # predict
+            predictions = RandomForestModel.predict_proba(
+                X=entities_w_alias.loc[:, model_features]
+            )[:, 1]
+            entities_w_alias["predictions"] = np.where(
+                predictions >= MODEL_PREDICTION_THRESHOLD, predictions, 0
             )
-        except Exception as e:
-            raise e
-        else:
-            return rows
-        finally:
-            del RandomForestModel
-            gc.collect()
+            max_score = entities_w_alias["predictions"].max()
+            if max_score == 0:
+                return DEFAULT_UNMATCHED_ENTITY
+            else:
+                max_score_rows: pd.Series = entities_w_alias.loc[
+                    entities_w_alias["predictions"] == max_score, "branch_id"
+                ]
+                cb_id: int = max_score_rows.iloc[0]
+                return cb_id
+
+        ## match each unmatched row using the model, or a special default
+        rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(match_with_model)
+        return rows
 
     def process_and_commit(self) -> int:
         try:

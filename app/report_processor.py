@@ -1,3 +1,4 @@
+import gc
 from io import BytesIO
 from datetime import datetime
 from typing import Type
@@ -416,6 +417,7 @@ class Processor:
             return rows
         finally:
             del RandomForestModel
+            gc.collect()
 
     def process_and_commit(self) -> int:
         try:

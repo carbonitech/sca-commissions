@@ -21,7 +21,7 @@ MODEL_PREDICTION_THRESHOLD = 0.5
 
 
 def get_RFMODEL() -> RandomForestClassifier:
-    s3_key = "CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib"
+    s3_key = "/CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib"
     _, model_bytes = s3.get_file(s3_key)
     model_file = BytesIO(model_bytes)
     return joblib.load(model_file)
@@ -113,7 +113,6 @@ class Processor:
             db=session, user_id=self.user_id, manf_id=self.submission.manufacturer_id
         )
         self.column_names = get.report_column_names(self.session, self.report_id)
-        self.rf_model: RandomForestClassifier = self.get_RFMODEL()
 
     def insert_report_id(self) -> "Processor":
         self.staged_data.insert(0, "report_id", self.report_id)

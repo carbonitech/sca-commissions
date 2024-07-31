@@ -20,6 +20,13 @@ PREFIX_WEIGHT = 0.3
 MODEL_PREDICTION_THRESHOLD = 0.5
 
 
+def get_RFMODEL() -> RandomForestClassifier:
+    s3_key = "CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib"
+    _, model_bytes = s3.get_file(s3_key)
+    model_file = BytesIO(model_bytes)
+    return joblib.load(model_file)
+
+
 class EmptyTableException(Exception):
     def __init__(self, set_complete: bool = False, *args, **kwargs):
         super().__init__(*args)
@@ -55,6 +62,7 @@ class Processor:
     territory: list[str]
     customer_branch_proportions: pd.DataFrame
     specified_customer: tuple[int, str]
+    rf_model = get_RFMODEL()
 
     def __init__(
         self,
@@ -106,14 +114,6 @@ class Processor:
         )
         self.column_names = get.report_column_names(self.session, self.report_id)
         self.rf_model: RandomForestClassifier = self.get_RFMODEL()
-
-    def get_RFMODEL(self):
-        s3_key = (
-            f"{self.user_name}/CLASSIFICATION_MODEL/rf_model_n_1000_2024_07_26.joblib"
-        )
-        _, model_bytes = s3.get_file(s3_key)
-        model_file = BytesIO(model_bytes)
-        return joblib.load(model_file)
 
     def insert_report_id(self) -> "Processor":
         self.staged_data.insert(0, "report_id", self.report_id)

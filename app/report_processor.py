@@ -190,7 +190,6 @@ class Processor:
             operating_data[customer_branch_id] == 0,
             ["id_string", customer_branch_id, "report_id"],
         ]
-        print("op data before", operating_data)
         if not unmatched_id_strings.empty:
             model_matched = self.model_match(unmatched_id_strings)
             model_matches_w_ids = post.auto_matched_strings(
@@ -203,7 +202,6 @@ class Processor:
             operating_data.loc[model_matched_index, combined_new_cols] = (
                 model_matches_w_ids[combined_new_cols]
             )
-            print("matched strings for filling", matched_id_strings)
         self.staged_data = operating_data
         return self
 
@@ -409,12 +407,9 @@ class Processor:
                     return cb_id
 
             ## match each unmatched row using the model, or a special default
-            print("rows before", rows)
             rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(
                 match_with_model
             )
-            print("rows after", rows)
-            print("default id", DEFAULT_UNMATCHED_ENTITY)
         except Exception as e:
             raise e
         else:

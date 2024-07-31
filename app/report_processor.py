@@ -192,13 +192,17 @@ class Processor:
         ]
         if not unmatched_id_strings.empty:
             model_matched = self.model_match(unmatched_id_strings)
+            print(model_matched)
             model_matches_w_ids = post.auto_matched_strings(
                 self.session, self.user_id, model_matched
             )
+            print(model_matches_w_ids)
             matched_id_strings = unmatched_id_strings.merge(
                 model_matches_w_ids, on=["id_string", "report_id"]
             )
+            print(matched_id_strings)
             model_matched_index = matched_id_strings.index
+            print(model_matched_index)
             operating_data.loc[model_matched_index, combined_new_cols] = (
                 model_matches_w_ids[combined_new_cols]
             )

@@ -110,7 +110,16 @@ class CommissionFile:
         treat_headers: bool = False,
     ) -> pd.DataFrame | dict[str, pd.DataFrame]:
 
-        file_data = BytesIO(self.file_data)
+        match self.file_data:
+            case BytesIO():
+                file_data = self.file_data
+            case bytes():
+                file_data = BytesIO(self.file_data)
+            case _:
+                raise Exception(
+                    f"file data is of type {type(self.file_data)},"
+                    " expected bytes or BytesIO"
+                )
 
         with pd.ExcelFile(file_data, engine=engine) as excel_file:
             excel_file: pd.ExcelFile

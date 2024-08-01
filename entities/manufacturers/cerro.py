@@ -93,12 +93,14 @@ class PreProcessor(AbstractPreProcessor):
 
         df["lin_position"] = df.apply(find_rightmost_LIN, axis=1)
         df["id_string"] = df.apply(create_id_str, axis=1)
+        df.dropna(inplace=True)
         df["inv_amt"] = df.apply(extract_sales_amount, axis=1)
 
         result = df.loc[:, ["id_string", "inv_amt"]]
 
         result["inv_amt"] = result.loc[:, "inv_amt"].astype(float) * 100
         result["comm_amt"] = result.loc[:, "inv_amt"] * comm_rate
+        result = result.astype(self.EXPECTED_TYPES)
         if kwargs.get("debugging"):
             return df, result
         return PreProcessedData(result)

@@ -173,7 +173,7 @@ class Processor:
             operating_data.loc[original_index, combined_new_cols] = (
                 matched_id_strings.loc[original_index, combined_new_cols]
             )
-        print(operating_data.loc[operating_data.isna().any()])
+        print(operating_data.loc[operating_data.isna().any(axis=1)])
         print(operating_data)
         self.staged_data = operating_data
         return self

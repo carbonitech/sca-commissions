@@ -169,10 +169,12 @@ class Processor:
             matched_id_strings = model_matched.merge(
                 ref_ids, how="left", on="id_string"
             )
-            operating_data.loc[original_index, combined_new_cols] = matched_id_strings[
-                combined_new_cols
-            ]
-        print(operating_data[operating_data.isna()])
+            matched_id_strings.index = original_index
+            operating_data.loc[original_index, combined_new_cols] = (
+                matched_id_strings.loc[original_index, combined_new_cols]
+            )
+        print(operating_data.loc[operating_data.isna()])
+        print(operating_data)
         self.staged_data = operating_data
         return self
 

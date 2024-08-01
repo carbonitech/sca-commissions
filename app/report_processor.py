@@ -108,29 +108,6 @@ class Processor:
         self.staged_data.insert(0, "report_id", self.report_id)
         return self
 
-    def _filter_for_existing_records_with_target_error_type(self) -> "Processor":
-        mask = self.error_table["reason"] == self.target_err.value
-        table_target_errors = self.error_table.loc[mask, :]
-        self.error_ids = table_target_errors["id"].to_list()
-        self.error_table = table_target_errors.reset_index(
-            drop=True
-        )  # fixes for id merging strategy
-        self.staged_data = self.error_table.copy()
-        self.staged_data: pd.DataFrame = self.staged_data.loc[
-            :,
-            self.staged_data.columns.isin(
-                ["submission_id", "user_id", "id_string", "inv_amt", "comm_amt"]
-            ),
-        ]
-        if table_target_errors.empty:
-            raise EmptyTableException
-        self.report_id_by_submission = get.report_id_by_submission(
-            self.session,
-            user_id=self.user_id,
-            sub_ids=self.staged_data.loc[:, "submission_id"].unique().tolist(),
-        )
-        return self
-
     def add_branch_id(self) -> "Processor":
         """
          Start out seeing if the match string has been seen before.
@@ -195,6 +172,7 @@ class Processor:
             operating_data.loc[original_index, combined_new_cols] = matched_id_strings[
                 combined_new_cols
             ]
+        print(operating_data[operating_data.isna()])
         self.staged_data = operating_data
         return self
 
@@ -255,7 +233,7 @@ class Processor:
         return self
 
     def insert_recorded_at_column(self) -> "Processor":
-        self.staged_data["recorded_at"] = datetime.utcnow()
+        self.staged_data["recorded_at"] = datetime.now()
         return self
 
     def insert_user_id(self) -> "Processor":

@@ -268,45 +268,6 @@ class Processor:
     def model_match(self, unmatched_rows: pd.DataFrame) -> pd.DataFrame:
         """Using a Random Forest Classifier, attempt to match entities.
         If no match is predicted, assign a special default UNKNOWN customer."""
-        DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(
-            db=self.session, user_id=self.user_id
-        )
-        MODEL_SERVICE_URL = (
-            "http://predictionservice.us-east-1.elasticbeanstalk.com"
-            "/cmmssns/entity-matching"
-        )
-        try:
-            resp = r.get(MODEL_SERVICE_URL + "/model-features")
-            model_features = resp.json().get("data")
-        except Exception as e:
-            logger.critical(
-                f"Could not obtain model features from API: {e}\n"
-                f"Status Code: {resp.status_code}\n"
-                f"Body: {resp.text}"
-            )
-            raise e
-
-        rows = unmatched_rows.copy()
-
-        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
-        entities_w_alias["report_name"] = self.report_name
-        entities_w_alias["manufacturer"] = self.manufacturer_name
-        entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
-        dummies_manf = pd.get_dummies(entities_w_alias["manufacturer"], drop_first=True)
-        dummies_report = pd.get_dummies(
-            entities_w_alias["report_name"], drop_first=True
-        )
-        model_manfs = set([e for e in model_features if "manufacturer_" in e])
-        model_reports = set([e for e in model_features if "report_name_" in e])
-        # fill missing
-        missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
-        missing_reports = model_reports - set(dummies_report.columns.to_list())
-        for missing in missing_manfs:
-            dummies_manf[missing] = False
-        for missing in missing_reports:
-            dummies_report[missing] = False
-        dummies = dummies_manf.join(dummies_report)
-        entities_w_alias = entities_w_alias.join(dummies)
 
         def indel_score(row: pd.Series) -> float:
             novel_value = row["id_string"]
@@ -344,25 +305,65 @@ class Processor:
             entity_alias = row["entity_alias"]
             return trigram_similarity(novel_value, entity_alias)
 
+        DEFAULT_UNMATCHED_ENTITY = get.default_unknown_customer(
+            db=self.session, user_id=self.user_id
+        )
+        MODEL_SERVICE_URL = (
+            "http://predictionservice.us-east-1.elasticbeanstalk.com"
+            "/cmmssns/entity-matching"
+        )
+        try:
+            resp = r.get(MODEL_SERVICE_URL + "/model-features")
+            model_features = resp.json().get("data")
+        except Exception as e:
+            logger.critical(
+                f"Could not obtain model features from API: {e}\n"
+                f"Status Code: {resp.status_code}\n"
+                f"Body: {resp.text}"
+            )
+            raise e
+
+        rows = unmatched_rows.copy()
+
+        entities_w_alias = get.entities_w_alias(self.session, user_id=self.user_id)
+
+        entities_w_alias["report_name"] = self.report_name
+        logger.info(f"report name set to {self.report_name}")
+        entities_w_alias["manufacturer"] = self.manufacturer_name
+        logger.info(f"manufacturer set to {self.manufacturer_name}")
+        entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
+        dummies_manf = pd.get_dummies(entities_w_alias["manufacturer"], drop_first=True)
+        dummies_report = pd.get_dummies(
+            entities_w_alias["report_name"], drop_first=True
+        )
+        model_manfs = set([e for e in model_features if "manufacturer_" in e])
+        model_reports = set([e for e in model_features if "report_name_" in e])
+        # fill missing
+        missing_manfs = model_manfs - set(dummies_manf.columns.to_list())
+        missing_reports = model_reports - set(dummies_report.columns.to_list())
+        for missing in missing_manfs:
+            dummies_manf[missing] = False
+        for missing in missing_reports:
+            dummies_report[missing] = False
+        dummies = dummies_manf.join(dummies_report)
+        entities_w_alias = entities_w_alias.join(dummies)
+
         def match_with_model(id_string: str) -> int:
             """score each row's sting-edit distance against the entity list"""
             nonlocal entities_w_alias
-            entities_w_alias["id_string"] = id_string
-
+            entities_w_alias["match_string"] = id_string
             entities_w_alias["indel_score"] = entities_w_alias[
-                ["id_string", "entity_alias"]
+                ["match_string", "entity_alias"]
             ].apply(indel_score, axis=1)
             entities_w_alias["jaro_score"] = entities_w_alias[
-                ["id_string", "entity_alias"]
+                ["match_string", "entity_alias"]
             ].apply(jaro_score, axis=1)
             entities_w_alias["reverse_jaro_score"] = entities_w_alias[
-                ["id_string", "entity_alias"]
+                ["match_string", "entity_alias"]
             ].apply(reverse_jaro_score, axis=1)
             entities_w_alias["trigram_score"] = entities_w_alias[
-                ["id_string", "entity_alias"]
+                ["match_string", "entity_alias"]
             ].apply(trigram_score, axis=1)
-            entities_w_alias["len_entity"] = entities_w_alias["entity_alias"].apply(len)
-            entities_w_alias["match_string"] = id_string
             entities_w_alias["len_match"] = entities_w_alias["match_string"].apply(len)
 
             # predict
@@ -377,7 +378,7 @@ class Processor:
                 logger.critical(resp.text)
                 result = None
             else:
-                logger.info(f"matched {id_string}")
+                logger.info(f"matched {id_string} - result: {result}")
             return result if result else DEFAULT_UNMATCHED_ENTITY
 
         ## match each unmatched row using the model, or a special default

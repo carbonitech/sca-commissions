@@ -270,17 +270,17 @@ class Processor:
         If no match is predicted, assign a special default UNKNOWN customer."""
 
         def indel_score(row: pd.Series) -> float:
-            novel_value = row["id_string"]
+            novel_value = row["match_string"]
             entity_alias = row["entity_alias"]
             return ratio(novel_value, entity_alias)
 
         def jaro_score(row: pd.Series) -> float:
-            novel_value = row["id_string"]
+            novel_value = row["match_string"]
             entity_alias = row["entity_alias"]
             return jaro_winkler(novel_value, entity_alias, prefix_weight=PREFIX_WEIGHT)
 
         def reverse_jaro_score(row: pd.Series) -> float:
-            novel_value = row["id_string"]
+            novel_value = row["match_string"]
             entity_alias = row["entity_alias"]
             reverse_jaro = jaro_winkler(
                 novel_value[::-1], entity_alias[::-1], prefix_weight=PREFIX_WEIGHT
@@ -301,7 +301,7 @@ class Processor:
                 return 0.0
 
         def trigram_score(row: pd.Series) -> float:
-            novel_value = row["id_string"]
+            novel_value = row["match_string"]
             entity_alias = row["entity_alias"]
             return trigram_similarity(novel_value, entity_alias)
 

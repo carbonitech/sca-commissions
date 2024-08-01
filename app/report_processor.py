@@ -6,6 +6,7 @@ import requests as r
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
 from logging import getLogger
+from pprint import pprint
 
 from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
@@ -379,6 +380,7 @@ class Processor:
                 result = None
             else:
                 logger.info(f"matched {id_string} - result: {result}")
+                pprint(df_as_json)
             return result if result else DEFAULT_UNMATCHED_ENTITY
 
         ## match each unmatched row using the model, or a special default

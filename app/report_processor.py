@@ -5,6 +5,7 @@ import pandas as pd
 import requests as r
 from sqlalchemy.orm import Session
 from Levenshtein import ratio, jaro_winkler
+from logging import getLogger
 
 from entities.preprocessor import AbstractPreProcessor
 from entities.commission_data import PreProcessedData
@@ -13,6 +14,7 @@ from entities.user import User
 from services import get, post, patch, s3
 
 PREFIX_WEIGHT = 0.3
+logger = getLogger("uvicorn.info")
 
 
 class EmptyTableException(Exception):
@@ -270,9 +272,19 @@ class Processor:
             db=self.session, user_id=self.user_id
         )
         MODEL_SERVICE_URL = (
-            "https://data.carbonitech.com/prediction/string_matching/cmmssns"
+            "http://predictionservice.us-east-1.elasticbeanstalk.com"
+            "/cmmssns/entity-matching"
         )
-        model_features = r.get(MODEL_SERVICE_URL + "/model-features").json().get("data")
+        try:
+            resp = r.get(MODEL_SERVICE_URL + "/model-features")
+            model_features = resp.json().get("data")
+        except Exception as e:
+            logger.critical(
+                f"Could not obtain model features from API: {e}\n"
+                f"Status Code: {resp.status_code}\n"
+                f"Body: {resp.text}"
+            )
+            raise e
 
         rows = unmatched_rows.copy()
 
@@ -358,9 +370,14 @@ class Processor:
             prediction = r.post(MODEL_SERVICE_URL, json=df_as_json)
             try:
                 result = prediction.json().get("result")
-            except Exception:
-                print(f"Error with making request to carbonitech.com: {id_string}")
+            except Exception as e:
+                logger.critical(
+                    f"Error with making request for prediction: {id_string}"
+                )
+                logger.critical(resp.text)
                 result = None
+            else:
+                logger.info(f"matched {id_string}")
             return result if result else DEFAULT_UNMATCHED_ENTITY
 
         ## match each unmatched row using the model, or a special default

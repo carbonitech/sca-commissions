@@ -152,6 +152,8 @@ class Processor:
         if operating_data.empty:
             raise EmptyTableException(set_complete=True)
 
+        operating_data.loc[:, "id_string"] = operating_data["id_string"].str.strip()
+
         ## first see if the string is already in the database or matches an entity alias exactly
         # entity alias = name_city_state, in otherwords a branch location
         merged_with_branches = pd.merge(
@@ -380,7 +382,6 @@ class Processor:
                 result = None
             else:
                 logger.info(f"matched {id_string} - result: {result}")
-                pprint(df_as_json)
             return result if result else DEFAULT_UNMATCHED_ENTITY
 
         ## match each unmatched row using the model, or a special default

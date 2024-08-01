@@ -386,6 +386,7 @@ class Processor:
 
         ## match each unmatched row using the model, or a special default
         rows.loc[:, "customer_branch_id"] = rows["id_string"].apply(match_with_model)
+        logger.info("finished matches")
         return rows
 
     def process_and_commit(self) -> int:

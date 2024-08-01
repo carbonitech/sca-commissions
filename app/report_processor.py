@@ -378,7 +378,7 @@ class Processor:
                 logger.critical(
                     f"Error with making request for prediction: {id_string}"
                 )
-                logger.critical(resp.text)
+                logger.critical(prediction.text)
                 result = None
             else:
                 logger.info(f"matched {id_string} - result: {result}")

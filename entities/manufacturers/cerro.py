@@ -112,15 +112,38 @@ class PreProcessor(AbstractPreProcessor):
                 print("result: ", float(re.sub(r"[^.0-9]", "", sales_fig)) * sign, "\n")
             return float(re.sub(r"[^.0-9]", "", sales_fig)) * sign
 
+        def extract_additional_inline_records(row: pd.Series, container: list) -> None:
+            item_number_indecies = row[
+                (row.str.len() >= 12) & (row.str.isdigit())
+            ].index
+            if len(item_number_indecies) > 1:
+                next_row_index = item_number_indecies[1]
+                # without the final element, which concats itself to the next item
+                # number, the discount value is grabbed instead of sales figure
+                container.append(row[: next_row_index + 1])
+                extract_additional_inline_records(
+                    row[next_row_index:].reset_index(drop=True), container
+                )
+            else:
+                container.append(row.reset_index(drop=True))
+
         def find_rightmost_LIN(row: pd.Series) -> int:
             """used to find and generate id_string contents"""
             no_nan_row = row.dropna()
             return no_nan_row[no_nan_row.str.fullmatch("LIN")].index.max()
 
+        new_series_collection = list()
+        df.apply(
+            lambda row: extract_additional_inline_records(row, new_series_collection),
+            axis=1,
+        )
+        df = pd.concat(new_series_collection, axis=1).T
         df["lin_position"] = df.apply(find_rightmost_LIN, axis=1)
         df["id_string"] = df.apply(create_id_str, axis=1)
         df.dropna(subset="lin_position", inplace=True)
         df["inv_amt"] = df.apply(extract_sales_amount, axis=1)
+        if debugging:
+            print("df\n", df.to_string())
 
         result = df.loc[:, ["id_string", "inv_amt"]]
 
@@ -128,7 +151,6 @@ class PreProcessor(AbstractPreProcessor):
         result["comm_amt"] = result.loc[:, "inv_amt"] * comm_rate
         result = result.astype(self.EXPECTED_TYPES)
         if debugging:
-            print("df\n", df.to_string())
             print("result\n", result.to_string())
             raise Exception("catching print on Exception for debugging")
         return PreProcessedData(result)

@@ -63,7 +63,9 @@ class PreProcessor(AbstractPreProcessor):
 
             find the first $ going right-to-left, and recombine
             the cents figure from the next column if needed"""
-            sales_fig = None
+
+            sign: int
+            sales_fig: str = None
             fig_index = None
             compacted = row.dropna()
             compacted_rev = compacted[::-1]
@@ -72,19 +74,29 @@ class PreProcessor(AbstractPreProcessor):
                     continue
                 if val == "$":
                     sales_fig = compacted_rev.iloc[i + 1]
+                    sign = 1
                 if not sales_fig:
                     if val.startswith("$"):
                         sales_fig = val
                         fig_index = i
+                        sign = 1
+                    elif val.startswith("-$"):
+                        sales_fig = val
+                        fig_index = i
+                        sign = -1
                     elif i == 4:
                         sales_fig = compacted_rev.iloc[i - 1]
+                        if sales_fig.startswith("-"):
+                            sign = -1
+                        else:
+                            sign = 1
                 if sales_fig:
                     break
             if fig_index:
                 num_cent_figures = len(sales_fig.split(".")[-1])
                 if num_cent_figures < 2:
                     sales_fig += str(compacted[fig_index + 1])
-            return float(re.sub(r"[^-.0-9]", "", sales_fig))
+            return float(re.sub(r"[^.0-9]", "", sales_fig)) * sign
 
         def find_rightmost_LIN(row: pd.Series) -> int:
             """used to find and generate id_string contents"""

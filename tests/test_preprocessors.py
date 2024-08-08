@@ -182,10 +182,13 @@ def test_c_d_valve_preprocessors():
 
 
 def test_cerro_preprocessors():
+    debugging = False
     report_names = ["standard"]
     entity = "cerro"
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, cerro.PreProcessor)
+    assert_tests_for_each_file(
+        files_by_report, entity, cerro.PreProcessor, debugging=debugging
+    )
 
 
 def test_clean_comfort_preprocessors():

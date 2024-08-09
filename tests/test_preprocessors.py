@@ -201,8 +201,49 @@ def test_clean_comfort_preprocessors():
 def test_famco_preprocessors():
     report_names = ["standard", "johnstone_pos"]
     entity = "famco"
+    column_names = [
+        # Johnstone
+        {
+            "customer": None,
+            "city": "storename",
+            "state": "storestate",
+            "sales": "lastmocogs",
+            "commissions": None,
+        },
+        {
+            "customer": None,
+            "city": "storename",
+            "state": "storestate",
+            "sales": "lastmosales",
+            "commissions": None,
+        },
+        # standard
+        {
+            "customer": "shiptonam",
+            "city": "shiptocity",
+            "state": "shiptostate",
+            "sales": "extsales",
+            "commissions": "extcom",
+        },
+        {
+            "customer": "shiptoname",
+            "city": "shiptocity",
+            "state": "shiptostate",
+            "sales": "extsales",
+            "commissions": "extcomm",
+        },
+        {
+            "customer": "shiptoname",
+            "city": "shiptocity",
+            "state": None,
+            "sales": "sales",
+            "commissions": "commission",
+        },
+    ]
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, famco.PreProcessor)
+    assert_tests_for_each_file(
+        files_by_report, entity, famco.PreProcessor, column_names=column_names
+    )
 
 
 def test_friedrich_preprocessors():

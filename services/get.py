@@ -16,6 +16,7 @@ from services.utils import *
 
 CHUNK_SIZE = 10000
 
+
 def __get_X(
     db: Session, query: dict, user: User, model: models.Base, _id: int = 0
 ) -> JSONAPIResponse:
@@ -167,7 +168,8 @@ def report_name_by_id(db: Session, report_id: int) -> str:
 
 def report_column_names(db: Session, report_id: int) -> list[dict]:
     sql = """
-        SELECT * FROM report_column_names
+        SELECT customer, city, state, sales, commissions
+        FROM report_column_names
         WHERE report_id = :report_id;
     """
     result = (

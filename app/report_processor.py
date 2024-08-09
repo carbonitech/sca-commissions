@@ -103,6 +103,12 @@ class Processor:
             db=session, user_id=self.user_id, manf_id=self.submission.manufacturer_id
         )
         self.column_names = get.report_column_names(self.session, self.report_id)
+        if self.column_names:
+            logger.info("Column name options supplied from the database")
+            for i, option in enumerate(self.column_names):
+                logger.info(f"Option {i+1}")
+                for k, v in option.items():
+                    logger.info(f"\t{k} = {v}")
 
     def insert_report_id(self) -> "Processor":
         self.staged_data.insert(0, "report_id", self.report_id)

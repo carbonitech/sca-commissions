@@ -75,12 +75,14 @@ class AbstractPreProcessor(ABC):
             indicator = True
         return (df, indicator) if indicate else df
 
-    def use_column_options(self, data: DataFrame, **kwargs) -> dict[str, str]:
+    def use_column_options(
+        self, data: DataFrame, **kwargs
+    ) -> tuple[DataFrame, dict[str, str]]:
         column_name_options: list[dict] = kwargs.get("column_names")
         cols_used = {}
         for names_option in column_name_options:
             names_option_stripped = [
-                name for name in list(names_option.values())[2:] if name
+                name for name in list(names_option.values()) if name
             ]
             data, cols_were_used = self.check_headers_and_fix(
                 names_option_stripped, data, indicate=True
@@ -88,6 +90,11 @@ class AbstractPreProcessor(ABC):
             if cols_were_used:
                 cols_used = names_option
                 break
+        if not cols_used:
+            raise Exception(
+                "column names discoverable in the data do not match"
+                " any of the options given"
+            )
         return data, cols_used
 
     @abstractmethod

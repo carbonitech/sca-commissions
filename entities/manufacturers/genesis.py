@@ -17,12 +17,6 @@ class PreProcessor(AbstractPreProcessor):
 
         data, cols = self.use_column_options(data, **kwargs)
 
-        if not cols:
-            raise Exception(
-                "column names discoverable in the data do not match"
-                " any of the options given"
-            )
-
         customer_name_col: str = cols["customer"]
         city_name_col: str = cols["city"]
         state_name_col: str = cols["state"]

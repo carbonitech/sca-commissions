@@ -59,9 +59,6 @@ class PreProcessor(AbstractPreProcessor):
             city_state = re.match(
                 city_state_re, subseries.iloc[1:3].str.cat(sep="")
             ).group(1)
-            # city, state = city_state[:-2], city_state[-2:] # split city from 2-letter state
-            # print(subseries[4])
-            # print(subseries.str.extract(customer_name_sales_comm_re, re.VERBOSE).dropna())
             customer_inv_comm = subseries.str.extract(
                 customer_name_sales_comm_re, re.VERBOSE
             ).dropna()
@@ -69,6 +66,8 @@ class PreProcessor(AbstractPreProcessor):
             customer = customer.strip()
             inv_amt = float(customer_inv_comm["inv_amt"].item().replace(",", ""))
             comm_amt = float(customer_inv_comm["comm_amt"].item().replace(",", ""))
+            if comm_amt < 0 and inv_amt > 0:
+                inv_amt *= -1
 
             compiled_data["customer"].append(customer)
             compiled_data["location"].append(city_state)

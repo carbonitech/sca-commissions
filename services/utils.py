@@ -30,10 +30,15 @@ LOCATIONS = models.Location
 TERRITORIES = models.Territory
 REPORT_COL_NAMES = models.ReportColumnName
 
-
-ENGINE = sqlalchemy.create_engine(
-    os.getenv("DATABASE_URL").replace("postgres://", "postgresql://")
+PROD_DB = os.getenv("DATABASE_URL").replace("postgres://", "postgresql://")
+TESTING_DB = os.getenv("TESTING_DATABASE_URL", "").replace(
+    "postgres://", "postgresql://"
 )
+if TESTING_DB:
+    ENGINE = sqlalchemy.create_engine(TESTING_DB)
+else:
+    ENGINE = sqlalchemy.create_engine(PROD_DB)
+
 SESSIONLOCAL = sessionmaker(autocommit=False, autoflush=False, bind=ENGINE)
 
 

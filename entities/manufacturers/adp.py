@@ -52,6 +52,7 @@ class PreProcessor(AbstractPreProcessor):
             columns={sales: "inv_amt", commission: "comm_amt"}
         )
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def _coburn_report_preprocessing(
@@ -82,19 +83,13 @@ class PreProcessor(AbstractPreProcessor):
 
         # amounts are negative to represent deductions from Coburn DC shipments
         total_sales = data[sales].sum()
-        total_commission = -data[
-            commission
-        ].sum()  # file negates the negative sales, so make commissions negative again
-        # if not data['date'].isna().all():
-        #     # in the file variant where there are values in this field
-        #     # the sum has captured the grand total as well as the data we want
-        #     # halving takes the grand total back out of the number
-        #     total_sales /= 2
-        #     total_commission /= 2
+        # file negates the negative sales, so make commissions negative again
+        total_commission = -data[commission].sum()
         cols = ["id_string", "inv_amt", commission]
         result = pd.DataFrame([[customer, total_sales, total_commission]], columns=cols)
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def _re_michel_report_preprocessing(
@@ -138,6 +133,7 @@ class PreProcessor(AbstractPreProcessor):
         result = data.loc[:, ["id_string", sales, commission]]
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def _lennox_report_preprocessing(
@@ -243,6 +239,7 @@ class PreProcessor(AbstractPreProcessor):
         )
         result = result[["id_string", sales, commission]]
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def _baker_report_preprocessing(
@@ -262,6 +259,31 @@ class PreProcessor(AbstractPreProcessor):
         result = pd.DataFrame([[customer, total_sales, total_comm]], columns=cols)
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
+        return PreProcessedData(result)
+
+    def _winsupply_report_processing(
+        self, data: pd.DataFrame, **kwargs
+    ) -> PreProcessedData:
+        data, cols_used = self.use_column_options(data, **kwargs)
+        customer = self.get_customer(**kwargs)
+        city = cols_used["city"]
+        state = cols_used["state"]
+        sales = cols_used["sales"]
+        commission = cols_used["commissions"]
+        data.dropna(subset=data.columns[0], inplace=True)
+        city_alt = city[:-1] + "3"
+        data[city].fillna(data[city_alt], inplace=True)
+        data["customer"] = customer
+        data.loc[:, sales] *= 100
+        data.loc[:, commission] *= 100
+        data["id_string"] = data[["customer", city, state]].apply("_".join, axis=1)
+        result = (
+            data[["id_string", sales, commission]]
+            .rename(columns={sales: "inv_amt", commission: "comm_amt"})
+            .astype(self.EXPECTED_TYPES)
+        )
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def preprocess(self, **kwargs) -> PreProcessedData:
@@ -271,6 +293,7 @@ class PreProcessor(AbstractPreProcessor):
             "lennox_pos": self._lennox_report_preprocessing,
             "re_michel_pos": self._re_michel_report_preprocessing,
             "baker_pos": self._baker_report_preprocessing,
+            "winsupply_pos": self._winsupply_report_processing,
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:

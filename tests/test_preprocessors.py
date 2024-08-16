@@ -81,6 +81,9 @@ def assert_tests_for_each_file(
                 filename = os.path.basename(file).split(".")[0]
                 additional_file_data = additionals_dict.get(filename, None)
                 kwargs["additional_file_1"] = additional_file_data
+                if reported_amounts := kwargs.get("reported_commission_amounts"):
+                    reported_amounts: dict
+                    kwargs["total_commission_amount"] = reported_amounts.get(filename)
                 result = preprocessor_inst.preprocess(**kwargs)
                 tb = ""
             except Exception as e:
@@ -111,12 +114,45 @@ def assert_tests_for_each_file(
 
 
 def test_adp_preprocessors():
-    report_names = ["detail", "lennox_pos", "re_michel_pos", "coburn_pos", "baker_pos"]
+    report_names = [
+        "detail",
+        "lennox_pos",
+        "re_michel_pos",
+        "coburn_pos",
+        "baker_pos",
+        "winsupply_pos",
+    ]
     entity = "adp"
     territory = ["AL", "FL", "MS", "TN", "GA"]
+    reported_commission_amounts = {
+        "Shupe Carboni 04 2023 sheet Detail": 17555.50,
+        "Shupe Carboni Dec 2023 sheet Baker": -128.68,
+        "Shupe Carboni 04 2023 sheet Coburn": -585.60,
+        "Shupe Carboni Jul 2024 sheet Detail": 34429.55,
+        "Shupe Carboni Jul 2024 sheet Winsupply": 15.69,
+        "Shupe Carboni Jul 2024 sheet Coburn": -1036.02,
+        "Shupe Carboni 04 2023 sheet Atlanta": -21.90,
+        "Shupe Carboni sheet Atlanta": -88.23,
+        "Shupe Carboni Nov 2023 sheet RE Michel": 2.03,
+        "Shupe Carboni Jul 2024 sheet RE Michel": 2.47,
+    }
+    column_names = [
+        {
+            "customer": None,
+            "city": "billtoaddress4",
+            "state": "billtostate",
+            "sales": "monthtodatesalesdollars",
+            "commissions": "commission",
+        },
+    ]
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(
-        files_by_report, entity, adp.PreProcessor, territory=territory
+        files_by_report,
+        entity,
+        adp.PreProcessor,
+        territory=territory,
+        reported_commission_amounts=reported_commission_amounts,
+        column_names=column_names,
     )
 
 

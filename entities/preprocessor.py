@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from math import isclose
 from pandas import Series, DataFrame
 from entities.commission_data import PreProcessedData
 from entities.commission_file import CommissionFile
@@ -96,6 +96,16 @@ class AbstractPreProcessor(ABC):
                 " any of the options given"
             )
         return data, cols_used
+
+    @staticmethod
+    def assert_commission_amounts_match(data: DataFrame, **kwargs) -> None:
+        reported = kwargs.get("total_commission_amount", 0)
+        calculated = data["comm_amt"].sum() / 100
+        results_match = isclose(reported, calculated)
+        assert results_match, (
+            "Total Commission Amount reported does not match preprocessing sum. "
+            f"${reported:,.2f} != ${calculated:,.2f}"
+        )
 
     @abstractmethod
     def preprocess(self, **kwargs) -> PreProcessedData:

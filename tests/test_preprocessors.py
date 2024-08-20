@@ -83,7 +83,7 @@ def assert_tests_for_each_file(
                 kwargs["additional_file_1"] = additional_file_data
                 if reported_amounts := kwargs.get("reported_commission_amounts"):
                     reported_amounts: dict
-                    kwargs["total_commission_amount"] = reported_amounts.get(filename)
+                    kwargs["total_commission_amount"] = reported_amounts[filename]
                 result = preprocessor_inst.preprocess(**kwargs)
                 tb = ""
             except Exception as e:
@@ -188,7 +188,23 @@ def test_atco_preprocessors():
     report_names = ["standard", "re_michel_pos"]
     entity = "atco"
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, atco.PreProcessor)
+    reported_commission_amounts = {"Shupe Carboni  07-24 Commissions": 38634.19}
+    column_names = [
+        {
+            "customer": "sortname",
+            "city": "shiptocity",
+            "state": "shiptostate",
+            "sales": "ttlsaleslessfrtandepd",
+            "commissions": "commissionearned",
+        }
+    ]
+    assert_tests_for_each_file(
+        files_by_report,
+        entity,
+        atco.PreProcessor,
+        reported_commission_amounts=reported_commission_amounts,
+        column_names=column_names,
+    )
 
 
 def test_berry_preprocessors():

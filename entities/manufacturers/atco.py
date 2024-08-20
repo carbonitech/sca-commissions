@@ -10,92 +10,29 @@ from entities.preprocessor import AbstractPreProcessor
 
 
 class PreProcessor(AbstractPreProcessor):
-    """
-    Remarks:
-        - Atco's report comes in one file with one tab. RE Michel is broken out into it's own line item,
-            which gets thrown away in the standard report.
-        - Column headings are different between them, so a "split" switch is used to get a dict of DataFrames
-
-    Returns: PreProcessedData object with data and attributes set to enable further processing
-    """
 
     def _standard_report_preprocessing(
-        self, data_dict: dict[str, pd.DataFrame], **kwargs
+        self, data: pd.DataFrame, **kwargs
     ) -> PreProcessedData:
 
-        ## for Cash Receipt Tab
-        cr_tab_name_re: str = (
-            r"cash\s?rec[ei]{2}pt"  # use -i flag for case insensitivity
-        )
-        cr_customer_name_col: str = "customername"
-        cr_city_name_col: str = "shiptocity"
-        cr_state_name_col: str = "shiptostate"
-        cr_inv_col: str = "netcash"
-        cr_comm_col: int = -2
-        cr_comm_col_named: str = "commissionsunique"
+        data, cols = self.use_column_options(data, **kwargs)
+        customer: str = cols["customer"]
+        city: str = cols["city"]
+        state: str = cols["state"]
+        sales: str = cols["sales"]
+        commissions: str = cols["commissions"]
 
-        ## for Invoices Tab
-        inv_tab_name_re: str = r"inv[oi]{2}ces?"  # use -i flag for case insensitivity
-        inv_customer_name_col: str = "sortname"
-        inv_city_name_col: str = "shiptocity"
-        inv_state_name_col: str = "shiptostate"
-        inv_inv_col: str = "ttlsaleslessfrtandepd"
-        inv_comm_col: str = "commissionearned"
-
-        # std cols
-        inv_col = "inv_amt"
-        comm_col = "comm_amt"
-        result_columns = ["customer", "city", "state", inv_col, comm_col]
-
-        df_list = []
-        for sheet, df in data_dict.items():
-            if re.match(cr_tab_name_re, sheet, 2):
-                df.columns.values[cr_comm_col] = cr_comm_col_named
-                extracted_data = df.loc[
-                    :,
-                    [
-                        cr_customer_name_col,
-                        cr_city_name_col,
-                        cr_state_name_col,
-                        cr_inv_col,
-                        cr_comm_col_named,
-                    ],
-                ]
-                extracted_data.columns = result_columns
-                df_list.append(extracted_data)
-            elif re.match(inv_tab_name_re, sheet, 2):
-                # move the special row value that sums POS to customer name so it isn't dropped later
-                # removing because REM POS is back
-                # df = df.dropna(subset=["Invoice"])
-                # df["Invoice"] = df["Invoice"].astype(str)
-
-                # df.loc[df["Invoice"].str.contains(r"[^0-9]"),inv_customer_name_col] = df.loc[df["Invoice"].str.contains(r"[^0-9]"),"Invoice"].values
-                extracted_data = df.loc[
-                    :,
-                    [
-                        inv_customer_name_col,
-                        inv_city_name_col,
-                        inv_state_name_col,
-                        inv_inv_col,
-                        inv_comm_col,
-                    ],
-                ]
-                extracted_data.columns = result_columns
-                df_list.append(extracted_data)
-
-        if not df_list:
-            raise Exception("no data loaded")
-
-        data = pd.concat(df_list, ignore_index=True)
-        data = data.dropna(subset=data.columns.to_list()[0])
-        data[inv_col] = data[inv_col].fillna(0)
-        data[inv_col] *= 100
-        data[comm_col] *= 100
-        data["id_string"] = data[result_columns[:3]].apply("_".join, axis=1)
-        result = data.loc[:, ["id_string"] + result_columns[-2:]].apply(
-            self.upper_all_str
+        data = data.dropna(subset=data.columns[0])
+        data[sales] *= 100
+        data[commissions] *= 100
+        data["id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
+        result = (
+            data[["id_string", sales, commissions]]
+            .rename(columns={sales: "inv_amt", commissions: "comm_amt"})
+            .apply(self.upper_all_str)
         )
         result = result.astype(self.EXPECTED_TYPES)
+        self.assert_commission_amounts_match(result, **kwargs)
         return PreProcessedData(result)
 
     def _re_michel_report_preprocessing(
@@ -187,8 +124,4 @@ class PreProcessor(AbstractPreProcessor):
         }
         preprocess_method = method_by_name.get(self.report_name, None)
         if preprocess_method:
-            if self.report_name == "standard":
-                return preprocess_method(
-                    self.file.to_df(split_sheets=True, treat_headers=True), **kwargs
-                )
-            return preprocess_method(self.file.to_df(make_header_a_row=True), **kwargs)
+            return preprocess_method(self.file.to_df(treat_headers=True), **kwargs)

@@ -4,6 +4,9 @@ import pandas as pd
 import tabula
 from PyPDF2 import PdfReader
 from io import BytesIO
+from logging import getLogger
+
+logger = getLogger("uvicorn.info")
 
 
 @dataclass
@@ -21,8 +24,12 @@ class CommissionFile:
             file_decrypted = BytesIO()
             decrypter = msoffcrypto.OfficeFile(BytesIO(self.file_data))
             decrypter.load_key(password=str(self.file_password))
-            decrypter.decrypt(file_decrypted)
-            self.file_data = file_decrypted
+            try:
+                decrypter.decrypt(file_decrypted)
+            except msoffcrypto.exceptions.DecryptionError as e:
+                logger.info(e)
+            else:
+                self.file_data = file_decrypted
 
     def to_df(
         self,

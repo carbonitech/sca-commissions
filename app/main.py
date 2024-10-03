@@ -73,7 +73,7 @@ async def lookup_rep_by_city_state(
         ORDER BY similarity(a.city, :city) DESC
         LIMIT 1;
     """
-    params = dict(city=city, state=state, user_id=user_id)
+    params = dict(city=city.upper(), state=state.upper(), user_id=user_id)
     result = db.execute(text(rep_search_q), params=params).mappings().one_or_none()
     return (
         JSONResponse(content=dict(**result))

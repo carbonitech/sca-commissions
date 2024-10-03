@@ -76,7 +76,7 @@ async def lookup_rep_by_city_state(
     params = dict(city=city, state=state, user_id=user_id)
     result = db.execute(text(rep_search_q), params=params).mappings().one_or_none()
     return (
-        JSONResponse(content=result)
+        JSONResponse(content=dict(**result))
         if result
         else Response(status_code=status.HTTP_204_NO_CONTENT)
     )

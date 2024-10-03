@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 app = FastAPI(title="SCA Commissions API", version=__version__)
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
-TRIGRAM_SIMILARITY_THRESHOLD = 0.7
+TRIGRAM_SIMILARITY_THRESHOLD = os.getenv("TRIGRAM_THRESHOLD", default=0.7)
 
 app.add_middleware(
     CORSMiddleware,

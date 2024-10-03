@@ -1,7 +1,7 @@
 __version__ = "1.0.0"
 import os
-from fastapi import FastAPI, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Depends, Request, status
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse, RedirectResponse
 
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 app = FastAPI(title="SCA Commissions API", version=__version__)
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
+TRIGRAM_SIMILARITY_THRESHOLD = 0.7
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,22 +60,25 @@ async def lookup_rep_by_city_state(
     # city will be spelled exactly the same or not. Since the state is only the 2-letter
     # representation, I am reasonably confident that a straight equality will work.
     # TODO: just in case, map full state names to their 2-letter representation.
-    rep_search_q = """
-        SELECT first_name || ' ' || last_name as rep
+    rep_search_q = f"""
+        SELECT set_limit({TRIGRAM_SIMILARITY_THRESHOLD});
+        SELECT first_name || ' ' || last_name as rep, city || ', ' || state as location
         FROM representatives
-        WHERE EXISTS (
-            SELECT 1
-            FROM location_rep_lookup a
-            WHERE a.last_name = representatives.last_name
-            AND a.city % :city
+        JOIN location_rep_lookup a
+        ON a.last_name = representatives.last_name
+        WHERE a.city % :city
             AND a.state = :state
-        )
-        AND user_id = :user_id
+            AND user_id = :user_id
+        ORDER BY similarity(a.city, :city) DESC
         LIMIT 1;
     """
     params = dict(city=city, state=state, user_id=user_id)
-    (result,) = db.execute(text(rep_search_q), params=params).fetchone()
-    return JSONResponse(content=dict(rep=result))
+    result = db.execute(text(rep_search_q), params=params).mappings().one_or_none()
+    return (
+        JSONResponse(content=result)
+        if result
+        else Response(status_code=status.HTTP_204_NO_CONTENT)
+    )
 
 
 PROTECTED = [Depends(auth.authenticate_auth0_token)]

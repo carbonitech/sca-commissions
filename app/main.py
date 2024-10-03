@@ -62,7 +62,8 @@ async def lookup_rep_by_city_state(
     # TODO: just in case, map full state names to their 2-letter representation.
     rep_search_q = f"""
         SELECT set_limit({TRIGRAM_SIMILARITY_THRESHOLD});
-        SELECT first_name || ' ' || last_name as rep, city || ', ' || state as location
+        SELECT first_name || ' ' || representatives.last_name as rep,
+            city || ', ' || state as location
         FROM representatives
         JOIN location_rep_lookup a
         ON a.last_name = representatives.last_name

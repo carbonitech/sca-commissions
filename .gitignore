@@ -1,5 +1,5 @@
 # sourced from https://github.com/github/gitignore/blob/main/Python.gitignore
-
+token.txt
 #(CUSTOM) ignore csvs for testing database
 tests/db_tables/
 #(CUSTOM) ignore script used for cron job

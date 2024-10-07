@@ -2,33 +2,44 @@
 Manufacturer report preprocessing definition
 for JB Industries
 """
+
 import pandas as pd
 from entities.commission_data import PreProcessedData
 from entities.preprocessor import AbstractPreProcessor
 
+
 class PreProcessor(AbstractPreProcessor):
 
-    def _standard_report_preprocessing(self, data: pd.DataFrame, **kwargs) -> PreProcessedData:
+    def _standard_report_preprocessing(
+        self, data: pd.DataFrame, **kwargs
+    ) -> PreProcessedData:
         """processes the standard JB file"""
 
-        customer_name_col: str = "name"
-        city_name_col: str = "city"
-        state_name_col: str = "code"
-        inv_col: str = "grosssale"
-        comm_col: str = "cmsnamount"
+        customer: str = "name"
+        city: str = "city"
+        state: str = "code"
+        sales: str = "grosssale"
+        commissions: str = "cmsnamount"
 
-        data = data.dropna(subset=data.columns.to_list()[0])
-        result = data.loc[:,[customer_name_col, city_name_col, state_name_col, inv_col, comm_col]]
-        result = result.groupby(result.columns.tolist()[:3]).sum().reset_index()
-        result.loc[:,inv_col] *= 100
-        result.loc[:,comm_col] *= 100
-        result = result.apply(self.upper_all_str)
-
-        col_names = ["customer", "city", "state", "inv_amt", "comm_amt"]
-        result.columns = col_names
-        result["id_string"] = result[col_names[:3]].apply("_".join, axis=1)
+        data = data.dropna(subset=data.columns[0])
+        result = data.loc[:, [customer, city, state, sales, commissions]]
+        result.loc[
+            (result[customer].isna())
+            & (result[sales].isna())
+            & (result[commissions].lt(0)),
+            [customer, city, state],
+        ] = ["UNMAPPED"] * 3
+        result = result.groupby(result.columns[:3].to_list()).sum().reset_index()
+        result.loc[:, sales] *= 100
+        result.loc[:, commissions] *= 100
+        result["id_string"] = result[result.columns[:3]].apply("_".join, axis=1)
+        result = (
+            result[["id_string", sales, commissions]]
+            .apply(self.upper_all_str)
+            .rename(columns={sales: "inv_amt", commissions: "comm_amt"})
+            .astype(self.EXPECTED_TYPES)
+        )
         return PreProcessedData(result)
-
 
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {

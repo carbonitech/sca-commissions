@@ -17,13 +17,13 @@ class PreProcessor(AbstractPreProcessor):
 
         data, cols = self.use_column_options(data, **kwargs)
 
-        customer_name_col: str = cols["customer"]
-        city_name_col: str = cols["city"]
-        state_name_col: str = cols["state"]
-        inv_col: str = cols["sales"]
-        comm_col: str = cols["commissions"]
+        customer_name_col: str = cols.customer
+        city_name_col: str = cols.city
+        state_name_col: str = cols.state
+        inv_col: str = cols.sales
+        comm_col: str = cols.commissions
 
-        data = data.dropna(subset=cols["state"])
+        data = data.dropna(subset=cols.state)
         result = data.loc[
             :, [customer_name_col, city_name_col, state_name_col, inv_col, comm_col]
         ]
@@ -114,17 +114,17 @@ class PreProcessor(AbstractPreProcessor):
 
         data, cols_used = self.use_column_options(data, **kwargs)
 
-        if cols_used["city"][-1] == "4":
-            city_name_alt = cols_used["city"][:-1] + "3"
+        if cols_used.city[-1] == "4":
+            city_name_alt = cols_used.city[:-1] + "3"
         else:
-            city_name_alt = cols_used["city"][:-1] + "4"
+            city_name_alt = cols_used.city[:-1] + "4"
 
-        customer_name_col: str = cols_used["customer"]
-        city_name_col: str = cols_used["city"]
+        customer_name_col: str = cols_used.customer
+        city_name_col: str = cols_used.city
         city_name_alt: str = city_name_alt
-        state_name_col: str = cols_used["state"]
-        inv_col: str = cols_used["sales"]
-        comm_col = cols_used.get("commissions")
+        state_name_col: str = cols_used.state
+        inv_col: str = cols_used.sales
+        comm_col = cols_used.commissions
 
         data = data.dropna(axis=1, how="all")
         data = data.dropna(subset=state_name_col)

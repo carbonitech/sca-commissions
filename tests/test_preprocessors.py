@@ -301,8 +301,26 @@ def test_famco_preprocessors():
 def test_friedrich_preprocessors():
     report_names = ["paid", "johnstone_pos", "ferguson_pos"]
     entity = "friedrich"
+    column_names = [
+        {
+            "customer": None,
+            "city": "shiptowhse-name",
+            "state": "productdeststate",
+            "sales": "grosssales",
+            "commissions": "commission$",
+        },
+        {
+            "customer": None,
+            "city": "productdestcity",
+            "state": "productdeststate",
+            "sales": "netsalesprice",
+            "commissions": "commission$",
+        },
+    ]
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, friedrich.PreProcessor)
+    assert_tests_for_each_file(
+        files_by_report, entity, friedrich.PreProcessor, column_names=column_names
+    )
 
 
 def test_general_filters_preprocessors():
@@ -324,8 +342,6 @@ def test_genesis_preprocessors():
     entity = "genesis"
     col_names = [
         {
-            "id": 1,
-            "report_id": 1,
             "customer": "billtoaddress1",
             "city": "billtoaddress4",
             "state": "billtostate",
@@ -333,9 +349,6 @@ def test_genesis_preprocessors():
             "commissions": None,
         },
         {
-            "id": 1,
-            "report_id": 1,
-            "customer": "billtoaddress1",
             "customer": "billtoaddress1",
             "city": "billtoaddress4",
             "state": "billtostate",
@@ -343,9 +356,6 @@ def test_genesis_preprocessors():
             "commissions": "comm",
         },
         {
-            "id": 1,
-            "report_id": 1,
-            "customer": "billtoaddress1",
             "customer": "custname",
             "city": "city",
             "state": "state",
@@ -353,9 +363,6 @@ def test_genesis_preprocessors():
             "commissions": "commdue",
         },
         {
-            "id": 1,
-            "report_id": 1,
-            "customer": "billtoaddress1",
             "customer": "customername",
             "city": "city",
             "state": "state",
@@ -374,8 +381,21 @@ def test_glasfloss_preprocessors():
     entity = "glasfloss"
     file_password = "013084"
     files_by_report = _build_file_listing_by_report(report_names, entity)
+    column_names = [
+        {
+            "customer": "shiptoname",
+            "city": "shiptocity",
+            "state": "shiptostate",
+            "sales": "sumofsales",
+            "commissions": None,
+        },
+    ]
     assert_tests_for_each_file(
-        files_by_report, entity, glasfloss.PreProcessor, file_password=file_password
+        files_by_report,
+        entity,
+        glasfloss.PreProcessor,
+        file_password=file_password,
+        column_names=column_names,
     )
 
 

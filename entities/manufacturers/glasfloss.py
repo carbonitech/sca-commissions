@@ -16,10 +16,11 @@ class PreProcessor(AbstractPreProcessor):
 
         data, cols = self.use_column_options(data, **kwargs)
 
-        customer: str = cols["customer"]
-        city: str = cols["city"]
-        state: str = cols["state"]
-        sale: str = cols["sales"]
+        customer: str = cols.customer
+        city: str = cols.city
+        state: str = cols.state
+        sale: str = cols.sales
+        commission: str = cols.commissions
         commission: str = "comm_amt"
         comm_rate = kwargs.get("standard_commission_rate", 0)
 

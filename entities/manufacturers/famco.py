@@ -17,11 +17,11 @@ class PreProcessor(AbstractPreProcessor):
 
         data, cols = self.use_column_options(data, **kwargs)
 
-        customer: str = cols["customer"]
-        city: str = cols["city"]
-        state: str = cols["state"]
-        inv_amt: str = cols["sales"]
-        comm_amt: str = cols["commissions"]
+        customer: str = cols.customer
+        city: str = cols.city
+        state: str = cols.state
+        inv_amt: str = cols.sales
+        comm_amt: str = cols.commissions
         invoice_date: str = "invoicedate"
 
         all_cols = [customer, city, state, inv_amt, comm_amt]
@@ -52,9 +52,9 @@ class PreProcessor(AbstractPreProcessor):
         data, cols = self.use_column_options(data, **kwargs)
 
         customer: str = self.get_customer(**kwargs)
-        city: str = cols["city"]
-        state: str = cols["state"]
-        inv_amt: str = cols["sales"]
+        city: str = cols.city
+        state: str = cols.state
+        inv_amt: str = cols.sales
         comm_rate = kwargs.get("standard_commission_rate", 0)
 
         # top line sales and sales detail are on the same tab and separated by a blank column

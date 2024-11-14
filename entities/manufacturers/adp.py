@@ -267,10 +267,10 @@ class PreProcessor(AbstractPreProcessor):
     ) -> PreProcessedData:
         data, cols_used = self.use_column_options(data, **kwargs)
         customer = self.get_customer(**kwargs)
-        city = cols_used["city"]
-        state = cols_used["state"]
-        sales = cols_used["sales"]
-        commission = cols_used["commissions"]
+        city = cols_used.city
+        state = cols_used.state
+        sales = cols_used.sales
+        commission = cols_used.commissions
         data.dropna(subset=data.columns[0], inplace=True)
         city_alt = city[:-1] + "3"
         data[city].fillna(data[city_alt], inplace=True)

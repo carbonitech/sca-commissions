@@ -73,7 +73,7 @@ class PreProcessor(AbstractPreProcessor):
         )
 
         result = data.loc[:, ["id_string", inv_col, comm_col]]
-
+        result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)
 
     def _standard_report_preprocessing_xlsx(

@@ -16,11 +16,11 @@ class PreProcessor(AbstractPreProcessor):
     ) -> PreProcessedData:
 
         data, cols = self.use_column_options(data, **kwargs)
-        customer: str = cols["customer"]
-        city: str = cols["city"]
-        state: str = cols["state"]
-        sales: str = cols["sales"]
-        commissions: str = cols["commissions"]
+        customer: str = cols.customer
+        city: str = cols.city
+        state: str = cols.state
+        sales: str = cols.sales
+        commissions: str = cols.commissions
 
         data = data.dropna(subset=data.columns[0])
         data[sales] *= 100

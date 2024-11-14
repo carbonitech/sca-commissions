@@ -1,8 +1,18 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from math import isclose
 from pandas import Series, DataFrame
 from entities.commission_data import PreProcessedData
 from entities.commission_file import CommissionFile
+
+
+@dataclass
+class ReportColumns:
+    customer: str = None
+    city: str = None
+    state: str = None
+    sales: str = None
+    commissions: str = None
 
 
 class AbstractPreProcessor(ABC):
@@ -77,7 +87,7 @@ class AbstractPreProcessor(ABC):
 
     def use_column_options(
         self, data: DataFrame, **kwargs
-    ) -> tuple[DataFrame, dict[str, str]]:
+    ) -> tuple[DataFrame, ReportColumns]:
         column_name_options: list[dict] = kwargs.get("column_names")
         cols_used = {}
         for names_option in column_name_options:
@@ -95,7 +105,7 @@ class AbstractPreProcessor(ABC):
                 "column names discoverable in the data do not match"
                 " any of the options given"
             )
-        return data, cols_used
+        return data, ReportColumns(**cols_used)
 
     @staticmethod
     def assert_commission_amounts_match(data: DataFrame, **kwargs) -> None:

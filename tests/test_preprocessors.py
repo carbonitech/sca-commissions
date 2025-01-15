@@ -135,6 +135,8 @@ def test_adp_preprocessors():
         "Shupe Carboni sheet Atlanta": -88.23,
         "Shupe Carboni Nov 2023 sheet RE Michel": 2.03,
         "Shupe Carboni Jul 2024 sheet RE Michel": 2.47,
+        "Shupe Carboni Dec 2024 sheet Coburn": -375.15,
+        "Shupe Carboni Dec 2024 sheet Baker": -104.33,
     }
     column_names = [
         {

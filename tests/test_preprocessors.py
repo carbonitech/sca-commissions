@@ -11,12 +11,12 @@ from entities.manufacturers import (
     famco,
     friedrich,
     general_filters,
-    genesis,
     glasfloss,
     hardcast,
     jb_ind,
     milwaukee,
     nelco,
+    southwire,
     superior_hvacr,
     tjernlund,
     tpi,
@@ -369,10 +369,17 @@ def test_genesis_preprocessors():
             "sales": "netsales",
             "commissions": "commission",
         },
+        {
+            "customer": "customersoldto",
+            "city": "city",
+            "state": "state",
+            "sales": "netsales",
+            "commissions": "commission",
+        },
     ]
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(
-        files_by_report, entity, genesis.PreProcessor, column_names=col_names
+        files_by_report, entity, southwire.PreProcessor, column_names=col_names
     )
 
 

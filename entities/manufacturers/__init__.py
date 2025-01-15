@@ -8,14 +8,14 @@ db = SESSIONLOCAL()
 
 all_manufacturers_in_db = get.all_manufacturers(db)
 all_manufacturers_in_dir = [
-        manuf.split('.')[0] 
-        for manuf in os.listdir("./entities/manufacturers") 
-        if not manuf.startswith("__")
-    ]
+    manuf.split(".")[0]
+    for manuf in os.listdir("./entities/manufacturers")
+    if not manuf.startswith("__")
+]
 
 MFG_PREPROCESSORS = {}
 if not all_manufacturers_in_db:
-    pass # don't do anything else if the db manufacturers table is empty
+    pass  # don't do anything else if the db manufacturers table is empty
 else:
 
     import_prefix = "entities.manufacturers."
@@ -26,11 +26,11 @@ else:
             pass
         else:
             MFG_PREPROCESSORS[id_num] = imported_obj.PreProcessor
+            del imported_obj
 
     del import_prefix
     del id_num
     del manufacturer_in_db
-    del imported_obj
 
 db.close()
 del os

@@ -76,7 +76,7 @@ class PreProcessor(AbstractPreProcessor):
             columns={commission_i: commission}
         )  # if commission rate changes, this column name would change
 
-        data = data.dropna(subset=data.columns[0]).dropna(subset=sales)
+        data = data.dropna(subset=data.columns[0:2]).dropna(subset=sales)
 
         data.loc[:, sales] = data[sales].fillna(0) * 100.0
         data.loc[:, commission] = data[commission].fillna(0) * 100.0
@@ -253,8 +253,8 @@ class PreProcessor(AbstractPreProcessor):
         data = data.dropna(subset=data.columns[0])
         data.loc[:, cost] *= 100.0
         data.loc[:, commission] *= 100.0
-        total_sales = -data[cost].sum()
-        total_comm = -data[commission].sum()
+        total_sales = data[cost].sum()
+        total_comm = data[commission].sum()
         cols = ["id_string", "inv_amt", "comm_amt"]
         result = pd.DataFrame([[customer, total_sales, total_comm]], columns=cols)
         result = result.apply(self.upper_all_str)

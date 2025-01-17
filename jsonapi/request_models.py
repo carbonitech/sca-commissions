@@ -38,7 +38,7 @@ class BranchRelatonshipFull(BaseModel):
 
 class BranchModification(JSONAPIBaseModification):
     id: int
-    attributes: Branch | None
+    attributes: Branch | dict | None = {}
     relationships: BranchRelationship | dict | None = {}
 
 

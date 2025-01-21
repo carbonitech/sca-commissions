@@ -190,7 +190,10 @@ def test_atco_preprocessors():
     report_names = ["standard", "re_michel_pos"]
     entity = "atco"
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    reported_commission_amounts = {"Shupe Carboni  07-24 Commissions": 38634.19}
+    reported_commission_amounts = {
+        "Shupe Carboni  07-24 Commissions": 38634.19,
+        "12Dec24 Shupe Carboni Commission Summary": 34163.10,
+    }
     column_names = [
         {
             "customer": "sortname",

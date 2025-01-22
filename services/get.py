@@ -18,7 +18,7 @@ CHUNK_SIZE = 10000
 
 
 def __get_X(
-    db: Session, query: dict, user: User, model: models.Base, _id: int = 0
+    db: Session, query: dict, user: User, model: models.Base, _id: int = 0  # type: ignore
 ) -> JSONAPIResponse:
     if not _id:
         user_id: int = user.id(db=db)
@@ -154,7 +154,7 @@ def relationship(
     return models.serializer.get_relationship(db, {}, primary, id_, secondary)
 
 
-def all_by_user_id(db: Session, table: models.Base, user_id: int) -> pd.DataFrame:
+def all_by_user_id(db: Session, table: models.Base, user_id: int) -> pd.DataFrame:  # type: ignore
     sql = sqlalchemy.select(table).where(table.user_id == user_id)
     return pd.read_sql(sql, con=db.get_bind())
 
@@ -331,6 +331,8 @@ def commission_data_with_all_names(db: Session, submission_id: int = 0, **kwargs
             LOCATIONS.state,
             COMMISSION_DATA_TABLE.inv_amt,
             COMMISSION_DATA_TABLE.comm_amt,
+            ID_STRINGS.verified,
+            ID_STRINGS.match_string,
         )
         .select_from(COMMISSION_DATA_TABLE)
         .join(
@@ -343,6 +345,11 @@ def commission_data_with_all_names(db: Session, submission_id: int = 0, **kwargs
         .join(REPS)
         .join(CUSTOMERS, CUSTOMERS.id == BRANCHES.customer_id)
         .join(LOCATIONS)
+        .join(
+            ID_STRINGS,
+            ID_STRINGS.id == COMMISSION_DATA_TABLE.report_branch_ref,
+            isouter=True,
+        )
         .where(COMMISSION_DATA_TABLE.user_id == kwargs.get("user_id"))
         .order_by(
             SUBMISSIONS_TABLE.reporting_year.desc(),
@@ -412,7 +419,7 @@ def commission_data_with_all_names(db: Session, submission_id: int = 0, **kwargs
             "Submission",
             "Report",
             "Year",
-            "Month",
+            "month_num",
             "Manufacturer",
             "Salesman",
             "Customer Name",
@@ -420,6 +427,8 @@ def commission_data_with_all_names(db: Session, submission_id: int = 0, **kwargs
             "State",
             "Inv Amt",
             "Comm Amt",
+            "Verified",
+            "Reference Name",
         ]
         chunk.loc[:, "Inv Amt"] = chunk.loc[:, "Inv Amt"].apply(
             convert_cents_to_dollars
@@ -427,9 +436,14 @@ def commission_data_with_all_names(db: Session, submission_id: int = 0, **kwargs
         chunk.loc[:, "Comm Amt"] = chunk.loc[:, "Comm Amt"].apply(
             convert_cents_to_dollars
         )
-        chunk.loc[:, "Month"] = (
-            chunk.loc[:, "Month"].apply(convert_month_from_number_to_name).astype(str)
+        chunk.insert(
+            4,
+            "Month",
+            chunk.loc[:, "month_num"]
+            .apply(convert_month_from_number_to_name)
+            .astype(str),
         )
+        chunk.drop(columns="month_num", inplace=True)
         yield chunk
 
 

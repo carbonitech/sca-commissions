@@ -80,18 +80,20 @@ class PreProcessor(AbstractPreProcessor):
         self, data: pd.DataFrame, **kwargs
     ) -> PreProcessedData:
 
-        customer = "customer"
-        city = "shipto"
-        inv_amt = "salesamount"
-        comm_amt = "commission"
+        data, cols = self.use_column_options(data, **kwargs)
 
-        data = self.check_headers_and_fix([customer, city, inv_amt, comm_amt], data)
+        customer: str = cols.customer
+        city: str = cols.city
+        sales: str = cols.sales
+        commissions: str = cols.commissions
+
+        data = self.check_headers_and_fix([customer, city, sales, commissions], data)
         data = data.dropna(subset=data.columns[1])
-        data[inv_amt] *= 100
-        data[comm_amt] *= 100
+        data[sales] *= 100
+        data[commissions] *= 100
         data["id_string"] = data[[customer, city]].apply("_".join, axis=1)
-        result = data[["id_string", inv_amt, comm_amt]]
-        result = result.rename(columns={inv_amt: "inv_amt", comm_amt: "comm_amt"})
+        result = data[["id_string", sales, commissions]]
+        result = result.rename(columns={sales: "inv_amt", commissions: "comm_amt"})
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
         return PreProcessedData(result)

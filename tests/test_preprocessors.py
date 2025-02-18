@@ -161,8 +161,27 @@ def test_adp_preprocessors():
 def test_a_gas_preprocessors():
     report_names = ["standard", "standard_excel"]
     entity = "a_gas"
+    column_names = [
+        {
+            "customer": "customer",
+            "city": "shipto",
+            "state": None,
+            "sales": "salesamount",
+            "commissions": "commission",
+        },
+        {
+            "customer": "customer",
+            "city": "shiptocity",
+            "state": None,
+            "sales": "salesamount",
+            "commissions": "totalcommissions",
+        },
+    ]
+
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, a_gas.PreProcessor)
+    assert_tests_for_each_file(
+        files_by_report, entity, a_gas.PreProcessor, column_names=column_names
+    )
 
 
 def test_air_vent_preprocessors():

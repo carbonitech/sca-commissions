@@ -8,6 +8,7 @@ tests/*.sql
 tests/**/*.xls*
 tests/**/*.pdf
 tests/**/*.PDF
+tests/**/*.csv
 # admin module
 admin.py
 # MinIO Access Keys

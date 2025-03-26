@@ -248,12 +248,28 @@ def test_berry_preprocessors():
 def test_c_d_valve_preprocessors():
     # python doesn't allow the '&' symbol directly in a name,
     # but we can import a module with the character in it anyway like this
+    column_names = [
+        {
+            "customer": "customername",
+            "city": None,
+            "state": None,
+            "sales": "invoiceamount",
+            "commissions": "commissionamount",
+        },
+    ]
+    reported_commission_amounts = {
+        "9441AP CARBONI FEB 2025": 1059.96,
+    }
     preprocessor_module = import_module("entities.manufacturers.c&d_valve")
     report_names = ["standard", "baker", "johnstone", "additionals"]
     entity = "c&d_valve"
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(
-        files_by_report, entity, preprocessor_module.PreProcessor
+        files_by_report,
+        entity,
+        preprocessor_module.PreProcessor,
+        column_names=column_names,
+        reported_commission_amounts=reported_commission_amounts,
     )
 
 

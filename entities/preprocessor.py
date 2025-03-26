@@ -67,12 +67,15 @@ class AbstractPreProcessor(ABC):
         if isinstance(cols, str):
             cols = [cols]
         # check that my columns contain the headers I expect
-        df = df.rename(columns=lambda col: str(col).lower().replace(" ", ""))
+        df = df.rename(columns=lambda col: str(col).lower().replace(" ", "")).replace(
+            "\n", ""
+        )
         if not set(cols) <= set(df.columns):
             # iterate through the rows until we find the column header
             for index, row in df.iterrows():
                 row_vals = [
-                    str(value).lower().replace(" ", "") for value in row.values.tolist()
+                    str(value).lower().replace(" ", "").replace("\n", "")
+                    for value in row.values.tolist()
                 ]
                 if set(cols) <= set(row_vals):
                     # set the df to use the column row as header
@@ -88,6 +91,7 @@ class AbstractPreProcessor(ABC):
     def use_column_options(
         self, data: DataFrame, **kwargs
     ) -> tuple[DataFrame, ReportColumns]:
+        """Just pass kwargs from the Preprocessor"""
         column_name_options: list[dict] = kwargs.get("column_names")
         cols_used = {}
         for names_option in column_name_options:

@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 import os
 from fastapi import FastAPI, Depends, Request, status
 from fastapi.responses import JSONResponse, Response

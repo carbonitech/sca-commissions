@@ -259,6 +259,7 @@ def test_c_d_valve_preprocessors():
     ]
     reported_commission_amounts = {
         "9441AP CARBONI FEB 2025": 1059.96,
+        "9441AP CARBONI MAR 2025 BAK JS Q1": 1870.36,
     }
     preprocessor_module = import_module("entities.manufacturers.c&d_valve")
     report_names = ["standard", "baker", "johnstone", "additionals"]

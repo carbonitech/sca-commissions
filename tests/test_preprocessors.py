@@ -357,6 +357,13 @@ def test_friedrich_preprocessors():
             "sales": "netsalesprice",
             "commissions": "commission$",
         },
+        {
+            "customer": "customername",
+            "city": "shiptocity",
+            "state": "shiptostate",
+            "sales": "netsales",
+            "commissions": "repcomission",
+        },
     ]
     files_by_report = _build_file_listing_by_report(report_names, entity)
     assert_tests_for_each_file(

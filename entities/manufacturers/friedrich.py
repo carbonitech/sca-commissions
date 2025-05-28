@@ -15,15 +15,14 @@ class PreProcessor(AbstractPreProcessor):
     ) -> PreProcessedData:
         """processes the Friedrich Paid tab"""
 
-        customer_name_col: str = "customername"
-        city_name_col: str = "shiptocity"
-        state_name_col: str = "shiptostate"
-        inv_col: str = "netsales"
-        comm_col: str = "repcomission"
+        data, cols = self.use_column_options(data, **kwargs)
 
-        data = self.check_headers_and_fix(
-            [customer_name_col, city_name_col, state_name_col, inv_col, comm_col], data
-        )
+        customer_name_col: str = cols.customer
+        city_name_col: str = cols.city
+        state_name_col: str = cols.state
+        inv_col: str = cols.sales
+        comm_col: str = cols.commissions
+
         data = data.dropna(subset=customer_name_col)
         if customer_name_col not in data.columns.to_list():
             data = data.rename(columns=data.iloc[0]).drop(data.index[0])

@@ -8,6 +8,34 @@ from logging import getLogger
 
 logger = getLogger("uvicorn.info")
 
+MONTHS = [
+    "january",
+    "jan",
+    "february",
+    "feb",
+    "march",
+    "mar",
+    "april",
+    "apr",
+    "may",
+    "june",
+    "jun",
+    "july",
+    "jul",
+    "jly",
+    "august",
+    "aug",
+    "september",
+    "spt",
+    "sept",
+    "october",
+    "oct",
+    "november",
+    "nov",
+    "december",
+    "dec",
+]
+
 
 @dataclass
 class CommissionFile:
@@ -97,6 +125,7 @@ class CommissionFile:
     def clean_header(header: str) -> str:
         header = str(header).lower()
         header = re.sub(r"[^a-z0-9.,]", "", header)
+        header = re.sub(rf"({"|".join(MONTHS)})", "", header)
         if header.isnumeric():
             header = "replacednumber"
         else:

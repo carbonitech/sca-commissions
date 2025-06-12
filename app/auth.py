@@ -56,7 +56,7 @@ async def authenticate_auth0_token(
                     if ":" in scope:
                         user_type, profile = scope.split(":")
                 if user_type == "admin":
-                    user_ = user.User(
+                    user_ = User(
                         "admin", "admin", f"admin@{profile}", verified=True
                     )
                 else:

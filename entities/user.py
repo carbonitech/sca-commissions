@@ -10,6 +10,7 @@ class User:
     name: str
     email: str
     verified: bool
+    user_id: int = 0
 
     def domain(self, name_only=False) -> str:
         if self.verified:
@@ -20,5 +21,7 @@ class User:
                 return domain
 
     def id(self, db: Session) -> int:
+        if self.user_id:
+            return self.user_id
         sql = text("""SELECT id FROM users WHERE company_domain = :domain""")
         return db.execute(sql, {"domain": self.domain()}).scalar_one_or_none()

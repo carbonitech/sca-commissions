@@ -76,7 +76,9 @@ async def commission_data_file_link(
         "hash": hash_,
         "type": "commission_data",
         "query_args": (
-            json.dumps(query_params.dict(exclude_none=True) | {"user_id": user_id})
+            json.dumps(
+                query_params.model_dump(exclude_none=True) | {"user_id": user_id}
+            )
             if query_params
             else json.dumps(default_query)
         ),

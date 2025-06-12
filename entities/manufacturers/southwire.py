@@ -199,6 +199,52 @@ class PreProcessor(AbstractPreProcessor):
         )
         return PreProcessedData(result)
 
+    def _re_michel_report_preprocessing(
+        self, data: pd.DataFrame, **kwargs
+    ) -> PreProcessedData:
+
+        data, cols_used = self.use_column_options(data, **kwargs)
+        customer: str = self.get_customer(**kwargs)
+        city: str = cols_used.city
+        state: str = cols_used.state
+        sales: str = cols_used.sales
+        commission: str = cols_used.commissions
+
+        data = data.dropna(subset=city)
+        data.loc[:, "customer"] = customer
+        data[sales] = data[sales].astype(float)
+        data[commission] = data[commission].astype(float)
+        data[sales] *= 100
+        data[commission] *= 100
+        data["id_string"] = data[["customer", city, state]].apply("_".join, axis=1)
+        result = data[["id_string", sales, commission]].rename(
+            columns={sales: "inv_amt", commission: "comm_amt"}
+        )
+        return PreProcessedData(result)
+
+    def _uri_report_preprocessing(
+        self, data: pd.DataFrame, **kwargs
+    ) -> PreProcessedData:
+
+        data, cols_used = self.use_column_options(data, **kwargs)
+        customer: str = self.get_customer(**kwargs)
+        city: str = cols_used.city
+        state: str = cols_used.state
+        sales: str = cols_used.sales
+        commission: str = cols_used.commissions
+
+        data = data.dropna(subset=city)
+        data.loc[:, "customer"] = customer
+        data[sales] = data[sales].astype(float)
+        data[commission] = data[commission].astype(float)
+        data[sales] *= 100
+        data[commission] *= 100
+        data["id_string"] = data[["customer", city, state]].apply("_".join, axis=1)
+        result = data[["id_string", sales, commission]].rename(
+            columns={sales: "inv_amt", commission: "comm_amt"}
+        )
+        return PreProcessedData(result)
+
     def preprocess(self, **kwargs) -> PreProcessedData:
         method_by_name = {
             "sales_detail": (self._standard_report_preprocessing, 0),
@@ -207,6 +253,8 @@ class PreProcessor(AbstractPreProcessor):
             "winsupply_pos": (self._winsupply_report_preprocessing, 0),
             "rebate_detail": (self._rebate_detail_report_preprocessing, 0),
             "johnstone_pos": (self._johnstone_report_preprocessing, 0),
+            "re_michel_pos": (self._re_michel_report_preprocessing, 0),
+            "uri_pos": (self._uri_report_preprocessing, 0),
         }
         preprocess_method, skip_param = method_by_name.get(self.report_name, None)
         if preprocess_method:

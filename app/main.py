@@ -78,7 +78,7 @@ async def lookup_rep_by_city_state(
     return (
         JSONResponse(content=dict(**result))
         if result
-        else Response(status_code=status.HTTP_204_NO_CONTENT)
+        else JSONResponse(content={"rep": "N/A", "location": "N/A"})
     )
 
 

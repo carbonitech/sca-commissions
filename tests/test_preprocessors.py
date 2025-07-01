@@ -5,7 +5,6 @@ from entities.manufacturers import (
     allied,
     ambro_controls,
     atco,
-    berry,  # c&d_valve,
     cerro,
     clean_comfort,
     famco,
@@ -20,6 +19,7 @@ from entities.manufacturers import (
     superior_hvacr,
     tjernlund,
     tpi,
+    vybond,
 )
 from importlib import import_module
 import os
@@ -231,7 +231,7 @@ def test_atco_preprocessors():
     )
 
 
-def test_berry_preprocessors():
+def test_vybond_preprocessors():
     report_names = [
         "standard",
         "baker_pos",
@@ -240,9 +240,9 @@ def test_berry_preprocessors():
         "united_refrigeration_pos",
         "winsupply_pos",
     ]
-    entity = "berry"
+    entity = "vybond"
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, berry.PreProcessor)
+    assert_tests_for_each_file(files_by_report, entity, vybond.PreProcessor)
 
 
 def test_c_d_valve_preprocessors():

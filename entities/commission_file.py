@@ -5,6 +5,7 @@ import tabula
 from PyPDF2 import PdfReader
 from io import BytesIO
 from logging import getLogger
+from datetime import datetime
 
 logger = getLogger("uvicorn.info")
 
@@ -72,7 +73,8 @@ class CommissionFile:
         read only visible sheets in the excel file
         if combine_sheets is True, attempt to UNION all visible sheets
 
-        `skip` parameter allows skipping of rows or pages in the output, depending on the parsing strategy used
+        `skip` parameter allows skipping of rows or pages in the output,
+            depending on the parsing strategy used
 
         For PDF files, two strategies are available
             "text": raw text dumped into a Panadas Series. Lines split by newline/return characted
@@ -97,7 +99,8 @@ class CommissionFile:
                     return combined[~combined.loc[:, 0].str.startswith("Unnamed")]
                 else:
                     return tabula.read_pdf(BytesIO(self.file_data), pages="all")[skip]
-        self.decrypt_file()  # only does something if a password was passed into the CommissionFile constructor
+        # only does something if a password was passed into the CommissionFile constructor
+        self.decrypt_file()
         try:
             excel_data = self.excel_extract(
                 "openpyxl", combine_sheets, skip, split_sheets, treat_headers
@@ -126,6 +129,9 @@ class CommissionFile:
         header = str(header).lower()
         header = re.sub(r"[^a-z0-9.,]", "", header)
         header = re.sub(rf"({"|".join(MONTHS)})", "", header)
+        # only the current year to avoid a name conflict with another column
+        # that may contain other years (usually prior year)
+        header = re.sub(rf"({datetime.today().today().year})", "", header)
         if header.isnumeric():
             header = "replacednumber"
         else:

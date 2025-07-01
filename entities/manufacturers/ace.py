@@ -24,7 +24,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, commissions] *= 100
         data.loc[:, "id_string"] = data[customer] + "__"  # signal missing location data
         result = data[["id_string", sales, commissions]].rename(
-            {sales: "inv_amt", commissions: "comm_amt"}
+            columns={sales: "inv_amt", commissions: "comm_amt"}
         )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
@@ -48,7 +48,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, commissions] = data[sales] * comm_rate
         data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
         result = data[["id_string", sales, commissions]].rename(
-            {sales: "inv_amt", commissions: "comm_amt"}
+            columns={sales: "inv_amt", commissions: "comm_amt"}
         )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
@@ -72,7 +72,7 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, commissions] = data[sales] * comm_rate
         data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
         result = data[["id_string", sales, commissions]].rename(
-            {sales: "inv_amt", commissions: "comm_amt"}
+            columns={sales: "inv_amt", commissions: "comm_amt"}
         )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)

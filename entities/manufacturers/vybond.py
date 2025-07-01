@@ -1,6 +1,5 @@
 """
-Manufacturer report preprocessing definition
-for Berry Global
+Manufacturer report preprocessing definition for Vybond
 """
 
 import pandas as pd
@@ -9,14 +8,6 @@ from entities.preprocessor import AbstractPreProcessor
 
 
 class PreProcessor(AbstractPreProcessor):
-    """
-    Remarks:
-        - Berry sends a standard with one tab and a POS report file with seperate tabs for each account
-        - standard reports are monthly and POS reports are quarterly
-
-
-    Returns: PreProcessedData object with data and attributes set to enable further processing
-    """
 
     def _calculate_commission_amounts(
         self,

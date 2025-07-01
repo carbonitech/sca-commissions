@@ -18,7 +18,7 @@ class PreProcessor(AbstractPreProcessor):
         ## commission file
         customer_name_col_comm_file: str = "customer"
         customer_number_col_comm_file: str = "to"
-        inv_col_comm_file: str = "mth_sales"
+        inv_col_comm_file: str = "mthsales"
 
         all_named_cols = [
             customer_name_col_comm_file,

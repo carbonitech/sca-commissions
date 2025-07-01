@@ -46,7 +46,10 @@ class PreProcessor(AbstractPreProcessor):
         data.dropna(subset=city, inplace=True)
         data.loc[:, sales] *= 100
         data.loc[:, commissions] = data[sales] * comm_rate
-        data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
+        data.loc[:, "customer"] = customer
+        data.loc[:, "id_string"] = data[["customer", city, state]].apply(
+            "_".join, axis=1
+        )
         result = data[["id_string", sales, commissions]].rename(
             columns={sales: "inv_amt", commissions: "comm_amt"}
         )
@@ -70,7 +73,10 @@ class PreProcessor(AbstractPreProcessor):
         data.dropna(subset=city, inplace=True)
         data.loc[:, sales] *= 100
         data.loc[:, commissions] = data[sales] * comm_rate
-        data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
+        data.loc[:, "customer"] = customer
+        data.loc[:, "id_string"] = data[["customer", city, state]].apply(
+            "_".join, axis=1
+        )
         result = data[["id_string", sales, commissions]].rename(
             columns={sales: "inv_amt", commissions: "comm_amt"}
         )

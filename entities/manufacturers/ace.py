@@ -23,7 +23,9 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, sales] *= 100
         data.loc[:, commissions] *= 100
         data.loc[:, "id_string"] = data[customer] + "__"  # signal missing location data
-        result = data[["id_string", sales, commissions]]
+        result = data[["id_string", sales, commissions]].rename(
+            {sales: "inv_amt", commissions: "comm_amt"}
+        )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
         self.assert_commission_amounts_match(result, **kwargs)
@@ -45,7 +47,9 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, sales] *= 100
         data.loc[:, commissions] = data[sales] * comm_rate
         data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
-        result = data[["id_string", sales, commissions]]
+        result = data[["id_string", sales, commissions]].rename(
+            {sales: "inv_amt", commissions: "comm_amt"}
+        )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
         self.assert_commission_amounts_match(result, **kwargs)
@@ -67,7 +71,9 @@ class PreProcessor(AbstractPreProcessor):
         data.loc[:, sales] *= 100
         data.loc[:, commissions] = data[sales] * comm_rate
         data.loc[:, "id_string"] = data[[customer, city, state]].apply("_".join, axis=1)
-        result = data[["id_string", sales, commissions]]
+        result = data[["id_string", sales, commissions]].rename(
+            {sales: "inv_amt", commissions: "comm_amt"}
+        )
         result = result.apply(self.upper_all_str)
         result = result.astype(self.EXPECTED_TYPES)
         self.assert_commission_amounts_match(result, **kwargs)

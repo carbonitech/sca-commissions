@@ -247,7 +247,8 @@ class PreProcessor(AbstractPreProcessor):
     ) -> PreProcessedData:
         customer = self.get_customer(**kwargs)
         cost = "ext.cost"
-        commission = "split75%"
+        commission = "split75"
+
         named_cols = [cost, commission]
         data = self.check_headers_and_fix(named_cols, data)
         data = data.dropna(subset=data.columns[0])

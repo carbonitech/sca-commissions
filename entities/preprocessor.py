@@ -74,9 +74,7 @@ class AbstractPreProcessor(ABC):
             # iterate through the rows until we find the column header
             for index, row in df.iterrows():
                 row_vals = [
-                    CommissionFile.clean_header(value)
-                    # str(value).lower().replace(" ", "").replace("\n", "")
-                    for value in row.values.tolist()
+                    CommissionFile.clean_header(value) for value in row.values.tolist()
                 ]
                 if set(cols) <= set(row_vals):
                     # set the df to use the column row as header

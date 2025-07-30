@@ -112,9 +112,10 @@ class AbstractPreProcessor(ABC):
 
     @staticmethod
     def assert_commission_amounts_match(data: DataFrame, **kwargs) -> None:
+        tolerance = kwargs.get("tolerance", 0.01)
         reported = kwargs.get("total_commission_amount", 0)
         calculated = data["comm_amt"].sum() / 100
-        results_match = isclose(reported, calculated, abs_tol=0.01)
+        results_match = isclose(reported, calculated, abs_tol=tolerance)
         assert results_match, (
             "Total Commission Amount reported does not match preprocessing sum. "
             f"${reported:,.2f} != ${calculated:,.2f}"

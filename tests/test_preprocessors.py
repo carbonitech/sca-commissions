@@ -91,6 +91,8 @@ def assert_tests_for_each_file(
                 tb = traceback.format_exc()
                 tb = "\n\n" + tb
 
+            if reported_amounts := kwargs.get("reported_commission_amounts"):
+                preprocessor_inst.assert_commission_amounts_match(result.data, **kwargs)
             expected_columns = ["id_string", "inv_amt", "comm_amt"]
             msg_prefix = f"""Report '{report}' for '{entity}' with file '{file}'"""
             msg_content = f"failed to return the PreProcessed object.\nInstead it returned or threw {type(result)} with message {str(result)}."
@@ -194,8 +196,22 @@ def test_air_vent_preprocessors():
 def test_allied_preprocessors():
     report_names = ["standard"]
     entity = "allied"
+
+    reported_commission_amounts = {
+        "2023-03": 17503.41,
+        "2023-07": 19125.33,
+        "2024-02": 22615.56,
+        "allied Carboni - June 2025": 12326.31,
+    }
     files_by_report = _build_file_listing_by_report(report_names, entity)
-    assert_tests_for_each_file(files_by_report, entity, allied.PreProcessor)
+    assert_tests_for_each_file(
+        files_by_report,
+        entity,
+        allied.PreProcessor,
+        reported_commission_amounts=reported_commission_amounts,
+        standard_commission_rate=0.02,
+        tolerance=0.02,
+    )
 
 
 def test_ambro_controls_preprocessors():

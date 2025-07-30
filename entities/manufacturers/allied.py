@@ -36,7 +36,7 @@ class PreProcessor(AbstractPreProcessor):
                 data.str.split(r"\s{2,}", regex=True).to_list()
             )  # best col delimiter for now is 2+ spaces
             .replace(r"RH\d{5}\s", "", regex=True)
-            .replace("\s?\-\s?", 0, regex=True)
+            .replace(r"\s?\-\s?", 0, regex=True)
             .replace(
                 r"\(([0-9,]*)\)", "-\\1", regex=True
             )  # numbers surrounded by parens are negative
